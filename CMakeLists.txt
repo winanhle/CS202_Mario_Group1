@@ -5,6 +5,8 @@ project(Mario)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(SFML CONFIG REQUIRED COMPONENTS Graphics Window System)
+
 add_executable(Mario
     src/main.cpp
     src/core/Game.cpp
@@ -23,15 +25,10 @@ add_executable(Mario
 
 target_include_directories(Mario PRIVATE
     ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/libraries/include
-)
-
-target_link_directories(Mario PRIVATE
-    ${CMAKE_SOURCE_DIR}/libraries/lib
 )
 
 target_link_libraries(Mario PRIVATE
-    sfml-graphics
-    sfml-window
-    sfml-system
+    SFML::Graphics
+    SFML::Window
+    SFML::System
 )
