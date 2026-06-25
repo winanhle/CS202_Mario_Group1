@@ -1,3 +1,31 @@
+# MiniMarioOOP
+
+## Requirements
+
+* Visual Studio 2022
+* CMake
+* vcpkg
+
+## Setup
+
+Clone repository:
+
+```bash
+git clone <repo-url>
+```
+
+Install SFML:
+
+```bash
+vcpkg install sfml:x64-windows
+```
+
+Open project in Visual Studio.
+
+Build using the x64-debug preset.
+
+Run the Mario target.
+
 # ?? Mario Game - Team Development Setup COMPLETE
 
 ## Project Status: ? READY FOR TEAM DEVELOPMENT
