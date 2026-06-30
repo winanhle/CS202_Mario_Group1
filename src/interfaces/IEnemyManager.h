@@ -1,5 +1,7 @@
 #pragma once
 
+class IPlayerManager;
+
 namespace sf {
 class RenderWindow;
 }
@@ -43,4 +45,7 @@ public:
      * @return Count of enemies
      */
     virtual int getEnemyCount() const = 0;
+
+    // ─── NHẬN DEPENDENCY ───
+    virtual void setPlayerManager(IPlayerManager* player) = 0;
 };

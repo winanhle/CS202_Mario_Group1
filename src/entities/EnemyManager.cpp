@@ -1,8 +1,8 @@
 #include "EnemyManager.h"
+#include "../interfaces/IPlayerManager.h"
 #include <SFML/Graphics.hpp>
 
 EnemyManager::EnemyManager()
-    : m_enemyCount(0)
 {
 }
 
@@ -16,27 +16,43 @@ void EnemyManager::initialize()
 
 void EnemyManager::update(float deltaTime)
 {
-    // TODO: Dinh Anh - Update all enemies
-    // - Apply AI logic
-    // - Move enemies
-    // - Check boundaries
-    // - Handle spawning/despawning
+    if (!m_player) return;
+    sf::FloatRect playerBox = m_player->getHitbox();
+
+    for (auto& enemy : m_enemies) {
+        if (!enemy.alive) continue;
+
+        enemy.x += enemy.vx * deltaTime;
+        enemy.y += enemy.vy * deltaTime;
+
+        if (auto overlap = playerBox.findIntersection(enemy.getHitbox())) {
+            float playerBottom = playerBox.position.y + playerBox.size.y;
+            float enemyMidY    = enemy.y + enemy.getHitbox().size.y / 2.f;
+
+            if (playerBottom < enemyMidY) {
+                enemy.die();
+                m_player->bounce();
+            } else {
+                m_player->takeDamage();
+            }
+        }
+    }
 }
 
 void EnemyManager::render(sf::RenderWindow& window) const
 {
     // TODO: Dinh Anh - Render all enemies
     // For now, draw placeholder rectangles
-    for (int i = 0; i < m_enemyCount; ++i)
-    {
-        sf::RectangleShape enemy({ 32.0f, 32.0f });
-        enemy.setFillColor(sf::Color::Yellow);
-        enemy.setPosition({ 100.0f + i * 50.0f, 300.0f });
-        window.draw(enemy);
+    for (const auto& enemy : m_enemies) {
+        if (!enemy.alive) continue;
+        sf::RectangleShape shape({16.f, 16.f});
+        shape.setFillColor(sf::Color::Yellow);
+        shape.setPosition({enemy.x, enemy.y});
+        window.draw(shape);
     }
 }
 
 int EnemyManager::getEnemyCount() const
 {
-    return m_enemyCount;
+    return static_cast<int>(m_enemies.size());
 }

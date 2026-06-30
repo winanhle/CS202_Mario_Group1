@@ -1,7 +1,10 @@
 #include "PlayState.h"
 #include "PlayState.h"
 #include "../world/GameWorld.h"
-#include "../entities/PlayerManager.h"
+#include "../entities/player/Mario.h"
+#include "../entities/MapManager.h"
+#include "../entities/camera/CameraManager.h"
+#include "../entities/player/PlayerManager.h"
 #include "../entities/EnemyManager.h"
 #include "../entities/ItemManager.h"
 #include "../ui/HUDManager.h"
@@ -21,7 +24,9 @@ PlayState::PlayState()
 
     // Module 1: Le Tran - Character/Player
     // TODO: Le Tran - Replace with your PlayerManager implementation
-    m_gameWorld->setPlayerManager(std::make_shared<PlayerManager>());
+    m_gameWorld->setMapManager(std::make_shared<MapManager>());
+    m_gameWorld->setCameraManager(std::make_shared<CameraManager>());
+    m_gameWorld->setPlayerManager(std::make_shared<Mario>());
 
     // Module 2: Dinh Anh - Enemies
     // TODO: Dinh Anh - Replace with your EnemyManager implementation

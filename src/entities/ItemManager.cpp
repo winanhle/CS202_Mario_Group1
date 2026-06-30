@@ -1,8 +1,8 @@
 #include "ItemManager.h"
+#include "../interfaces/IPlayerManager.h"
 #include <SFML/Graphics.hpp>
 
 ItemManager::ItemManager()
-    : m_itemCount(0)
 {
 }
 
@@ -16,27 +16,33 @@ void ItemManager::initialize()
 
 void ItemManager::update(float deltaTime)
 {
-    // TODO: Dinh Anh - Update all items
-    // - Apply physics (gravity for falling items)
-    // - Handle animations
-    // - Check for collected items
-    // - Spawn new items
+    if (!m_player) return;
+    sf::FloatRect playerBox = m_player->getHitbox();
+
+    for (auto& item : m_items) {
+        if (item.collected) continue;
+
+        if (playerBox.findIntersection(item.getHitbox())) {
+            item.collected = true;
+            m_player->collectCoin(item.coinValue);
+        }
+    }
 }
 
 void ItemManager::render(sf::RenderWindow& window) const
 {
     // TODO: Dinh Anh - Render all items
     // For now, draw placeholder rectangles
-    for (int i = 0; i < m_itemCount; ++i)
-    {
-        sf::RectangleShape item({ 16.0f, 16.0f });
-        item.setFillColor(sf::Color::Magenta);
-        item.setPosition({ 200.0f + i * 40.0f, 200.0f });
-        window.draw(item);
+    for (const auto& item : m_items) {
+        if (item.collected) continue;
+        sf::RectangleShape shape({16.f, 16.f});
+        shape.setFillColor(sf::Color::Magenta);
+        shape.setPosition({item.x, item.y});
+        window.draw(shape);
     }
 }
 
 int ItemManager::getItemCount() const
 {
-    return m_itemCount;
+    return static_cast<int>(m_items.size());
 }

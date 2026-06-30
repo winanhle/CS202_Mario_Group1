@@ -1,6 +1,10 @@
 #pragma once
 
 #include "../interfaces/IItemManager.h"
+#include <SFML/Graphics/Rect.hpp>
+#include <vector>
+
+class IPlayerManager;
 
 namespace sf {
 class RenderWindow;
@@ -18,6 +22,16 @@ class RenderWindow;
  */
 class ItemManager : public IItemManager
 {
+    IPlayerManager* m_player = nullptr;
+
+    struct Item {
+        float x, y;
+        int coinValue = 1;
+        bool collected = false;
+        sf::FloatRect getHitbox() const { return {{x, y}, {16.f, 16.f}}; }
+    };
+    std::vector<Item> m_items;
+
 public:
     ItemManager();
     ~ItemManager() override = default;
@@ -28,6 +42,6 @@ public:
 
     int getItemCount() const override;
 
-private:
-    int m_itemCount;
+    // ─── NHẬN DEPENDENCY ───
+    void setPlayerManager(IPlayerManager* player) override { m_player = player; }
 };

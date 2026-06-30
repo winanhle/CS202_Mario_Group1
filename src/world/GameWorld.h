@@ -3,11 +3,13 @@
 #include <memory>
 
 // Forward declarations for all modules
+class IMapManager;
 class IPlayerManager;
 class IEnemyManager;
 class IItemManager;
 class IHUDManager;
 class ISaveManager;
+class ICameraManager;
 
 namespace sf {
 class RenderWindow;
@@ -70,9 +72,15 @@ public:
      */
     void handleInput(const sf::Event& event);
 
+    // ─── sau initialize, inject dependency ───
+    void injectDependencies();
+
     // ==================== EXTENSION POINTS ====================
     // Module setters - called during initialization
     // Each module is optional and can be nullptr
+
+    void setMapManager(std::shared_ptr<IMapManager> mapManager);
+    IMapManager* getMapManager();
 
     /**
      * @brief Set the player manager implementation
@@ -103,6 +111,11 @@ public:
      * EXTENSION POINT: Nguyen Phuc - SaveManager module
      */
     void setSaveManager(std::shared_ptr<ISaveManager> saveManager);
+
+    /**
+     * @brief Set the camera manager implementation
+     */
+    void setCameraManager(std::shared_ptr<ICameraManager> cameraManager);
 
     // ==================== ACCESSORS ====================
     // Provide read-only access to modules for inter-module communication
@@ -137,13 +150,20 @@ public:
      */
     ISaveManager* getSaveManager();
 
+    /**
+     * @brief Get the camera manager
+     */
+    ICameraManager* getCameraManager();
+
 private:
     // Module manager instances (all optional)
+    std::shared_ptr<IMapManager> m_mapManager;
     std::shared_ptr<IPlayerManager> m_playerManager;
     std::shared_ptr<IEnemyManager> m_enemyManager;
     std::shared_ptr<IItemManager> m_itemManager;
     std::shared_ptr<IHUDManager> m_hudManager;
     std::shared_ptr<ISaveManager> m_saveManager;
+    std::shared_ptr<ICameraManager> m_cameraManager;
 
     // Internal state
     bool m_isInitialized;

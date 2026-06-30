@@ -27,22 +27,22 @@ void HUDManager::render(sf::RenderWindow& window) const
     // For now, draw placeholder rectangles for debug info
 
     // Score display area (top-left)
-    sf::RectangleShape scoreBox({ 200.0f, 40.0f });
-    scoreBox.setFillColor(sf::Color::Cyan);
-    scoreBox.setPosition({ 10.0f, 10.0f });
-    window.draw(scoreBox);
+    // sf::RectangleShape scoreBox({ 200.0f, 40.0f });
+    // scoreBox.setFillColor(sf::Color::Cyan);
+    // scoreBox.setPosition({ 10.0f, 10.0f });
+    // window.draw(scoreBox);
 
     // Lives display area (top-center)
-    sf::RectangleShape livesBox({ 200.0f, 40.0f });
-    livesBox.setFillColor(sf::Color::Green);
-    livesBox.setPosition({ 300.0f, 10.0f });
-    window.draw(livesBox);
+    // sf::RectangleShape livesBox({ 200.0f, 40.0f });
+    // livesBox.setFillColor(sf::Color::Green);
+    // livesBox.setPosition({ 300.0f, 10.0f });
+    // window.draw(livesBox);
 
     // Enemy count display area (top-right)
-    sf::RectangleShape enemyBox({ 200.0f, 40.0f });
-    enemyBox.setFillColor(sf::Color::White);
-    enemyBox.setPosition({ 590.0f, 10.0f });
-    window.draw(enemyBox);
+    // sf::RectangleShape enemyBox({ 200.0f, 40.0f });
+    // enemyBox.setFillColor(sf::Color::White);
+    // enemyBox.setPosition({ 590.0f, 10.0f });
+    // window.draw(enemyBox);
 }
 
 void HUDManager::handleInput(const sf::Event& event)

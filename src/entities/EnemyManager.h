@@ -1,6 +1,10 @@
 #pragma once
 
 #include "../interfaces/IEnemyManager.h"
+#include <SFML/Graphics/Rect.hpp>
+#include <vector>
+
+class IPlayerManager;
 
 namespace sf {
 class RenderWindow;
@@ -18,6 +22,17 @@ class RenderWindow;
  */
 class EnemyManager : public IEnemyManager
 {
+    IPlayerManager* m_player = nullptr;
+
+    struct Enemy {
+        float x, y;
+        float vx, vy;
+        bool alive = true;
+        sf::FloatRect getHitbox() const { return {{x, y}, {16.f, 16.f}}; }
+        void die() { alive = false; }
+    };
+    std::vector<Enemy> m_enemies;
+
 public:
     EnemyManager();
     ~EnemyManager() override = default;
@@ -28,6 +43,6 @@ public:
 
     int getEnemyCount() const override;
 
-private:
-    int m_enemyCount;
+    // ─── NHẬN DEPENDENCY ───
+    void setPlayerManager(IPlayerManager* player) override { m_player = player; }
 };

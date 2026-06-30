@@ -1,5 +1,8 @@
 #pragma once
 
+#include <SFML/Graphics/Rect.hpp>
+#include "IMapManager.h"
+
 namespace sf {
 class RenderWindow;
 class Event;
@@ -74,4 +77,13 @@ public:
      * @return Y coordinate of player
      */
     virtual float getPositionY() const = 0;
+
+    // ─── API CHO ENEMY/ITEM MANAGER ───
+    virtual sf::FloatRect getHitbox() const = 0;
+
+    // ─── BEHAVIOR ───
+    virtual void setMapManager(IMapManager* map) = 0;
+    virtual void takeDamage() = 0;
+    virtual void bounce() = 0;
+    virtual void collectCoin(int amount) = 0;
 };
