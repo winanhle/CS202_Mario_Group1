@@ -1,5 +1,5 @@
 #include "EnemyManager.h"
-#include "../interfaces/IPlayerManager.h"
+#include "../../../interfaces/IPlayerManager.h"
 #include <SFML/Graphics.hpp>
 
 EnemyManager::EnemyManager()

@@ -5,8 +5,8 @@
 #include "../entities/MapManager.h"
 #include "../entities/camera/CameraManager.h"
 #include "../entities/player/PlayerManager.h"
-#include "../entities/EnemyManager.h"
-#include "../entities/ItemManager.h"
+#include "../entities/enemy/states/EnemyManager.h"
+#include "../entities/item/states/ItemManager.h"
 #include "../ui/HUDManager.h"
 #include "../ui/SaveManager.h"
 #include <SFML/Graphics.hpp>

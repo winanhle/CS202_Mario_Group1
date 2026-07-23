@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../interfaces/IItemManager.h"
+#include "../../../interfaces/IItemManager.h"
 #include <SFML/Graphics/Rect.hpp>
 #include <vector>
 
