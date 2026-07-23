@@ -1,5 +1,5 @@
 #include "ItemManager.h"
-#include "../../../interfaces/IPlayerManager.h"
+#include "../../interfaces/IPlayerManager.h"
 #include <SFML/Graphics.hpp>
 
 ItemManager::ItemManager()

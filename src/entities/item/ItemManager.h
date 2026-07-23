@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../interfaces/IItemManager.h"
+#include "../../interfaces/IItemManager.h"
 #include <SFML/Graphics/Rect.hpp>
 #include <vector>
 
@@ -10,16 +10,6 @@ namespace sf {
 class RenderWindow;
 }
 
-/**
- * @class ItemManager
- * @brief Stub implementation of item management
- * 
- * Developer: Dinh Anh
- * Status: STUB - Replace with full implementation
- * 
- * This stub provides minimal functionality to keep the project compilable.
- * Dinh Anh will implement full item spawning and management logic here.
- */
 class ItemManager : public IItemManager
 {
     IPlayerManager* m_player = nullptr;
@@ -42,6 +32,5 @@ public:
 
     int getItemCount() const override;
 
-    // ─── NHẬN DEPENDENCY ───
     void setPlayerManager(IPlayerManager* player) override { m_player = player; }
 };

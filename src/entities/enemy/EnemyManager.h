@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../interfaces/IEnemyManager.h"
+#include "../../interfaces/IEnemyManager.h"
 #include <SFML/Graphics/Rect.hpp>
 #include <vector>
 
