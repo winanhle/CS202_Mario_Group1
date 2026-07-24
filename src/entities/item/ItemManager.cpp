@@ -1,44 +1,57 @@
 #include "ItemManager.h"
-#include "../../interfaces/IPlayerManager.h"
-#include <SFML/Graphics.hpp>
 
-ItemManager::ItemManager()
-{
-}
+#include "../../interfaces/IPlayerManager.h"
+
+#include "items/Coin.h"
+#include "items/Mushroom.h"
+#include "items/FireFlower.h"
+#include "items/Star.h"
+
+#include <algorithm>
+
+ItemManager::ItemManager() = default;
 
 void ItemManager::initialize()
 {
-    // TODO: Dinh Anh - Initialize item manager
-    // - Load item sprites
-    // - Spawn initial items
-    // - Set up item properties
+    m_items.clear();
+
+    // Demo items
+    m_items.push_back(std::make_unique<Coin>(120.f, 160.f));
+    m_items.push_back(std::make_unique<Coin>(160.f, 160.f));
+
+    // Uncomment when implemented
+    // m_items.push_back(std::make_unique<Mushroom>(240.f, 160.f));
+    // m_items.push_back(std::make_unique<FireFlower>(320.f, 160.f));
+    // m_items.push_back(std::make_unique<Star>(400.f, 160.f));
 }
 
 void ItemManager::update(float deltaTime)
 {
-    if (!m_player) return;
-    sf::FloatRect playerBox = m_player->getHitbox();
+    if (!m_player)
+        return;
 
-    for (auto& item : m_items) {
-        if (item.collected) continue;
-
-        if (playerBox.findIntersection(item.getHitbox())) {
-            item.collected = true;
-            m_player->collectCoin(item.coinValue);
-        }
+    for (auto& item : m_items)
+    {
+        item->update(deltaTime);
+        item->checkCollision(m_player);
     }
+
+    m_items.erase(
+        std::remove_if(
+            m_items.begin(),
+            m_items.end(),
+            [](const std::unique_ptr<Item>& item)
+            {
+                return item->isCollected();
+            }),
+        m_items.end());
 }
 
 void ItemManager::render(sf::RenderWindow& window) const
 {
-    // TODO: Dinh Anh - Render all items
-    // For now, draw placeholder rectangles
-    for (const auto& item : m_items) {
-        if (item.collected) continue;
-        sf::RectangleShape shape({16.f, 16.f});
-        shape.setFillColor(sf::Color::Magenta);
-        shape.setPosition({item.x, item.y});
-        window.draw(shape);
+    for (const auto& item : m_items)
+    {
+        item->render(window);
     }
 }
 

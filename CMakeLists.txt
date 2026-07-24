@@ -30,6 +30,7 @@ add_executable(Mario
     src/entities/player/states/PlayerState.cpp
     src/entities/MapManager.cpp
     src/entities/enemy/EnemyManager.cpp
+    src/entities/item/Item.cpp
     src/entities/item/ItemManager.cpp
     src/entities/camera/CameraManager.cpp
     src/ui/HUDManager.cpp
@@ -46,6 +47,7 @@ add_executable(PlayState_Test
     src/entities/player/states/PlayerState.cpp
     src/entities/MapManager.cpp
     src/entities/enemy/EnemyManager.cpp
+    src/entities/item/Item.cpp
     src/entities/item/ItemManager.cpp
     src/entities/camera/CameraManager.cpp
     src/ui/HUDManager.cpp
