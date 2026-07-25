@@ -14,15 +14,16 @@ ItemManager::ItemManager() = default;
 void ItemManager::initialize()
 {
     m_items.clear();
+    if (!m_itemTexture.loadFromFile("assets/texture/items.png")) {
+        throw std::runtime_error("Failed to load item sprite sheet.");
+    }
 
-    // Demo items
-    m_items.push_back(std::make_unique<Coin>(120.f, 160.f));
-    m_items.push_back(std::make_unique<Coin>(160.f, 160.f));
+    m_items.push_back(std::make_unique<Coin>(120.f, 160.f, m_itemTexture));
+    m_items.push_back(std::make_unique<Coin>(160.f, 160.f, m_itemTexture));
 
-    // Uncomment when implemented
-    // m_items.push_back(std::make_unique<Mushroom>(240.f, 160.f));
-    // m_items.push_back(std::make_unique<FireFlower>(320.f, 160.f));
-    // m_items.push_back(std::make_unique<Star>(400.f, 160.f));
+    m_items.push_back(std::make_unique<Mushroom>(240.f, 160.f, m_itemTexture));
+    m_items.push_back(std::make_unique<FireFlower>(320.f, 160.f, m_itemTexture));
+    m_items.push_back(std::make_unique<Star>(400.f, 160.f, m_itemTexture));
 }
 
 void ItemManager::update(float deltaTime)

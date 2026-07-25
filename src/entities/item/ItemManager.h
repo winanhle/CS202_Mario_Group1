@@ -15,9 +15,8 @@ class ItemManager : public IItemManager
 {
 private:
     IPlayerManager* m_player = nullptr;
-
     std::vector<std::unique_ptr<Item>> m_items;
-
+    sf::Texture m_itemTexture;
 public:
     ItemManager();
     ~ItemManager() override = default;

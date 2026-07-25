@@ -9,13 +9,13 @@ class Item
 protected:
     sf::Vector2f m_position;
     sf::Vector2f m_size;
+    sf::Sprite m_sprite;
     bool m_collected;
 
 public:
-    Item(float x, float y, float width = 16.f, float height = 16.f);
+    Item(float x, float y, sf::Texture& texture, const sf::IntRect& rect);
     virtual ~Item() = default;
 
-    // Lifecycle
     virtual void update(float deltaTime);
     virtual void render(sf::RenderWindow& window) const = 0;
 

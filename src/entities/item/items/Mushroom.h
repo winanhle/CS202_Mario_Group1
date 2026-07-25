@@ -1,15 +1,14 @@
 #pragma once
 
 #include "../Item.h"
+#include "../ItemSprite.h"
 #include "../../../interfaces/IPlayerManager.h"
 
 class Mushroom : public Item
 {
 public:
-    Mushroom(float x, float y)
-        : Item(x, y)
-    {
-    }
+    Mushroom(float x, float y, sf::Texture& texture)
+        : Item(x, y, texture, ItemSprite::GreenMushroom) {}
 
     void OnInteract(IPlayerManager* player) override
     {
@@ -18,10 +17,6 @@ public:
 
     void render(sf::RenderWindow& window) const override
     {
-        // TODO: draw mushroom sprite
-        sf::CircleShape mushroom(8.f);
-        mushroom.setFillColor(sf::Color::Red);
-        mushroom.setPosition(getPosition());
-        window.draw(mushroom);
+        window.draw(m_sprite);
     }
 };

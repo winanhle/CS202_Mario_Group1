@@ -15,6 +15,12 @@ FetchContent_Declare(SFML
 )
 FetchContent_MakeAvailable(SFML)
 
+add_custom_command(TARGET Mario POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/assets
+            $<TARGET_FILE_DIR:Mario>/assets
+)
+
 add_executable(Mario
     Mario.cpp
     src/core/Game.cpp

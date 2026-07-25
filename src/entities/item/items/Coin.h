@@ -1,15 +1,14 @@
 #pragma once
 
 #include "../Item.h"
+#include "../ItemSprite.h"
 #include "../../../interfaces/IPlayerManager.h"
 
 class Coin : public Item
 {
 public:
-    Coin(float x, float y)
-        : Item(x, y)
-    {
-    }
+    Coin(float x, float y, sf::Texture& texture)
+        : Item(x, y, texture, ItemSprite::Coin) {}
 
     void OnInteract(IPlayerManager* player) override
     {
@@ -18,10 +17,6 @@ public:
 
     void render(sf::RenderWindow& window) const override
     {
-        // TODO: draw coin sprite
-        sf::CircleShape coin(8.f);
-        coin.setFillColor(sf::Color::Yellow);
-        coin.setPosition(getPosition());
-        window.draw(coin);
+        window.draw(m_sprite);
     }
 };

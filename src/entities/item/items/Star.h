@@ -1,15 +1,14 @@
 #pragma once
 
 #include "../Item.h"
+#include "../ItemSprite.h"
 #include "../../../interfaces/IPlayerManager.h"
 
 class Star : public Item
 {
 public:
-    Star(float x, float y)
-        : Item(x, y)
-    {
-    }
+    Star(float x, float y, sf::Texture& texture)
+        : Item(x, y, texture, ItemSprite::Star) {}
 
     void OnInteract(IPlayerManager* player) override
     {
@@ -18,10 +17,6 @@ public:
 
     void render(sf::RenderWindow& window) const override
     {
-        // TODO: draw star sprite
-        sf::CircleShape star(8.f);
-        star.setFillColor(sf::Color::Cyan);
-        star.setPosition(getPosition());
-        window.draw(star);
+        window.draw(m_sprite);
     }
 };
