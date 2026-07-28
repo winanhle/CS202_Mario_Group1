@@ -8,6 +8,10 @@ StateManager::StateManager()
 
 void StateManager::changeState(GameState::Ptr newState)
 {
+    if (newState)
+    {
+        newState->setStateManager(this);
+    }
     m_currentState = std::move(newState);
 }
 

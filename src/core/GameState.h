@@ -41,6 +41,22 @@ public:
      */
     virtual void render(sf::RenderWindow& window) const = 0;
 
+    /**
+     * @brief Set the owning StateManager
+     * @param manager Pointer to the StateManager that owns this state
+     * 
+     * Called automatically by StateManager::changeState().
+     * States can use this to trigger state transitions.
+     */
+    void setStateManager(StateManager* manager) { m_stateManager = manager; }
+
 protected:
     GameState() = default;
+
+    /** @brief Get the owning StateManager (for state transitions) */
+    StateManager* getStateManager() const { return m_stateManager; }
+
+private:
+    /** Pointer to the owning StateManager (for state transitions) */
+    StateManager* m_stateManager = nullptr;
 };

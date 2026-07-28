@@ -39,4 +39,37 @@ public:
      * @return True if save file exists
      */
     virtual bool hasSaveFile() const = 0;
+
+    /**
+     * @brief Set the data to be saved
+     * @param score Player score
+     * @param lives Player lives
+     * @param posX Player X position
+     * @param posY Player Y position
+     */
+    virtual void setSaveData(int score, int lives, float posX, float posY) = 0;
+
+    /**
+     * @brief Get the saved score
+     * @return Saved score value
+     */
+    virtual int getSavedScore() const = 0;
+
+    /**
+     * @brief Get the saved lives
+     * @return Saved lives value
+     */
+    virtual int getSavedLives() const = 0;
+
+    /**
+     * @brief Get the saved player X position
+     * @return Saved X position
+     */
+    virtual float getSavedPosX() const = 0;
+
+    /**
+     * @brief Get the saved player Y position
+     * @return Saved Y position
+     */
+    virtual float getSavedPosY() const = 0;
 };
