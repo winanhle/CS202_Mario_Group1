@@ -3,19 +3,8 @@
 #include "../../interfaces/IPlayerManager.h"
 #include "../../interfaces/IMapManager.h"
 #include "input/PlayerInputHandler.h"
-#include "states/PlayerState.h"
+#include "forms/IPlayerForm.h"
 #include <memory>
-
-/**
- * @class PlayerManager
- * @brief Stub implementation of player management
- * 
- * Developer: Le Tran
- * Status: STUB - Replace with full implementation
- * 
- * This stub provides minimal functionality to keep the project compilable.
- * Le Tran will implement full Mario character logic here.
- */
 
 class PlayerManager : public IPlayerManager
 {
@@ -33,11 +22,11 @@ protected:
     int m_attackPower;
     int m_defense;
 
-    // ─── MỚI: dependency ───
+    // ─── dependency ───
     IMapManager* m_mapManager = nullptr;
     bool m_isInvincible = false;
 
-    // ─── MỚI: tile collision — âm thầm bên trong ───
+    // ─── tile collision ───
     void tileCollisionX(float deltaTime);
     void tileCollisionY(float deltaTime);
 
@@ -51,10 +40,18 @@ protected:
     bool m_isJumping;
 
     // --- PATTERNS ---
-    std::unique_ptr<PlayerState> m_currentState;
     std::unique_ptr<PlayerInputHandler> m_inputHandler;
+    std::unique_ptr<IPlayerForm> m_currentForm;
 
-    // Hàm thuần ảo bắt buộc lớp con phải tự định nghĩa thông số
+    // --- SPRITE & ANIMATION ---
+    sf::Texture m_playerTexture;
+    sf::Sprite m_playerSprite;
+    sf::Vector2f m_playerSize;
+    int m_currentFrame = 0;
+    float m_animTimer = 0.f;
+
+    void updateAnimation(float deltaTime);
+
     virtual void setupStats() = 0;
 
 public:
@@ -72,14 +69,15 @@ public:
     float getPositionX() const override;
     float getPositionY() const override;
 
-    void changeState(std::unique_ptr<PlayerState> newState);
     void jump();
     void stopJump();
     void stopHorizontal();
     void moveLeft();
     void moveRight();
 
-    // ─── MỚI: override ───
+    void setForm(std::unique_ptr<IPlayerForm> newForm);
+    void collectPowerUp(int type) override;
+
     sf::FloatRect getHitbox() const override;
     void takeDamage() override;
     void bounce() override;

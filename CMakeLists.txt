@@ -15,14 +15,19 @@ FetchContent_Declare(SFML
 )
 FetchContent_MakeAvailable(SFML)
 
-add_custom_command(TARGET Mario POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/assets
-            $<TARGET_FILE_DIR:Mario>/assets
+
+set(COMMON_SOURCES
+    src/entities/player/PlayerManager.cpp
+    src/entities/player/Mario.cpp
+    src/entities/player/Luigi.cpp
+    src/entities/player/input/PlayerInputHandler.cpp
+    src/entities/player/forms/NormalForm.cpp
+    src/entities/player/forms/SuperForm.cpp
+    src/entities/player/forms/FireForm.cpp
 )
 
-add_executable(Mario
-    Mario.cpp
+set(SHARED_SOURCES
+    ${COMMON_SOURCES}
     src/core/Game.cpp
     src/core/StateManager.cpp
     src/states/MenuState.cpp
@@ -30,10 +35,6 @@ add_executable(Mario
     src/states/PauseState.cpp
     src/states/GameOverState.cpp
     src/world/GameWorld.cpp
-    src/entities/player/PlayerManager.cpp
-    src/entities/player/Mario.cpp
-    src/entities/player/input/PlayerInputHandler.cpp
-    src/entities/player/states/PlayerState.cpp
     src/entities/MapManager.cpp
     src/entities/enemy/EnemyManager.cpp
     src/entities/item/Item.cpp
@@ -41,26 +42,24 @@ add_executable(Mario
     src/entities/camera/CameraManager.cpp
     src/ui/HUDManager.cpp
     src/ui/SaveManager.cpp
+)
+
+add_executable(Mario
+    Mario.cpp
+    ${SHARED_SOURCES}
 )
 
 add_executable(PlayState_Test
     PlayState_Test.cpp
-    src/states/PlayState.cpp
-    src/world/GameWorld.cpp
-    src/entities/player/PlayerManager.cpp
-    src/entities/player/Mario.cpp
-    src/entities/player/input/PlayerInputHandler.cpp
-    src/entities/player/states/PlayerState.cpp
-    src/entities/MapManager.cpp
-    src/entities/enemy/EnemyManager.cpp
-    src/entities/item/Item.cpp
-    src/entities/item/ItemManager.cpp
-    src/entities/camera/CameraManager.cpp
-    src/ui/HUDManager.cpp
-    src/ui/SaveManager.cpp
+    ${SHARED_SOURCES}
 )
 
-# Linking 'sfml-graphics' automatically pulls in 'sfml-window' and 'sfml-system'.
+add_custom_command(TARGET Mario POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/assets
+            $<TARGET_FILE_DIR:Mario>/assets
+)
+
 foreach(TARGET Mario PlayState_Test)
     target_link_libraries(${TARGET} PRIVATE sfml-graphics sfml-audio)
 endforeach()

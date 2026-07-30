@@ -86,4 +86,5 @@ public:
     virtual void takeDamage() = 0;
     virtual void bounce() = 0;
     virtual void collectCoin(int amount) = 0;
+    virtual void collectPowerUp(int type) = 0;
 };
