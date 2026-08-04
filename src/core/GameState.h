@@ -41,13 +41,8 @@ public:
      */
     virtual void render(sf::RenderWindow& window) const = 0;
 
-    /**
-     * @brief Set the owning StateManager
-     * @param manager Pointer to the StateManager that owns this state
-     * 
-     * Called automatically by StateManager::changeState().
-     * States can use this to trigger state transitions.
-     */
+    // Set by the StateManager when the state is activated, so the state can
+    // request transitions (changeState / pushState / popState).
     void setStateManager(StateManager* manager) { m_stateManager = manager; }
 
 protected:

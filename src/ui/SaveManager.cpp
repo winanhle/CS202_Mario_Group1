@@ -108,3 +108,9 @@ std::string SaveManager::getSaveFilePath() const
 {
     return SAVE_FILE;
 }
+
+bool SaveManager::saveFileExists()
+{
+    std::ifstream file(SAVE_FILE);
+    return file.good();
+}

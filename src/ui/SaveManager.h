@@ -5,11 +5,10 @@
 
 /**
  * @class SaveManager
- * @brief Full implementation of save/load management
- * 
+ * @brief Saves and loads game state (score, lives, position) to a file.
+ *
  * Developer: Nguyen Phuc
- * Status: IMPLEMENTED
- * 
+ *
  * Saves and loads game state (score, lives, position) to a file.
  * Uses a simple text-based format for easy debugging.
  */
@@ -30,6 +29,10 @@ public:
     int getSavedLives() const;
     float getSavedPosX() const;
     float getSavedPosY() const;
+
+    // Static so any state (e.g. MenuState) can check for a save file
+    // without owning a SaveManager instance.
+    static bool saveFileExists();
 
 private:
     std::string getSaveFilePath() const;

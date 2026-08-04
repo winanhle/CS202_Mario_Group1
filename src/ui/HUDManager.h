@@ -12,12 +12,8 @@ class Event;
 /**
  * @class HUDManager
  * @brief Full implementation of HUD/UI management
- * 
+ *
  * Developer: Nguyen Phuc
- * Status: IMPLEMENTED
- * 
- * Displays score, lives, and enemy count using SuperMario256 font.
- * Renders HUD elements as text overlay on the game window.
  */
 class HUDManager : public IHUDManager
 {
@@ -39,17 +35,15 @@ private:
 
     sf::Font m_font;
 
-    // Labels (constructed with font reference)
+    // Label + value Texts are pairs so the layout is easy to tweak
     sf::Text m_scoreLabel{m_font};
     sf::Text m_livesLabel{m_font};
     sf::Text m_enemyLabel{m_font};
-
-    // Values (constructed with font reference)
     sf::Text m_scoreValue{m_font};
     sf::Text m_livesValue{m_font};
     sf::Text m_enemyValue{m_font};
 
-    // Pre-configured HUD background bar (created once in initialize)
+    // Semi-transparent bar behind the text, set up once in initialize()
     sf::RectangleShape m_hudBar;
 
     int m_displayScore;

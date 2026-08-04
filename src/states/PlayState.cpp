@@ -1,5 +1,6 @@
 #include "PlayState.h"
-#include "PlayState.h"
+#include "PauseState.h"
+#include "../core/StateManager.h"
 #include "../world/GameWorld.h"
 #include "../entities/PlayerManager.h"
 #include "../entities/EnemyManager.h"
@@ -54,7 +55,12 @@ void PlayState::handleInput(const sf::Event& event)
     {
         if (keyEvent->code == sf::Keyboard::Key::P)
         {
-            // TODO: Quynh Anh - Transition to PauseState via StateManager
+            auto* manager = getStateManager();
+            if (manager)
+            {
+                manager->pushState(std::make_unique<PauseState>());
+            }
+            return; // don't forward the pause key to the game world
         }
     }
 
