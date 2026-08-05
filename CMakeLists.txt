@@ -36,6 +36,7 @@ set(SHARED_SOURCES
     src/states/GameOverState.cpp
     src/world/GameWorld.cpp
     src/entities/MapManager.cpp
+    src/entities/enemy/Enemy.cpp
     src/entities/enemy/EnemyManager.cpp
     src/entities/item/Item.cpp
     src/entities/item/ItemManager.cpp

@@ -13,11 +13,11 @@ protected:
     bool m_collected;
 
 public:
-    Item(float x, float y, sf::Texture& texture, const sf::IntRect& rect);
+    Item(float x, float y, sf::Texture& texture);
     virtual ~Item() = default;
 
     virtual void update(float deltaTime);
-    virtual void render(sf::RenderWindow& window) const = 0;
+    virtual void render(sf::RenderWindow& window) const;
 
     // Item interaction
     virtual void OnInteract(IPlayerManager* player) = 0;
