@@ -8,16 +8,8 @@ class Goomba : public Enemy
 {
 public:
     Goomba(float x, float y, sf::Texture& texture)
-        : Enemy(x, y, texture)
-    {
-    }
-
-    void update(float deltaTime) override
-    {
-        // Do nothing for now.
-        // First test: just display Goomba.
-    }
-
+        : Enemy(x, y, texture) {}
+ 
     void onPlayerCollision(IPlayerManager* player) override
     {
         if (!player)

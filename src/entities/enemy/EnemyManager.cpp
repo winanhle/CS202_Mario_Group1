@@ -29,6 +29,45 @@ void EnemyManager::update(float deltaTime) {
 
         enemy->update(deltaTime);
 
+        if (m_mapManager)
+        {
+            sf::FloatRect hitbox = enemy->getHitbox();
+            float checkX;
+            if (enemy->getDirection() < 0)
+            {
+                checkX = hitbox.position.x - 1.f;
+            }
+            else
+            {
+                checkX = hitbox.position.x
+                       + hitbox.size.x
+                       + 1.f;
+            }
+
+            float checkTop =
+                hitbox.position.y + 2.f;
+
+            float checkBottom =
+                hitbox.position.y
+                + hitbox.size.y
+                - 2.f;
+
+            bool hitWall =
+                m_mapManager->isSolid(checkX, checkTop) ||
+                m_mapManager->isSolid(checkX, checkBottom);
+
+            if (hitWall)
+            {
+                enemy->reverseDirection();
+            }
+            else
+            {
+                enemy->move(deltaTime);
+            }
+        }
+        else enemy->move(deltaTime);
+    
+
         if (m_player && enemy->getHitbox().findIntersection(m_player->getHitbox())) {
             enemy->onPlayerCollision(m_player);
         }

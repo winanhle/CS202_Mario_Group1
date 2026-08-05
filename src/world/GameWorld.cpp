@@ -190,6 +190,7 @@ void GameWorld::injectDependencies() {
     // EnemyManager ← PlayerManager
     if (m_enemyManager) {
         m_enemyManager->setPlayerManager(m_playerManager.get());
+        m_enemyManager->setMapManager(m_mapManager.get());
     }
 
     // ItemManager ← PlayerManager

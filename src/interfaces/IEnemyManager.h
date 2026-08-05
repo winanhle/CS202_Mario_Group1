@@ -1,5 +1,5 @@
 #pragma once
-
+#include "IMapManager.h"
 class IPlayerManager;
 
 namespace sf {
@@ -48,4 +48,5 @@ public:
 
     // ─── NHẬN DEPENDENCY ───
     virtual void setPlayerManager(IPlayerManager* player) = 0;
+    virtual void setMapManager(IMapManager* map) = 0;
 };
