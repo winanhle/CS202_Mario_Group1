@@ -72,6 +72,12 @@ public:
      */
     void handleInput(const sf::Event& event);
 
+    /**
+     * @brief Returns true when the player has no lives remaining.
+     * PlayState polls this after update() to decide whether to push GameOverState.
+     */
+    bool isGameOver() const;
+
     // ─── sau initialize, inject dependency ───
     void injectDependencies();
 

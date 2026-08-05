@@ -89,6 +89,16 @@ void GameWorld::update(float deltaTime)
 
     if (m_hudManager)
     {
+        // Push current player stats into the HUD every frame
+        if (m_playerManager)
+        {
+            m_hudManager->updateScore(m_playerManager->getScore());
+            m_hudManager->updateLives(m_playerManager->getLives());
+        }
+        if (m_enemyManager)
+        {
+            m_hudManager->updateEnemyCount(m_enemyManager->getEnemyCount());
+        }
         m_hudManager->update(deltaTime);
     }
 
@@ -161,6 +171,13 @@ void GameWorld::handleInput(const sf::Event& event)
     {
         m_hudManager->handleInput(event);
     }
+}
+
+bool GameWorld::isGameOver() const
+{
+    if (!m_playerManager)
+        return false;
+    return !m_playerManager->isAlive();
 }
 
 // ==================== INJECT DEPENDENCIES ====================

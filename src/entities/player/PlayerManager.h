@@ -25,6 +25,8 @@ protected:
     // ─── dependency ───
     IMapManager* m_mapManager = nullptr;
     bool m_isInvincible = false;
+    float m_invincibilityTimer = 0.f;
+    static constexpr float INVINCIBILITY_DURATION = 2.0f; // seconds of i-frames after a hit
 
     // ─── tile collision ───
     void tileCollisionX(float deltaTime);
@@ -51,6 +53,7 @@ protected:
     float m_animTimer = 0.f;
 
     void updateAnimation(float deltaTime);
+    void resetToStart();   // respawn at starting position
 
     virtual void setupStats() = 0;
 

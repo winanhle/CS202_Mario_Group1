@@ -71,6 +71,15 @@ void PlayerManager::updateAnimation(float deltaTime)
 
 void PlayerManager::update(float deltaTime)
 {
+    // Tick down invincibility i-frames
+    if (m_isInvincible) {
+        m_invincibilityTimer -= deltaTime;
+        if (m_invincibilityTimer <= 0.f) {
+            m_isInvincible = false;
+            m_invincibilityTimer = 0.f;
+        }
+    }
+
     if (m_inputHandler) {
         Command* moveCommand = m_inputHandler->handleRealtimeInput();
         if (moveCommand) moveCommand->execute(*this);
@@ -254,13 +263,45 @@ void PlayerManager::tileCollisionY(float deltaTime) {
 
 // ==================== BEHAVIOR ====================
 
-void PlayerManager::takeDamage() {
-    if (!m_isInvincible) {
-        if (auto newForm = m_currentForm->takeDamage()) {
-            setForm(std::move(newForm));
-            m_isInvincible = true;
-        } else {
+void PlayerManager::resetToStart()
+{
+    // Return to spawn position and clear momentum
+    m_positionX = 100.0f;
+    m_positionY = 150.0f;
+    m_velocityX = 0.f;
+    m_velocityY = 0.f;
+    m_isGrounded = false;
+}
+
+void PlayerManager::takeDamage()
+{
+    if (m_isInvincible)
+        return;
+
+    // Try to demote form first (Fire→Super, Super→Normal)
+    if (auto newForm = m_currentForm->takeDamage())
+    {
+        setForm(std::move(newForm));
+        // Grant i-frames after form demotion
+        m_isInvincible = true;
+        m_invincibilityTimer = INVINCIBILITY_DURATION;
+    }
+    else
+    {
+        // Already in NormalForm — lose a life
+        --m_lives;
+        if (m_lives <= 0)
+        {
+            // No lives left — signal game over
+            m_lives = 0;
             m_isAlive = false;
+        }
+        else
+        {
+            // Respawn: keep NormalForm, reset position, grant i-frames
+            resetToStart();
+            m_isInvincible = true;
+            m_invincibilityTimer = INVINCIBILITY_DURATION;
         }
     }
 }

@@ -1,5 +1,6 @@
 #include "PlayState.h"
 #include "PauseState.h"
+#include "GameOverState.h"
 #include "../core/StateManager.h"
 #include "../world/GameWorld.h"
 #include "../entities/player/Mario.h"
@@ -77,6 +78,23 @@ void PlayState::update(float deltaTime)
 {
     // Delegate all game logic to GameWorld
     m_gameWorld->update(deltaTime);
+
+    // Check if the player ran out of lives
+    if (m_gameWorld->isGameOver())
+    {
+        auto* manager = getStateManager();
+        if (manager)
+        {
+            // Grab score before destroying game world
+            int finalScore = 0;
+            if (auto* player = m_gameWorld->getPlayerManager())
+                finalScore = player->getScore();
+
+            auto gameOverState = std::make_unique<GameOverState>();
+            gameOverState->setFinalScore(finalScore);
+            manager->changeState(std::move(gameOverState));
+        }
+    }
 }
 
 void PlayState::render(sf::RenderWindow& window) const
