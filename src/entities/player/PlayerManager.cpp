@@ -27,7 +27,7 @@ void PlayerManager::initialize()
     setupStats();
     m_currentHealth = m_maxHealth;
 
-    if (!m_playerTexture.loadFromFile("assets/texture/mario.png")) {
+    if (!m_playerTexture.loadFromFile("assets/texture/hero/mario.png")) {
         throw std::runtime_error("Failed to load mario sprite sheet.");
     }
     m_playerSprite.setTexture(m_playerTexture);

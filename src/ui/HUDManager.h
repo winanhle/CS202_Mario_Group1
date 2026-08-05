@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../interfaces/IHUDManager.h"
+#include <SFML/Graphics.hpp>
+#include <string>
 
 namespace sf {
 class RenderWindow;
@@ -9,13 +11,9 @@ class Event;
 
 /**
  * @class HUDManager
- * @brief Stub implementation of HUD/UI management
- * 
+ * @brief Full implementation of HUD/UI management
+ *
  * Developer: Nguyen Phuc
- * Status: STUB - Replace with full implementation
- * 
- * This stub provides minimal functionality to keep the project compilable.
- * Nguyen Phuc will implement full UI and HUD rendering here.
  */
 class HUDManager : public IHUDManager
 {
@@ -33,7 +31,24 @@ public:
     void updateEnemyCount(int count) override;
 
 private:
+    void updateTextStrings();
+
+    sf::Font m_font;
+
+    // Label + value Texts are pairs so the layout is easy to tweak
+    sf::Text m_scoreLabel{m_font};
+    sf::Text m_livesLabel{m_font};
+    sf::Text m_enemyLabel{m_font};
+    sf::Text m_scoreValue{m_font};
+    sf::Text m_livesValue{m_font};
+    sf::Text m_enemyValue{m_font};
+
+    // Semi-transparent bar behind the text, set up once in initialize()
+    sf::RectangleShape m_hudBar;
+
     int m_displayScore;
     int m_displayLives;
     int m_displayEnemyCount;
+
+    bool m_fontLoaded;
 };

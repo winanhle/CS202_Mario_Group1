@@ -1,5 +1,6 @@
 #include "PlayState.h"
-#include "PlayState.h"
+#include "PauseState.h"
+#include "../core/StateManager.h"
 #include "../world/GameWorld.h"
 #include "../entities/player/Mario.h"
 #include "../entities/MapManager.h"
@@ -59,7 +60,12 @@ void PlayState::handleInput(const sf::Event& event)
     {
         if (keyEvent->code == sf::Keyboard::Key::P)
         {
-            // TODO: Quynh Anh - Transition to PauseState via StateManager
+            auto* manager = getStateManager();
+            if (manager)
+            {
+                manager->pushState(std::make_unique<PauseState>());
+            }
+            return; // don't forward the pause key to the game world
         }
     }
 
@@ -75,9 +81,6 @@ void PlayState::update(float deltaTime)
 
 void PlayState::render(sf::RenderWindow& window) const
 {
-    // Clear with black background
-    window.clear(sf::Color::Black);
-
     // Render game world and all its systems
     m_gameWorld->render(window);
 }

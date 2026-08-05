@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.28)
 project(CS202_Mario LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -45,17 +45,16 @@ set(SHARED_SOURCES
     src/ui/SaveManager.cpp
 )
 
-add_executable(PlayState_Test
-    PlayState_Test.cpp
+add_executable(MarioGame
+    src/main.cpp
     ${SHARED_SOURCES}
 )
 
-add_custom_command(TARGET PlayState_Test POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/assets
-            $<TARGET_FILE_DIR:PlayState_Test>/assets
-)
-
-foreach(TARGET PlayState_Test)
+foreach(TARGET MarioGame)
     target_link_libraries(${TARGET} PRIVATE sfml-graphics sfml-audio)
+    add_custom_command(TARGET ${TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/assets
+                $<TARGET_FILE_DIR:${TARGET}>/assets
+    )
 endforeach()

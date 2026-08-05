@@ -41,6 +41,16 @@ public:
      */
     virtual void render(sf::RenderWindow& window) const = 0;
 
+    // Set by the StateManager when the state is activated, so the state can
+    // request transitions (changeState / pushState / popState).
+    void setStateManager(StateManager* manager) { m_stateManager = manager; }
+
 protected:
     GameState() = default;
+
+    /** @brief Get the owning StateManager (for state transitions) */
+    StateManager* getStateManager() const { return m_stateManager; }
+private:
+    /** Pointer to the owning StateManager (for state transitions) */
+    StateManager* m_stateManager = nullptr;
 };

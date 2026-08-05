@@ -27,6 +27,6 @@ public:
 
     void OnInteract(IPlayerManager* player) override
     {
-        player->collectCoin(1);
+        player->collectPowerUp(1);
     }
 };

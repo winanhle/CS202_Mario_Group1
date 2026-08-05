@@ -1,16 +1,16 @@
 #pragma once
 
 #include "../interfaces/ISaveManager.h"
+#include <string>
 
 /**
  * @class SaveManager
- * @brief Stub implementation of save/load management
- * 
+ * @brief Saves and loads game state (score, lives, position) to a file.
+ *
  * Developer: Nguyen Phuc
- * Status: STUB - Replace with full implementation
- * 
- * This stub provides minimal functionality to keep the project compilable.
- * Nguyen Phuc will implement full game state persistence here.
+ *
+ * Saves and loads game state (score, lives, position) to a file.
+ * Uses a simple text-based format for easy debugging.
  */
 class SaveManager : public ISaveManager
 {
@@ -23,6 +23,27 @@ public:
     bool loadGame() override;
     bool hasSaveFile() const override;
 
+    // Additional helpers for setting/reading saved data
+    void setSaveData(int score, int lives, float posX, float posY);
+    int getSavedScore() const;
+    int getSavedLives() const;
+    float getSavedPosX() const;
+    float getSavedPosY() const;
+
+    // Static so any state (e.g. MenuState) can check for a save file
+    // without owning a SaveManager instance.
+    static bool saveFileExists();
+
 private:
+    std::string getSaveFilePath() const;
+
+    static constexpr const char* SAVE_FILE = "mario_save.dat";
+
     bool m_hasSave;
+
+    // Saved game state
+    int m_savedScore;
+    int m_savedLives;
+    float m_savedPosX;
+    float m_savedPosY;
 };
