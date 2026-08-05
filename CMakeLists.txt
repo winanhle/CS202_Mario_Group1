@@ -45,22 +45,17 @@ set(SHARED_SOURCES
     src/ui/SaveManager.cpp
 )
 
-add_executable(Mario
-    Mario.cpp
-    ${SHARED_SOURCES}
-)
-
 add_executable(PlayState_Test
     PlayState_Test.cpp
     ${SHARED_SOURCES}
 )
 
-add_custom_command(TARGET Mario POST_BUILD
+add_custom_command(TARGET PlayState_Test POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_SOURCE_DIR}/assets
-            $<TARGET_FILE_DIR:Mario>/assets
+            $<TARGET_FILE_DIR:PlayState_Test>/assets
 )
 
-foreach(TARGET Mario PlayState_Test)
+foreach(TARGET PlayState_Test)
     target_link_libraries(${TARGET} PRIVATE sfml-graphics sfml-audio)
 endforeach()
