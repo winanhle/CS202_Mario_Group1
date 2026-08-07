@@ -1,4 +1,6 @@
 #pragma once
+#include "IMapManager.h"
+class IPlayerManager;
 
 namespace sf {
 class RenderWindow;
@@ -43,4 +45,8 @@ public:
      * @return Count of enemies
      */
     virtual int getEnemyCount() const = 0;
+
+    // ─── NHẬN DEPENDENCY ───
+    virtual void setPlayerManager(IPlayerManager* player) = 0;
+    virtual void setMapManager(IMapManager* map) = 0;
 };

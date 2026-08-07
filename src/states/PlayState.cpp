@@ -1,10 +1,14 @@
 #include "PlayState.h"
 #include "PauseState.h"
+#include "GameOverState.h"
 #include "../core/StateManager.h"
 #include "../world/GameWorld.h"
-#include "../entities/PlayerManager.h"
-#include "../entities/EnemyManager.h"
-#include "../entities/ItemManager.h"
+#include "../entities/player/Mario.h"
+#include "../entities/MapManager.h"
+#include "../entities/camera/CameraManager.h"
+#include "../entities/player/PlayerManager.h"
+#include "../entities/enemy/EnemyManager.h"
+#include "../entities/item/ItemManager.h"
 #include "../ui/HUDManager.h"
 #include "../ui/SaveManager.h"
 #include <SFML/Graphics.hpp>
@@ -22,7 +26,9 @@ PlayState::PlayState()
 
     // Module 1: Le Tran - Character/Player
     // TODO: Le Tran - Replace with your PlayerManager implementation
-    m_gameWorld->setPlayerManager(std::make_shared<PlayerManager>());
+    m_gameWorld->setMapManager(std::make_shared<MapManager>());
+    m_gameWorld->setCameraManager(std::make_shared<CameraManager>());
+    m_gameWorld->setPlayerManager(std::make_shared<Mario>());
 
     // Module 2: Dinh Anh - Enemies
     // TODO: Dinh Anh - Replace with your EnemyManager implementation
@@ -72,13 +78,27 @@ void PlayState::update(float deltaTime)
 {
     // Delegate all game logic to GameWorld
     m_gameWorld->update(deltaTime);
+
+    // Check if the player ran out of lives
+    if (m_gameWorld->isGameOver())
+    {
+        auto* manager = getStateManager();
+        if (manager)
+        {
+            // Grab score before destroying game world
+            int finalScore = 0;
+            if (auto* player = m_gameWorld->getPlayerManager())
+                finalScore = player->getScore();
+
+            auto gameOverState = std::make_unique<GameOverState>();
+            gameOverState->setFinalScore(finalScore);
+            manager->changeState(std::move(gameOverState));
+        }
+    }
 }
 
 void PlayState::render(sf::RenderWindow& window) const
 {
-    // Clear with black background
-    window.clear(sf::Color::Black);
-
     // Render game world and all its systems
     m_gameWorld->render(window);
 }

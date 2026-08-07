@@ -1,14 +1,33 @@
-﻿cmake_minimum_required(VERSION 3.28)
-
-project(Mario)
+cmake_minimum_required(VERSION 3.28)
+project(CS202_Mario LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(SFML CONFIG REQUIRED COMPONENTS Graphics Window System)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 
-add_executable(Mario
-    src/main.cpp
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+include(FetchContent)
+FetchContent_Declare(SFML
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG        3.1.0 
+)
+FetchContent_MakeAvailable(SFML)
+
+
+set(COMMON_SOURCES
+    src/entities/player/PlayerManager.cpp
+    src/entities/player/Mario.cpp
+    src/entities/player/Luigi.cpp
+    src/entities/player/input/PlayerInputHandler.cpp
+    src/entities/player/forms/NormalForm.cpp
+    src/entities/player/forms/SuperForm.cpp
+    src/entities/player/forms/FireForm.cpp
+)
+
+set(SHARED_SOURCES
+    ${COMMON_SOURCES}
     src/core/Game.cpp
     src/core/StateManager.cpp
     src/states/MenuState.cpp
@@ -16,19 +35,26 @@ add_executable(Mario
     src/states/PauseState.cpp
     src/states/GameOverState.cpp
     src/world/GameWorld.cpp
-    src/entities/PlayerManager.cpp
-    src/entities/EnemyManager.cpp
-    src/entities/ItemManager.cpp
+    src/entities/MapManager.cpp
+    src/entities/enemy/Enemy.cpp
+    src/entities/enemy/EnemyManager.cpp
+    src/entities/item/Item.cpp
+    src/entities/item/ItemManager.cpp
+    src/entities/camera/CameraManager.cpp
     src/ui/HUDManager.cpp
     src/ui/SaveManager.cpp
 )
 
-target_include_directories(Mario PRIVATE
-    ${CMAKE_SOURCE_DIR}
+add_executable(MarioGame
+    src/main.cpp
+    ${SHARED_SOURCES}
 )
 
-target_link_libraries(Mario PRIVATE
-    SFML::Graphics
-    SFML::Window
-    SFML::System
-)
+foreach(TARGET MarioGame)
+    target_link_libraries(${TARGET} PRIVATE sfml-graphics sfml-audio)
+    add_custom_command(TARGET ${TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/assets
+                $<TARGET_FILE_DIR:${TARGET}>/assets
+    )
+endforeach()

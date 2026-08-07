@@ -50,7 +50,6 @@ protected:
 
     /** @brief Get the owning StateManager (for state transitions) */
     StateManager* getStateManager() const { return m_stateManager; }
-
 private:
     /** Pointer to the owning StateManager (for state transitions) */
     StateManager* m_stateManager = nullptr;
