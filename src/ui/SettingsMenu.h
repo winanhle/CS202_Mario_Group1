@@ -88,6 +88,18 @@ private:
     std::string keyName(sf::Keyboard::Key key) const;
     std::string actionLabel(GameAction action) const;
 
+    // Mouse support: hover moves the selection, left click activates
+    void handleMouseMove(sf::Vector2i position);
+    Request handleMouseClick(sf::Vector2i position);
+    std::vector<sf::FloatRect> computeItemRects() const;
+    std::string itemDisplayText(const MenuItem& item) const;
+    const std::vector<MenuItem>* currentItems() const;
+
+    // Shared layout constants (used by render and hit-testing)
+    static constexpr float ITEM_CENTER_X = 400.0f;
+    static constexpr float ITEM_START_Y = 280.0f;
+    static constexpr float ITEM_SPACING = 55.0f;
+
     ISettingsManager& m_settings;
     bool m_pauseContext;
 

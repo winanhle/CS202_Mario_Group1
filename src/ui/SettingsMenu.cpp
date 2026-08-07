@@ -75,8 +75,123 @@ std::string SettingsMenu::actionLabel(GameAction action) const
     }
 }
 
+const std::vector<SettingsMenu::MenuItem>* SettingsMenu::currentItems() const
+{
+    switch (m_screen)
+    {
+    case Screen::Root: return &m_rootItems;
+    case Screen::Settings: return &m_settingsItems;
+    default: return nullptr;
+    }
+}
+
+std::string SettingsMenu::itemDisplayText(const MenuItem& item) const
+{
+    std::string text = item.label;
+    if (m_screen == Screen::Settings)
+    {
+        if (item.kind == ItemKind::Slider)
+        {
+            text += ": " + std::to_string(static_cast<int>(m_settings.getVolume()));
+        }
+        else if (item.kind == ItemKind::Rebind)
+        {
+            text += ": " + keyName(m_settings.getKey(item.action));
+        }
+    }
+    return text;
+}
+
+std::vector<sf::FloatRect> SettingsMenu::computeItemRects() const
+{
+    std::vector<sf::FloatRect> rects;
+    const std::vector<MenuItem>* items = currentItems();
+    if (!items)
+        return rects;
+
+    for (int i = 0; i < static_cast<int>(items->size()); ++i)
+    {
+        sf::Text itemText{m_font};
+        setupText(itemText, itemDisplayText((*items)[i]), 28, sf::Color::White);
+
+        sf::FloatRect bounds = itemText.getLocalBounds();
+        itemText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
+                             bounds.position.y + bounds.size.y / 2.0f });
+        itemText.setPosition({ ITEM_CENTER_X, ITEM_START_Y + i * ITEM_SPACING });
+
+        sf::Vector2f topLeft = itemText.getPosition() - itemText.getOrigin();
+        rects.push_back(sf::FloatRect(topLeft, bounds.size));
+    }
+    return rects;
+}
+
+void SettingsMenu::handleMouseMove(sf::Vector2i position)
+{
+    if (m_screen == Screen::Rebind)
+        return;
+
+    sf::Vector2f mouse(static_cast<float>(position.x), static_cast<float>(position.y));
+    std::vector<sf::FloatRect> rects = computeItemRects();
+    for (int i = 0; i < static_cast<int>(rects.size()); ++i)
+    {
+        if (rects[i].contains(mouse))
+        {
+            m_selectedIndex = i;
+            return;
+        }
+    }
+}
+
+SettingsMenu::Request SettingsMenu::handleMouseClick(sf::Vector2i position)
+{
+    if (m_screen == Screen::Rebind)
+        return Request::None;
+
+    sf::Vector2f mouse(static_cast<float>(position.x), static_cast<float>(position.y));
+    std::vector<sf::FloatRect> rects = computeItemRects();
+    const std::vector<MenuItem>* items = currentItems();
+    if (!items)
+        return Request::None;
+
+    for (int i = 0; i < static_cast<int>(rects.size()); ++i)
+    {
+        if (rects[i].contains(mouse))
+        {
+            m_selectedIndex = i;
+
+            // Volume slider: click left half to decrease, right half to increase
+            if ((*items)[i].kind == ItemKind::Slider)
+            {
+                float midX = rects[i].position.x + rects[i].size.x / 2.0f;
+                if (mouse.x < midX)
+                    m_settings.setVolume(m_settings.getVolume() - 5.0f);
+                else
+                    m_settings.setVolume(m_settings.getVolume() + 5.0f);
+                m_settings.save();
+                return Request::None;
+            }
+
+            return activateSelected();
+        }
+    }
+    return Request::None;
+}
+
 SettingsMenu::Request SettingsMenu::handleInput(const sf::Event& event)
 {
+    // Mouse support: hover moves the selection, left click activates
+    if (const auto* mouseMoved = event.getIf<sf::Event::MouseMoved>())
+    {
+        handleMouseMove(mouseMoved->position);
+        return Request::None;
+    }
+    if (const auto* mousePressed = event.getIf<sf::Event::MouseButtonPressed>())
+    {
+        if (mousePressed->button == sf::Mouse::Button::Left)
+            return handleMouseClick(mousePressed->position);
+        return Request::None;
+    }
+
     const auto* keyEvent = event.getIf<sf::Event::KeyPressed>();
     if (!keyEvent)
         return Request::None;
@@ -129,16 +244,14 @@ SettingsMenu::Request SettingsMenu::handleInput(const sf::Event& event)
 
 void SettingsMenu::moveSelection(int direction)
 {
-    const std::vector<MenuItem>& items =
-        (m_screen == Screen::Root) ? m_rootItems : m_settingsItems;
-
-    if (items.empty())
+    const std::vector<MenuItem>* items = currentItems();
+    if (!items || items->empty())
         return;
 
     m_selectedIndex += direction;
     if (m_selectedIndex < 0)
-        m_selectedIndex = static_cast<int>(items.size()) - 1;
-    if (m_selectedIndex >= static_cast<int>(items.size()))
+        m_selectedIndex = static_cast<int>(items->size()) - 1;
+    if (m_selectedIndex >= static_cast<int>(items->size()))
         m_selectedIndex = 0;
 }
 
@@ -209,17 +322,13 @@ void SettingsMenu::render(sf::RenderWindow& window) const
 
     // Title
     std::string title;
-    const std::vector<MenuItem>* items = nullptr;
-
     switch (m_screen)
     {
     case Screen::Root:
         title = "PAUSED";
-        items = &m_rootItems;
         break;
     case Screen::Settings:
         title = "SETTINGS";
-        items = &m_settingsItems;
         break;
     case Screen::Rebind:
         title = "PRESS A KEY";
@@ -248,28 +357,14 @@ void SettingsMenu::render(sf::RenderWindow& window) const
         return;
     }
 
+    const std::vector<MenuItem>* items = currentItems();
     if (!items)
         return;
-
-    const float startY = 280.0f;
-    const float spacing = 55.0f;
 
     for (int i = 0; i < static_cast<int>(items->size()); ++i)
     {
         const MenuItem& item = (*items)[i];
-        std::string text = item.label;
-
-        if (m_screen == Screen::Settings)
-        {
-            if (item.kind == ItemKind::Slider)
-            {
-                text += ": " + std::to_string(static_cast<int>(m_settings.getVolume()));
-            }
-            else if (item.kind == ItemKind::Rebind)
-            {
-                text += ": " + keyName(m_settings.getKey(item.action));
-            }
-        }
+        std::string text = itemDisplayText(item);
 
         sf::Text itemText{m_font};
         setupText(itemText, text, 28,
@@ -278,7 +373,7 @@ void SettingsMenu::render(sf::RenderWindow& window) const
         sf::FloatRect bounds = itemText.getLocalBounds();
         itemText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
                              bounds.position.y + bounds.size.y / 2.0f });
-        itemText.setPosition({ 400.0f, startY + i * spacing });
+        itemText.setPosition({ ITEM_CENTER_X, ITEM_START_Y + i * ITEM_SPACING });
         window.draw(itemText);
     }
 }
