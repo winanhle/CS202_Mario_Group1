@@ -363,18 +363,3 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-
-vcpkg/
-build/
-out/
-.vs/
-
-# Orphan files
-Mario.cpp
-Mario.h
-
-# Stale gitkeep files (directories now have real files)
-*.gitkeep
-
-# IDE/editor
-.vscode/
