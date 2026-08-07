@@ -13,8 +13,9 @@
 #include "../ui/SaveManager.h"
 #include <SFML/Graphics.hpp>
 
-PlayState::PlayState()
+PlayState::PlayState(std::shared_ptr<ISettingsManager> settings)
     : m_gameWorld(std::make_unique<GameWorld>())
+    , m_settings(std::move(settings))
 {
     // ==================== MODULE INITIALIZATION ====================
     // This is where all team modules are connected to the GameWorld
@@ -59,12 +60,12 @@ void PlayState::handleInput(const sf::Event& event)
 {
     if (const auto* keyEvent = event.getIf<sf::Event::KeyPressed>())
     {
-        if (keyEvent->code == sf::Keyboard::Key::P)
+        if (keyEvent->code == sf::Keyboard::Key::Escape)
         {
             auto* manager = getStateManager();
             if (manager)
             {
-                manager->pushState(std::make_unique<PauseState>());
+                manager->pushState(std::make_unique<PauseState>(m_settings));
             }
             return; // don't forward the pause key to the game world
         }
@@ -90,7 +91,7 @@ void PlayState::update(float deltaTime)
             if (auto* player = m_gameWorld->getPlayerManager())
                 finalScore = player->getScore();
 
-            auto gameOverState = std::make_unique<GameOverState>();
+            auto gameOverState = std::make_unique<GameOverState>(m_settings);
             gameOverState->setFinalScore(finalScore);
             manager->changeState(std::move(gameOverState));
         }

@@ -1,21 +1,23 @@
 #pragma once
 
 #include "../core/GameState.h"
-#include <SFML/Graphics.hpp>
-#include <string>
+#include "../ui/SettingsMenu.h"
+#include <memory>
+
+class ISettingsManager;
 
 /**
  * @class PauseState
- * @brief Game pause state
+ * @brief Pause menu state shown when ESC is pressed during gameplay
  * 
- * Displays a pause menu overlay.
- * Pushed on top of PlayState so the game world stays alive underneath and
- * can be resumed by popping this state.
+ * Opens the settings/pause menu:
+ *   - PAUSED context -> root menu (Resume / Settings / Quit to Menu)
+ *   - Settings sub-screen for volume and key bindings
  */
 class PauseState : public GameState
 {
 public:
-    PauseState();
+    explicit PauseState(std::shared_ptr<ISettingsManager> settings);
     ~PauseState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -23,17 +25,6 @@ public:
     void render(sf::RenderWindow& window) const override;
 
 private:
-    void resumeGame();
-
-    sf::Font m_font;
-    bool m_fontLoaded;
-
-    // m_font must be declared before these Texts so it's initialized first
-    sf::Text m_pauseTitle{m_font};
-    sf::Text m_promptText{m_font};
-
-    // Blinks the "Press P to resume" prompt
-    float m_blinkTimer;
-    static constexpr float BLINK_INTERVAL = 0.5f;
-    bool m_showPrompt;
+    std::shared_ptr<ISettingsManager> m_settings;
+    SettingsMenu m_menu;
 };

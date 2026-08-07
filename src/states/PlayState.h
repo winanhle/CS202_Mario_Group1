@@ -9,6 +9,7 @@ class RenderWindow;
 }
 
 class GameWorld;
+class ISettingsManager;
 
 /**
  * @class PlayState
@@ -26,7 +27,7 @@ class GameWorld;
 class PlayState : public GameState
 {
 public:
-    PlayState();
+    explicit PlayState(std::shared_ptr<ISettingsManager> settings);
     ~PlayState() override;
 
     void handleInput(const sf::Event& event) override;
@@ -35,4 +36,5 @@ public:
 
 private:
     std::unique_ptr<GameWorld> m_gameWorld;
+    std::shared_ptr<ISettingsManager> m_settings;
 };
