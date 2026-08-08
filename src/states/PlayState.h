@@ -27,7 +27,7 @@ class ISettingsManager;
 class PlayState : public GameState
 {
 public:
-    explicit PlayState(std::shared_ptr<ISettingsManager> settings);
+    explicit PlayState(std::shared_ptr<ISettingsManager> settings, bool loadSave = false);
     ~PlayState() override;
 
     void handleInput(const sf::Event& event) override;
@@ -37,4 +37,5 @@ public:
 private:
     std::unique_ptr<GameWorld> m_gameWorld;
     std::shared_ptr<ISettingsManager> m_settings;
+    bool m_loadSave;
 };

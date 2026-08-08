@@ -164,12 +164,9 @@ void MenuState::render(sf::RenderWindow& window) const
 
 void MenuState::startGame(bool loadSave)
 {
-    // TODO: when loadSave is true, PlayState should restore the save after
-    // initializing (needs PlayerManager to accept a starting position).
-    (void)loadSave;
     auto* manager = getStateManager();
     if (manager)
     {
-        manager->changeState(std::make_unique<PlayState>(m_settings));
+        manager->changeState(std::make_unique<PlayState>(m_settings, loadSave));
     }
 }

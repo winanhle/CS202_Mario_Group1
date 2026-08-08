@@ -61,7 +61,7 @@ public:
     PlayerManager();
     ~PlayerManager() override = default;
 
-    void initialize() override;
+    void initialize(ISettingsManager* settings = nullptr) override;
     void update(float deltaTime) override;
     void render(sf::RenderWindow& window) const override;
     void handleInput(const sf::Event& event) override;
@@ -71,6 +71,7 @@ public:
     int getLives() const override;
     float getPositionX() const override;
     float getPositionY() const override;
+    void restoreState(int score, int lives, float posX, float posY) override;
 
     void jump();
     void stopJump();

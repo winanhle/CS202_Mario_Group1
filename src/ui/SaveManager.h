@@ -24,11 +24,11 @@ public:
     bool hasSaveFile() const override;
 
     // Additional helpers for setting/reading saved data
-    void setSaveData(int score, int lives, float posX, float posY);
-    int getSavedScore() const;
-    int getSavedLives() const;
-    float getSavedPosX() const;
-    float getSavedPosY() const;
+    void setSaveData(int score, int lives, float posX, float posY) override;
+    int getSavedScore() const override;
+    int getSavedLives() const override;
+    float getSavedPosX() const override;
+    float getSavedPosY() const override;
 
     // Static so any state (e.g. MenuState) can check for a save file
     // without owning a SaveManager instance.

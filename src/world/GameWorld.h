@@ -10,6 +10,7 @@ class IItemManager;
 class IHUDManager;
 class ISaveManager;
 class ICameraManager;
+class ISettingsManager;
 
 namespace sf {
 class RenderWindow;
@@ -123,6 +124,12 @@ public:
      */
     void setCameraManager(std::shared_ptr<ICameraManager> cameraManager);
 
+    /**
+     * @brief Set the shared settings manager (injected from Game)
+     * Used to pass key bindings etc. down to the player module.
+     */
+    void setSettings(std::shared_ptr<ISettingsManager> settings);
+
     // ==================== ACCESSORS ====================
     // Provide read-only access to modules for inter-module communication
 
@@ -170,6 +177,7 @@ private:
     std::shared_ptr<IHUDManager> m_hudManager;
     std::shared_ptr<ISaveManager> m_saveManager;
     std::shared_ptr<ICameraManager> m_cameraManager;
+    std::shared_ptr<ISettingsManager> m_settings;
 
     // Internal state
     bool m_isInitialized;

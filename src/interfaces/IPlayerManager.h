@@ -3,6 +3,8 @@
 #include <SFML/Graphics/Rect.hpp>
 #include "IMapManager.h"
 
+class ISettingsManager;
+
 namespace sf {
 class RenderWindow;
 class Event;
@@ -27,8 +29,11 @@ public:
 
     /**
      * @brief Initialize the player manager
+     * @param settings Optional settings manager; when provided, the player
+     *        builds its key bindings from the saved settings instead of
+     *        hardcoded defaults
      */
-    virtual void initialize() = 0;
+    virtual void initialize(ISettingsManager* settings = nullptr) = 0;
 
     /**
      * @brief Update player logic
@@ -77,6 +82,15 @@ public:
      * @return Y coordinate of player
      */
     virtual float getPositionY() const = 0;
+
+    /**
+     * @brief Restore a previously saved player state (score, lives, position)
+     * @param score Saved score
+     * @param lives Saved lives
+     * @param posX Saved X position
+     * @param posY Saved Y position
+     */
+    virtual void restoreState(int score, int lives, float posX, float posY) = 0;
 
     // ─── API CHO ENEMY/ITEM MANAGER ───
     virtual sf::FloatRect getHitbox() const = 0;

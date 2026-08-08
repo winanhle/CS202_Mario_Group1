@@ -1,10 +1,13 @@
 #include "PauseState.h"
 #include "MenuState.h"
 #include "../core/StateManager.h"
+#include "../interfaces/ISaveManager.h"
 #include <SFML/Graphics.hpp>
 
-PauseState::PauseState(std::shared_ptr<ISettingsManager> settings)
+PauseState::PauseState(std::shared_ptr<ISettingsManager> settings,
+                       ISaveManager* saveManager)
     : m_settings(std::move(settings))
+    , m_saveManager(saveManager)
     , m_menu(*m_settings, /*pauseContext=*/true)
 {
 }
@@ -25,6 +28,9 @@ void PauseState::handleInput(const sf::Event& event)
         }
         break;
     }
+    case SettingsMenu::Request::SaveAndQuit:
+        saveAndQuitToMenu();
+        break;
     case SettingsMenu::Request::QuitToMenu:
     {
         auto* manager = getStateManager();
@@ -40,6 +46,22 @@ void PauseState::handleInput(const sf::Event& event)
     case SettingsMenu::Request::ExitSettings:
         // Nothing to do; the menu stays open
         break;
+    }
+}
+
+void PauseState::saveAndQuitToMenu()
+{
+    // Persist the player state (already synced by PlayState before pausing)
+    if (m_saveManager)
+    {
+        m_saveManager->saveGame();
+    }
+
+    auto* manager = getStateManager();
+    if (manager)
+    {
+        manager->popState();
+        manager->changeState(std::make_unique<MenuState>(m_settings));
     }
 }
 

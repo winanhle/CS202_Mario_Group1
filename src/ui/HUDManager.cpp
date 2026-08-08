@@ -216,3 +216,8 @@ void HUDManager::updateItemCount(int count)
         m_itemsValue.setString(std::to_string(count));
     }
 }
+
+bool HUDManager::isTimeUp() const
+{
+    return m_timeLeft <= 0.0f;
+}

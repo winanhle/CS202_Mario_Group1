@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include "input/Command.h"
 #include "input/PlayerInputHandler.h"
+#include "../../interfaces/ISettingsManager.h"
 
 PlayerManager::PlayerManager()
     : m_score(0), m_lives(3), m_isAlive(true), 
@@ -9,21 +10,25 @@ PlayerManager::PlayerManager()
       m_velocityX(0), m_velocityY(0),
       m_playerSprite(m_playerTexture)
 {
-    KeyBinding marioKeys;
-
-    marioKeys.jump1st = sf::Keyboard::Key::W;
-    marioKeys.jump2nd = sf::Keyboard::Key::Up;
-    marioKeys.jump3rd = sf::Keyboard::Key::Space;
-    marioKeys.left1st = sf::Keyboard::Key::A;
-    marioKeys.left2nd = sf::Keyboard::Key::Left;
-    marioKeys.right1st = sf::Keyboard::Key::D;
-    marioKeys.right2nd = sf::Keyboard::Key::Right;
-    
-    m_inputHandler = std::make_unique<PlayerInputHandler>(marioKeys);
+    // Key bindings are built in initialize() from ISettingsManager
+    // (or defaults) so settings-menu rebinds take effect.
 }
 
-void PlayerManager::initialize()
+void PlayerManager::initialize(ISettingsManager* settings)
 {
+    KeyBinding keys;
+    // Primaries come from settings when available, otherwise defaults
+    keys.jump1st  = settings ? settings->getKey(GameAction::Jump)      : sf::Keyboard::Key::Space;
+    keys.left1st  = settings ? settings->getKey(GameAction::MoveLeft)  : sf::Keyboard::Key::A;
+    keys.right1st = settings ? settings->getKey(GameAction::MoveRight) : sf::Keyboard::Key::D;
+    // Fixed secondary / tertiary alternatives so the player always has fallbacks
+    keys.jump2nd  = sf::Keyboard::Key::W;
+    keys.jump3rd  = sf::Keyboard::Key::Up;
+    keys.left2nd  = sf::Keyboard::Key::Left;
+    keys.right2nd = sf::Keyboard::Key::Right;
+
+    m_inputHandler = std::make_unique<PlayerInputHandler>(keys);
+
     setupStats();
     m_currentHealth = m_maxHealth;
 
@@ -142,6 +147,15 @@ int PlayerManager::getScore() const
 int PlayerManager::getLives() const
 {
     return m_lives;
+}
+
+void PlayerManager::restoreState(int score, int lives, float posX, float posY)
+{
+    m_score = score;
+    m_lives = lives;
+    m_positionX = posX;
+    m_positionY = posY;
+    m_isAlive = true;
 }
 
 float PlayerManager::getPositionX() const

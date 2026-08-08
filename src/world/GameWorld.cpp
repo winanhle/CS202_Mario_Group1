@@ -23,7 +23,7 @@ void GameWorld::initialize()
     // TODO: Initialize player manager
     if (m_playerManager)
     {
-        m_playerManager->initialize();
+        m_playerManager->initialize(m_settings.get());
     }
 
     // TODO: Initialize enemy manager
@@ -177,7 +177,12 @@ bool GameWorld::isGameOver() const
 {
     if (!m_playerManager)
         return false;
-    return !m_playerManager->isAlive();
+    if (!m_playerManager->isAlive())
+        return true;
+    // Time's up also ends the game (SMB rule)
+    if (m_hudManager && m_hudManager->isTimeUp())
+        return true;
+    return false;
 }
 
 // ==================== INJECT DEPENDENCIES ====================
@@ -272,6 +277,11 @@ ISaveManager* GameWorld::getSaveManager()
 void GameWorld::setCameraManager(std::shared_ptr<ICameraManager> cameraManager)
 {
     m_cameraManager = cameraManager;
+}
+
+void GameWorld::setSettings(std::shared_ptr<ISettingsManager> settings)
+{
+    m_settings = std::move(settings);
 }
 
 ICameraManager* GameWorld::getCameraManager()

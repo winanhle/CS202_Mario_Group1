@@ -13,9 +13,10 @@
 #include "../ui/SaveManager.h"
 #include <SFML/Graphics.hpp>
 
-PlayState::PlayState(std::shared_ptr<ISettingsManager> settings)
+PlayState::PlayState(std::shared_ptr<ISettingsManager> settings, bool loadSave)
     : m_gameWorld(std::make_unique<GameWorld>())
     , m_settings(std::move(settings))
+    , m_loadSave(loadSave)
 {
     // ==================== MODULE INITIALIZATION ====================
     // This is where all team modules are connected to the GameWorld
@@ -47,8 +48,28 @@ PlayState::PlayState(std::shared_ptr<ISettingsManager> settings)
     // TODO: Nguyen Phuc - Replace with your SaveManager implementation
     m_gameWorld->setSaveManager(std::make_shared<SaveManager>());
 
+    // Inject shared settings (key bindings for the player) before init
+    m_gameWorld->setSettings(m_settings);
+
     // Initialize the game world
     m_gameWorld->initialize();
+
+    // When starting from a save (Continue in the main menu), apply the
+    // saved player state after the world is fully initialized
+    if (m_loadSave)
+    {
+        if (auto* save = m_gameWorld->getSaveManager())
+        {
+            if (save->loadGame())
+            {
+                if (auto* player = m_gameWorld->getPlayerManager())
+                {
+                    player->restoreState(save->getSavedScore(), save->getSavedLives(),
+                                         save->getSavedPosX(), save->getSavedPosY());
+                }
+            }
+        }
+    }
 }
 
 PlayState::~PlayState()
@@ -65,7 +86,17 @@ void PlayState::handleInput(const sf::Event& event)
             auto* manager = getStateManager();
             if (manager)
             {
-                manager->pushState(std::make_unique<PauseState>(m_settings));
+                // Sync the latest player state into the save manager so the
+                // pause menu can save it if the player picks "Save & Quit"
+                if (auto* save = m_gameWorld->getSaveManager())
+                {
+                    if (auto* player = m_gameWorld->getPlayerManager())
+                    {
+                        save->setSaveData(player->getScore(), player->getLives(),
+                                          player->getPositionX(), player->getPositionY());
+                    }
+                }
+                manager->pushState(std::make_unique<PauseState>(m_settings, m_gameWorld->getSaveManager()));
             }
             return; // don't forward the pause key to the game world
         }

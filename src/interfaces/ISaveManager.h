@@ -39,4 +39,33 @@ public:
      * @return True if save file exists
      */
     virtual bool hasSaveFile() const = 0;
+
+    /**
+     * @brief Stage the data to be persisted by the next saveGame() call
+     * @param score Player score
+     * @param lives Player lives
+     * @param posX Player X position
+     * @param posY Player Y position
+     */
+    virtual void setSaveData(int score, int lives, float posX, float posY) = 0;
+
+    /**
+     * @brief Get the saved score (valid after loadGame())
+     */
+    virtual int getSavedScore() const = 0;
+
+    /**
+     * @brief Get the saved lives (valid after loadGame())
+     */
+    virtual int getSavedLives() const = 0;
+
+    /**
+     * @brief Get the saved X position (valid after loadGame())
+     */
+    virtual float getSavedPosX() const = 0;
+
+    /**
+     * @brief Get the saved Y position (valid after loadGame())
+     */
+    virtual float getSavedPosY() const = 0;
 };

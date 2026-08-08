@@ -62,4 +62,10 @@ public:
      * @param count Number of items in the world
      */
     virtual void updateItemCount(int count) = 0;
+
+    /**
+     * @brief Check whether the countdown timer has reached zero
+     * @return True when time is up (game over condition)
+     */
+    virtual bool isTimeUp() const = 0;
 };

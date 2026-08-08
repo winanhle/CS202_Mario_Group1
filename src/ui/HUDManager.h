@@ -36,6 +36,7 @@ public:
     void updateScore(int score) override;
     void updateLives(int lives) override;
     void updateItemCount(int count) override;
+    bool isTimeUp() const override;
 
 private:
     void updateScorePop(float deltaTime);

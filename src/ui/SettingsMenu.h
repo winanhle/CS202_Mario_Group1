@@ -39,6 +39,7 @@ public:
         None,
         Resume,       // pause context: return to the game
         QuitToMenu,   // pause context: leave the game, go to the main menu
+        SaveAndQuit,  // pause context: save the game, then go to the main menu
         ExitSettings  // main menu context: leave settings mode
     };
 

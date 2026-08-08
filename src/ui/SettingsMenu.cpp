@@ -22,6 +22,7 @@ void SettingsMenu::buildScreens()
     {
         m_rootItems.push_back({ "RESUME", ItemKind::Activate, GameAction::Jump, Request::Resume });
         m_rootItems.push_back({ "SETTINGS", ItemKind::Activate, GameAction::Jump, Request::None });
+        m_rootItems.push_back({ "SAVE & QUIT", ItemKind::Activate, GameAction::Jump, Request::SaveAndQuit });
         m_rootItems.push_back({ "QUIT TO MENU", ItemKind::Activate, GameAction::Jump, Request::QuitToMenu });
     }
 
