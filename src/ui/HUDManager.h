@@ -18,6 +18,9 @@ class Event;
  * Displays: score, lives, item count, world/level, and an SMB-style
  * countdown timer. Includes small animations (score pop, timer blink
  * when low).
+ *
+ * Performance: strings are only rebuilt when their value actually
+ * changes (dirty tracking), so a steady frame does zero string work.
  */
 class HUDManager : public IHUDManager
 {
@@ -32,11 +35,9 @@ public:
 
     void updateScore(int score) override;
     void updateLives(int lives) override;
-    void updateEnemyCount(int count) override;
     void updateItemCount(int count) override;
 
 private:
-    void updateTextStrings();
     void updateScorePop(float deltaTime);
     void updateTimer(float deltaTime);
 
@@ -57,10 +58,11 @@ private:
     // Semi-transparent bar behind the text, set up once in initialize()
     sf::RectangleShape m_hudBar;
 
-    int m_displayScore;
-    int m_displayLives;
-    int m_displayEnemyCount;
-    int m_displayItemCount;
+    // Last rendered values; -1 forces the first update to rebuild the string
+    int m_renderedScore;
+    int m_renderedLives;
+    int m_renderedItemCount;
+    int m_renderedTime;
 
     // SMB-style countdown timer (seconds), ticks down in update()
     float m_timeLeft;
@@ -71,9 +73,10 @@ private:
     bool m_showTimerText;
 
     // Score "pop" animation state
-    int m_previousScore;
     float m_scorePopTimer;
+    bool m_scorePopActive;
     static constexpr float SCORE_POP_DURATION = 0.25f;
+    static constexpr float PI = 3.14159265f;
 
     bool m_fontLoaded;
 };

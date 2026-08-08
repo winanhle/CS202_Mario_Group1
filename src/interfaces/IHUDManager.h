@@ -58,12 +58,6 @@ public:
     virtual void updateLives(int lives) = 0;
 
     /**
-     * @brief Update HUD with enemy count
-     * @param count Number of enemies
-     */
-    virtual void updateEnemyCount(int count) = 0;
-
-    /**
      * @brief Update HUD with item count
      * @param count Number of items in the world
      */

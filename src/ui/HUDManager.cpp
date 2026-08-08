@@ -3,15 +3,15 @@
 #include <cmath>
 
 HUDManager::HUDManager()
-    : m_displayScore(0)
-    , m_displayLives(3)
-    , m_displayEnemyCount(0)
-    , m_displayItemCount(0)
+    : m_renderedScore(-1)
+    , m_renderedLives(-1)
+    , m_renderedItemCount(-1)
+    , m_renderedTime(-1)
     , m_timeLeft(TIME_START)
     , m_blinkTimer(0.0f)
     , m_showTimerText(true)
-    , m_previousScore(0)
     , m_scorePopTimer(0.0f)
+    , m_scorePopActive(false)
     , m_fontLoaded(false)
 {
 }
@@ -37,7 +37,10 @@ void HUDManager::initialize()
     m_scoreValue.setString("0");
     m_scoreValue.setCharacterSize(28);
     m_scoreValue.setFillColor(sf::Color::White);
-    m_scoreValue.setPosition({ 20.0f, 38.0f });
+    // Anchor the pop animation at the left edge, centered vertically
+    sf::FloatRect scoreBounds = m_scoreValue.getLocalBounds();
+    m_scoreValue.setOrigin({ 0.0f, scoreBounds.position.y + scoreBounds.size.y / 2.0f });
+    m_scoreValue.setPosition({ 20.0f, 38.0f + scoreBounds.size.y / 2.0f });
 
     // Lives Label
     m_livesLabel.setFont(m_font);
@@ -73,7 +76,7 @@ void HUDManager::initialize()
     m_worldLabel.setPosition({ 560.0f, 10.0f });
 
     m_worldValue.setFont(m_font);
-    m_worldValue.setString("1-1");
+    m_worldValue.setString("1-1"); // static for now; set once, never rebuilt
     m_worldValue.setCharacterSize(28);
     m_worldValue.setFillColor(sf::Color::White);
     m_worldValue.setPosition({ 560.0f, 38.0f });
@@ -96,7 +99,6 @@ void HUDManager::update(float deltaTime)
 {
     updateTimer(deltaTime);
     updateScorePop(deltaTime);
-    updateTextStrings();
 }
 
 void HUDManager::updateTimer(float deltaTime)
@@ -106,6 +108,14 @@ void HUDManager::updateTimer(float deltaTime)
         m_timeLeft -= deltaTime;
         if (m_timeLeft < 0.0f)
             m_timeLeft = 0.0f;
+    }
+
+    // Rebuild the string only when the displayed second changes
+    int seconds = static_cast<int>(std::ceil(m_timeLeft));
+    if (seconds != m_renderedTime)
+    {
+        m_renderedTime = seconds;
+        m_timeValue.setString(std::to_string(seconds));
     }
 
     // Blink the timer when it gets low
@@ -126,11 +136,24 @@ void HUDManager::updateTimer(float deltaTime)
 
 void HUDManager::updateScorePop(float deltaTime)
 {
+    if (!m_scorePopActive)
+        return;
+
     if (m_scorePopTimer > 0.0f)
     {
         m_scorePopTimer -= deltaTime;
         if (m_scorePopTimer < 0.0f)
             m_scorePopTimer = 0.0f;
+
+        float progress = 1.0f - (m_scorePopTimer / SCORE_POP_DURATION);
+        float scale = 1.0f + 0.3f * std::sin(progress * PI);
+        m_scoreValue.setScale({ scale, scale });
+    }
+    else
+    {
+        // Pop finished: reset the scale exactly once
+        m_scoreValue.setScale({ 1.0f, 1.0f });
+        m_scorePopActive = false;
     }
 }
 
@@ -167,46 +190,29 @@ void HUDManager::handleInput(const sf::Event& event)
 
 void HUDManager::updateScore(int score)
 {
-    if (score != m_previousScore)
+    if (score != m_renderedScore)
     {
-        m_previousScore = score;
+        m_renderedScore = score;
+        m_scoreValue.setString(std::to_string(score));
         m_scorePopTimer = SCORE_POP_DURATION;
+        m_scorePopActive = true;
     }
-    m_displayScore = score;
 }
 
 void HUDManager::updateLives(int lives)
 {
-    m_displayLives = lives;
-}
-
-void HUDManager::updateEnemyCount(int count)
-{
-    m_displayEnemyCount = count;
+    if (lives != m_renderedLives)
+    {
+        m_renderedLives = lives;
+        m_livesValue.setString("x " + std::to_string(lives));
+    }
 }
 
 void HUDManager::updateItemCount(int count)
 {
-    m_displayItemCount = count;
-}
-
-void HUDManager::updateTextStrings()
-{
-    m_scoreValue.setString(std::to_string(m_displayScore));
-    m_livesValue.setString("x " + std::to_string(m_displayLives));
-    m_itemsValue.setString(std::to_string(m_displayItemCount));
-    m_worldValue.setString("1-1");
-    m_timeValue.setString(std::to_string(static_cast<int>(std::ceil(m_timeLeft))));
-
-    // Score "pop": briefly scale the score text up when it changes
-    if (m_scorePopTimer > 0.0f)
+    if (count != m_renderedItemCount)
     {
-        float progress = 1.0f - (m_scorePopTimer / SCORE_POP_DURATION);
-        float scale = 1.0f + 0.3f * std::sin(progress * 3.14159f);
-        m_scoreValue.setScale({ scale, scale });
-    }
-    else
-    {
-        m_scoreValue.setScale({ 1.0f, 1.0f });
+        m_renderedItemCount = count;
+        m_itemsValue.setString(std::to_string(count));
     }
 }

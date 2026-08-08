@@ -95,10 +95,6 @@ void GameWorld::update(float deltaTime)
             m_hudManager->updateScore(m_playerManager->getScore());
             m_hudManager->updateLives(m_playerManager->getLives());
         }
-        if (m_enemyManager)
-        {
-            m_hudManager->updateEnemyCount(m_enemyManager->getEnemyCount());
-        }
         if (m_itemManager)
         {
             m_hudManager->updateItemCount(m_itemManager->getItemCount());
