@@ -13,6 +13,7 @@
 #include <optional>
 #include <SFML/Graphics.hpp>
 #include "../../tinyxml2.h"
+#include "block/IBlockBehavior.h"
 
 enum class TileType {
     EMPTY = 0,
@@ -77,11 +78,6 @@ private:
     // ─── Injected dependency ─────────────────────────────────────────────────
     IItemManager* m_itemManager = nullptr;
 
-    // ─── Revealed hidden blocks ──────────────────────────────────────────────
-    // A HIDDEN_BLOCK becomes solid (like BRICK_NORMAL) once it has been hit
-    // from below.  Before being hit it is invisible and non-solid.
-    std::set<std::pair<int,int>> m_revealedHiddenBlocks;
-
     // ─── MULTI_COIN per-tile state ────────────────────────────────────────────
     std::map<std::pair<int,int>, MultiCoinState> m_multiCoinStates;
     static constexpr float MULTI_COIN_DURATION = 3.5f;
@@ -117,19 +113,12 @@ private:
 
     // GID → TileType lookup table (populated by loadTileset)
     std::unordered_map<int, TileType> m_gidTypeMap;
+    // TileType → GID lookup table (reverse of m_gidTypeMap, built in loadTileset).
+    // EMPTY cũng có GID riêng (tile EMPTY trong tileset) để setTile(EMPTY) load
+    // đúng texture EMPTY; GID 0 chỉ dành cho ô "không có tile".
+    std::unordered_map<TileType, int> m_typeToGid;
     int m_tilesetFirstGid  = 1;  // firstgid attribute from <tileset> element
     int m_tilesetColumns   = 0;  // columns of the tileset sprite sheet
-
-    // ─── Tile-hit handlers ────────────────────────────────────────────────────
-    void handleBrickNormal    (int gx, int gy);
-    void handleQuestionCoin   (int gx, int gy);
-    void handleQuestionPowerup(int gx, int gy, int formType);
-    void handleMultiCoin      (int gx, int gy);
-    void handleHiddenBlock    (int gx, int gy);
-
-    // ─── Animation spawners ───────────────────────────────────────────────────
-    void spawnBrickDebris(int gx, int gy);
-    void spawnCoinPopAt  (int gx, int gy);
 
 public:
     MapManager();
@@ -142,6 +131,7 @@ public:
     
     // Hàm phục vụ xử lý va chạm cho Player/Enemy
     bool isSolid(float x, float y) const override;
+    bool isSolidFromBelow(float x, float y) const override;
     int getTileSize() const override { return m_tileSize; }
     sf::Vector2u getMapPixelSize() const override {
         if (m_mapData.empty() || m_mapData[0].empty()) return sf::Vector2u(0, 0);
@@ -153,7 +143,17 @@ public:
     
     // Hàm mở rộng: Lấy chính xác loại Tile để xử lý đụng đầu
     TileType getTileType(float x, float y) const;
-    void setTileType(float x, float y, TileType newType); // Dùng để biến block thành EMPTY khi vỡ
+
+    // ─── Block transition API ─────────────────────────────────────────────────
+    // Điểm duy nhất thay đổi tile: cập nhật ĐỒNG THỜI m_mapData (logic)
+    // và m_rawGids (texture) qua m_typeToGid — Encapsulation.
+    void setTile(int gx, int gy, TileType type);
+
+    // ─── Side-effect API (được các IBlockBehavior gọi) ───────────────────────
+    void spawnBrickDebris(int gx, int gy);
+    void spawnCoinPop(int gx, int gy);                 // pop animation + award coin
+    void spawnItemForFormType(int gx, int gy, int formType); // Mushroom / FireFlower
+    void setMultiCoinActive(int gx, int gy);           // bắt đầu/giữ countdown 3.5s
 
     // ─── IMapManager new API ─────────────────────────────────────────────────
     void onHitFromBelow(int tileGridX, int tileGridY, int formType) override;

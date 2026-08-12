@@ -1,4 +1,5 @@
 #include "MapManager.h"
+#include "block/BlockBehavior.h"
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -174,9 +175,17 @@ bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
             }
         }
 
-        // Only store non-EMPTY types to keep the map small
+        // m_gidTypeMap chỉ lưu type khác EMPTY (EMPTY là mặc định của GID 0).
         if (found && resolved != TileType::EMPTY) {
             m_gidTypeMap[gid] = resolved;
+        }
+
+        // Reverse lookup: TileType → GID (dùng cho block transitions).
+        // EMPTY là một tile THẬT trong tileset (vd tile id 0 → GID firstGid).
+        // Ghi nhận nó để setTile(EMPTY) load đúng texture EMPTY, thay vì GID 0
+        // (GID 0 = "không có tile" → renderer sẽ bỏ qua, không vẽ texture nào).
+        if (found) {
+            m_typeToGid[resolved] = gid;
         }
     }
 
@@ -228,63 +237,60 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
     }
 
     // ── Parse layer data ──────────────────────────────────────────────────
-    // Only the FIRST tile layer is used for collision / game logic.
-    // Additional layers (background, foreground decoration) are ignored.
-    auto* layerEl = mapEl->FirstChildElement("layer");
-    if (!layerEl) { std::cerr << "[MapManager] No <layer> in TMX." << std::endl; return false; }
-
-    auto* dataEl = layerEl->FirstChildElement("data");
-    if (!dataEl) { std::cerr << "[MapManager] No <data> in layer." << std::endl; return false; }
-
-    const char* encoding = dataEl->Attribute("encoding");
-    if (!encoding || std::string(encoding) != "csv") {
-        std::cerr << "[MapManager] Only CSV-encoded TMX layers are supported." << std::endl;
-        return false;
-    }
-
-    const char* rawText = dataEl->GetText();
-    if (!rawText) { std::cerr << "[MapManager] Layer data is empty." << std::endl; return false; }
-
-    // Parse the CSV GID list into m_mapData AND m_rawGids
+    // Merge TẤT CẢ tile layer. Mỗi layer (vd 2 layer GROUND) là một phần của
+    // bản đồ; GID 0 trong layer trên = trong suốt → giữ layer dưới;
+    // layer sau ghi đè layer trước ở các ô có tile (GID > 0).
     m_mapData.clear();
-    m_mapData.reserve(mapHeight);
     m_rawGids.clear();
-    m_rawGids.reserve(mapHeight);
+    m_mapData.assign(mapHeight, std::vector<TileType>(mapWidth, TileType::EMPTY));
+    m_rawGids.assign(mapHeight, std::vector<int>(mapWidth, 0));
 
-    std::vector<TileType> currentRow;
-    std::vector<int>      currentGids;
-    currentRow.reserve(mapWidth);
-    currentGids.reserve(mapWidth);
+    bool anyLayerLoaded = false;
+    for (auto* layerEl = mapEl->FirstChildElement("layer"); layerEl;
+         layerEl = layerEl->NextSiblingElement("layer")) {
 
-    std::istringstream stream(rawText);
-    std::string token;
-    int col = 0;
-
-    while (std::getline(stream, token, ',')) {
-        // Strip whitespace / newlines
-        token.erase(0, token.find_first_not_of(" \t\r\n"));
-        token.erase(token.find_last_not_of(" \t\r\n") + 1);
-        if (token.empty()) continue;
-
-        int gid = std::stoi(token);
-        currentRow.push_back(gidToTileType(gid));
-        currentGids.push_back(gid);
-        ++col;
-
-        if (col >= mapWidth) {
-            m_mapData.push_back(std::move(currentRow));
-            m_rawGids.push_back(std::move(currentGids));
-            currentRow.clear();
-            currentGids.clear();
-            currentRow.reserve(mapWidth);
-            currentGids.reserve(mapWidth);
-            col = 0;
+        const char* layerName = layerEl->Attribute("name");
+        auto* dataEl = layerEl->FirstChildElement("data");
+        if (!dataEl) {
+            std::cerr << "[MapManager] No <data> in layer." << std::endl;
+            continue;
         }
+
+        const char* encoding = dataEl->Attribute("encoding");
+        if (!encoding || std::string(encoding) != "csv") {
+            std::cerr << "[MapManager] Only CSV-encoded TMX layers are supported "
+                      << "(layer '" << (layerName ? layerName : "?") << "' skipped)." << std::endl;
+            continue;
+        }
+
+        const char* rawText = dataEl->GetText();
+        if (!rawText) { std::cerr << "[MapManager] Layer data is empty." << std::endl; continue; }
+
+        std::istringstream stream(rawText);
+        std::string token;
+        int row = 0, col = 0;
+
+        while (std::getline(stream, token, ',')) {
+            // Strip whitespace / newlines
+            token.erase(0, token.find_first_not_of(" \t\r\n"));
+            token.erase(token.find_last_not_of(" \t\r\n") + 1);
+            if (token.empty()) continue;
+
+            int gid = std::stoi(token);
+            if (gid > 0 && row < mapHeight && col < mapWidth) {
+                // Layer trên có tile thật → ghi đè layer dưới cùng ô.
+                m_rawGids[row][col] = gid;
+                m_mapData[row][col] = gidToTileType(gid);
+            }
+            ++col;
+            if (col >= mapWidth) { col = 0; ++row; }
+        }
+        anyLayerLoaded = true;
     }
-    // Push any partial last row
-    if (!currentRow.empty()) {
-        m_mapData.push_back(std::move(currentRow));
-        m_rawGids.push_back(std::move(currentGids));
+
+    if (!anyLayerLoaded) {
+        std::cerr << "[MapManager] No <layer> in TMX." << std::endl;
+        return false;
     }
 
     std::cout << "[MapManager] TMX loaded: " << tmxPath
@@ -309,7 +315,7 @@ void MapManager::update(float deltaTime) {
                 int gy = it->first.second;
                 if (gy >= 0 && gy < (int)m_mapData.size() &&
                     gx >= 0 && gx < (int)m_mapData[0].size()) {
-                    m_mapData[gy][gx] = TileType::SOLID_BRICK;
+                    setTile(gx, gy, TileType::SOLID_BRICK); // đổi cả type lẫn texture
                 }
                 it = m_multiCoinStates.erase(it);
                 continue;
@@ -360,17 +366,6 @@ void MapManager::render(sf::RenderWindow& window) const {
         for (size_t x = 0; x < m_mapData[y].size(); ++x) {
             TileType type = m_mapData[y][x];
 
-            // HIDDEN_BLOCK: invisible & non-solid until hit from below.
-            // After reveal it behaves like SOLID_BRICK visually, but we keep
-            // the type as HIDDEN_BLOCK in m_mapData so the GID in m_rawGids
-            // still points to its correct sprite-sheet region.
-            if (type == TileType::HIDDEN_BLOCK) {
-                auto key = std::make_pair((int)x, (int)y);
-                if (m_revealedHiddenBlocks.find(key) == m_revealedHiddenBlocks.end())
-                    continue; // not yet revealed → invisible
-                // revealed → fall through and render like any other tile
-            }
-
             const float worldX = (float)x * m_tileSize;
             const float worldY = (float)y * m_tileSize;
 
@@ -399,14 +394,13 @@ void MapManager::render(sf::RenderWindow& window) const {
             }
 
             // ── Fallback: solid colour (texture not available) ────────────────
-            // EMPTY tiles have no meaningful colour fallback → skip
-            if (type == TileType::EMPTY) continue;
+            // EMPTY / HIDDEN_BLOCK không có màu fallback (đều là tile trong suốt) → skip
+            if (type == TileType::EMPTY || type == TileType::HIDDEN_BLOCK) continue;
             tileShape.setPosition(sf::Vector2f(worldX, worldY));
             switch (type) {
                 case TileType::GROUND:           tileShape.setFillColor(sf::Color(139,  69,  19)); break;
                 case TileType::PIPE:             tileShape.setFillColor(sf::Color::Green);          break;
-                case TileType::BRICK_NORMAL:
-                case TileType::HIDDEN_BLOCK:     tileShape.setFillColor(sf::Color(205, 133,  63)); break;
+                case TileType::BRICK_NORMAL:     tileShape.setFillColor(sf::Color(205, 133,  63)); break;
                 case TileType::SOLID_BRICK:      tileShape.setFillColor(sf::Color(160, 110,  80)); break;
                 case TileType::MULTI_COIN:       tileShape.setFillColor(sf::Color(205, 133,  63)); break;
                 case TileType::QUESTION_COIN:
@@ -468,40 +462,35 @@ bool MapManager::isSolid(float x, float y) const {
     }
 
     TileType type = m_mapData[gridY][gridX];
-
-    switch (type) {
-        case TileType::GROUND:
-        case TileType::PIPE:
-        case TileType::BRICK_NORMAL:
-        case TileType::SOLID_BRICK:
-        case TileType::QUESTION_COIN:
-        case TileType::QUESTION_POWERUP:
-        case TileType::MULTI_COIN:
-            return true;
-
-        case TileType::HIDDEN_BLOCK: {
-            // Solid only after being revealed from below
-            auto key = std::make_pair(gridX, gridY);
-            return m_revealedHiddenBlocks.count(key) > 0;
-        }
-
-        default:
-            return false;
-    }
+    return getBlockBehavior(type).isSolid();
 }
 
-void MapManager::setTileType(float x, float y, TileType newType) {
+bool MapManager::isSolidFromBelow(float x, float y) const {
     int gridX = static_cast<int>(x) / m_tileSize;
     int gridY = static_cast<int>(y) / m_tileSize;
-    
-    if (gridY >= 0 && gridY < (int)m_mapData.size() && 
-        gridX >= 0 && gridX < (int)m_mapData[0].size()) {
-        m_mapData[gridY][gridX] = newType;
+
+    if (gridY < 0 || gridY >= (int)m_mapData.size() ||
+        gridX < 0 || gridX >= (int)m_mapData[0].size()) {
+        return true; // treat out-of-bounds as wall
     }
+
+    TileType type = m_mapData[gridY][gridX];
+    return getBlockBehavior(type).isSolidFromBelow();
+}
+
+void MapManager::setTile(int gx, int gy, TileType type) {
+    if (gy < 0 || gy >= (int)m_mapData.size() ||
+        gx < 0 || gx >= (int)m_mapData[0].size()) return;
+
+    m_mapData[gy][gx] = type;
+    // Đồng bộ texture: set GID theo type (EMPTY → GID của tile EMPTY trong tileset;
+    // type không có trong m_typeToGid → 0 = không có tile → không vẽ)
+    auto it = m_typeToGid.find(type);
+    m_rawGids[gy][gx] = (it != m_typeToGid.end()) ? it->second : 0;
 }
 
 // =============================================================================
-//  ON HIT FROM BELOW  (main dispatcher)
+//  ON HIT FROM BELOW  (main dispatcher — Strategy Pattern)
 // =============================================================================
 
 void MapManager::onHitFromBelow(int gx, int gy, int formType) {
@@ -509,54 +498,32 @@ void MapManager::onHitFromBelow(int gx, int gy, int formType) {
         gx < 0 || gx >= (int)m_mapData[0].size()) return;
 
     TileType type = m_mapData[gy][gx];
-
-    switch (type) {
-        case TileType::BRICK_NORMAL:
-            handleBrickNormal(gx, gy);
-            break;
-        case TileType::QUESTION_COIN:
-            handleQuestionCoin(gx, gy);
-            break;
-        case TileType::QUESTION_POWERUP:
-            handleQuestionPowerup(gx, gy, formType);
-            break;
-        case TileType::MULTI_COIN:
-            handleMultiCoin(gx, gy);
-            break;
-        case TileType::HIDDEN_BLOCK:
-            handleHiddenBlock(gx, gy);
-            break;
-        default:
-            break; // GROUND, PIPE, DEATH_ZONE, EMPTY — no reaction
-    }
+    getBlockBehavior(type).onHitFromBelow(*this, gx, gy, formType);
 }
 
 // =============================================================================
-//  TILE HANDLERS
+//  BLOCK TRANSITION + SIDE-EFFECT API  (gọi bởi các IBlockBehavior)
 // =============================================================================
 
-void MapManager::handleBrickNormal(int gx, int gy) {
-    // 1. Spawn 4 debris particles
-    spawnBrickDebris(gx, gy);
-    // 2. Destroy the tile
-    m_mapData[gy][gx] = TileType::EMPTY;
-}
+void MapManager::spawnCoinPop(int gx, int gy) {
+    // 1. Pop animation
+    CoinPopAnim c;
+    c.pos  = {
+        (float)gx * m_tileSize + m_tileSize / 2.f - 4.f,
+        (float)gy * m_tileSize - (float)m_tileSize
+    };
+    c.velY = COINPOP_INIT_VY;
+    c.life = COINPOP_LIFE;
+    m_coinPopAnims.push_back(c);
 
-void MapManager::handleQuestionCoin(int gx, int gy) {
-    // 1. Pop coin animation + award coin
-    spawnCoinPopAt(gx, gy);
+    // 2. Award coin immediately (visual pop is handled by MapManager)
     if (m_itemManager)
         m_itemManager->spawnCoinPop(
             (float)gx * m_tileSize,
             (float)gy * m_tileSize);
-    // 2. Block becomes exhausted solid brick
-    m_mapData[gy][gx] = TileType::SOLID_BRICK;
 }
 
-void MapManager::handleQuestionPowerup(int gx, int gy, int formType) {
-    // Block becomes exhausted solid brick first
-    m_mapData[gy][gx] = TileType::SOLID_BRICK;
-
+void MapManager::spawnItemForFormType(int gx, int gy, int formType) {
     float worldX = (float)gx * m_tileSize;
     float worldY = (float)(gy - 1) * m_tileSize; // spawn one tile above
 
@@ -571,7 +538,7 @@ void MapManager::handleQuestionPowerup(int gx, int gy, int formType) {
     }
 }
 
-void MapManager::handleMultiCoin(int gx, int gy) {
+void MapManager::setMultiCoinActive(int gx, int gy) {
     auto key = std::make_pair(gx, gy);
     MultiCoinState& state = m_multiCoinStates[key];
 
@@ -580,23 +547,8 @@ void MapManager::handleMultiCoin(int gx, int gy) {
         state.active = true;
         state.timer  = MULTI_COIN_DURATION;
     }
-    // Whether just started or still running, give a coin
-    // (if timer already expired it will have been converted in update())
-    spawnCoinPopAt(gx, gy);
-    if (m_itemManager)
-        m_itemManager->spawnCoinPop(
-            (float)gx * m_tileSize,
-            (float)gy * m_tileSize);
-}
-
-void MapManager::handleHiddenBlock(int gx, int gy) {
-    // Mark as revealed — render will now show it and isSolid() will return true.
-    // We deliberately keep m_mapData as HIDDEN_BLOCK so that m_rawGids[gy][gx]
-    // still contains the original GID and the correct tileset sprite is drawn.
-    auto key = std::make_pair(gx, gy);
-    m_revealedHiddenBlocks.insert(key);
-    // Do NOT overwrite m_mapData here — isSolid() already handles revealed
-    // HIDDEN_BLOCKs via the m_revealedHiddenBlocks set.
+    // Whether just started or still running, keep giving coins.
+    // When the countdown expires, update() converts the tile to SOLID_BRICK.
 }
 
 // =============================================================================
@@ -631,16 +583,4 @@ void MapManager::spawnBrickDebris(int gx, int gy) {
         d.size    = { half, half };
         m_brickDebris.push_back(d);
     }
-}
-
-void MapManager::spawnCoinPopAt(int gx, int gy) {
-    CoinPopAnim c;
-    // Centre the coin horizontally over the tile, start at its top
-    c.pos  = {
-        (float)gx * m_tileSize + m_tileSize / 2.f - 4.f,
-        (float)gy * m_tileSize - (float)m_tileSize
-    };
-    c.velY = COINPOP_INIT_VY;
-    c.life = COINPOP_LIFE;
-    m_coinPopAnims.push_back(c);
 }

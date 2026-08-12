@@ -63,34 +63,11 @@ void ItemManager::initialize()
         &m_coinTextures[3]
     };
 
-    std::array<sf::Texture*, 4> flowerFrames{
-        &m_fireFlowerTextures[0],
-        &m_fireFlowerTextures[1],
-        &m_fireFlowerTextures[2],
-        &m_fireFlowerTextures[3]
-    };
-
     m_items.push_back(
         std::make_unique<Coin>(
             120.f,
             160.f,
             coinFrames
-        )
-    );
-
-    m_items.push_back(
-        std::make_unique<Mushroom>(
-            240.f,
-            160.f,
-            m_mushroomTexture
-        )
-    );
-
-    m_items.push_back(
-        std::make_unique<FireFlower>(
-            320.f,
-            160.f,
-            flowerFrames
         )
     );
 

@@ -40,6 +40,7 @@ set(SHARED_SOURCES
     src/states/ModeSelectState.cpp
     src/world/GameWorld.cpp
     src/entities/map/MapManager.cpp
+    src/entities/map/block/BlockBehavior.cpp
     src/entities/enemy/Enemy.cpp
     src/entities/enemy/EnemyManager.cpp
     src/entities/item/Item.cpp

@@ -319,20 +319,25 @@ void PlayerManager::tileCollisionY(float deltaTime) {
             float probeX = gx * tileSize + 1.0f;
             float probeY = gy * tileSize + 1.0f;
 
-            if (m_mapManager->isSolid(probeX, probeY)) {
-                if (m_velocityY > 0) {
-                    // ── Landing on top of tile ───────────────────────────────
+            if (m_velocityY > 0) {
+                // ── Falling → chỉ va chạm khi tile solid bình thường (HIDDEN xuyên qua) ──
+                if (m_mapManager->isSolid(probeX, probeY)) {
                     newY = gy * tileSize - m_playerSize.y;
                     m_isGrounded = true;
-                } else if (m_velocityY < 0) {
-                    // ── Head hits underside of tile ──────────────────────────
+                    m_velocityY = 0;
+                    collided = true;
+                    break;
+                }
+            } else if (m_velocityY < 0) {
+                // ── Đi lên → đập underside (HIDDEN_BLOCK chỉ bump được ở đây) ─────────────
+                if (m_mapManager->isSolidFromBelow(probeX, probeY)) {
                     newY = (gy + 1) * tileSize;
                     // Fire tile interaction
                     m_mapManager->onHitFromBelow(gx, gy, static_cast<int>(getFormType()));
+                    m_velocityY = 0;
+                    collided = true;
+                    break;
                 }
-                m_velocityY = 0;
-                collided = true;
-                break;
             }
         }
         if (collided) break;

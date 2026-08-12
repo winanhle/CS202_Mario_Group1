@@ -16,8 +16,12 @@ CameraManager::CameraManager()
 
 void CameraManager::initialize(sf::Vector2u mapSizePixels)
 {
-    m_view.setSize(sf::Vector2f(m_viewWidth, m_viewHeight));
-    m_view.setCenter(sf::Vector2f(m_viewWidth / 2.0f, m_viewHeight / 2.0f));
+    // View cao ít nhất bằng chiều cao bản đồ để không cắt mất các hàng cuối
+    // (vd map 16 tile × 16px = 256px > view mặc định 240px → hàng GROUND dưới
+    //  cùng bị khuất). Khi map ngắn vẫn dùng m_viewHeight mặc định.
+    float viewH = std::max(m_viewHeight, static_cast<float>(mapSizePixels.y));
+    m_view.setSize(sf::Vector2f(m_viewWidth, viewH));
+    m_view.setCenter(sf::Vector2f(m_viewWidth / 2.0f, viewH / 2.0f));
 
     m_mapWidth     = static_cast<float>(mapSizePixels.x);
     m_deadzoneWidth = m_viewWidth / 2.0f - 5.0f;
@@ -70,7 +74,9 @@ void CameraManager::update(float deltaTime)
     else if (targetCenterX > deadRight)
         newTargetX = targetCenterX - offsetRight + 40.0f;
 
-    float targetY = m_viewHeight / 2.0f;
+    // Giữ view canh giữa theo chiều cao view thực tế (đã có thể lớn hơn
+    // m_viewHeight khi map cao hơn) → toàn bộ bản đồ hiển thị.
+    float targetY = m_view.getSize().y / 2.0f;
 
     float alphaX = 1.0f - std::exp(-m_lerpSpeedX * deltaTime);
     float alphaY = 1.0f - std::exp(-m_lerpSpeedY * deltaTime);

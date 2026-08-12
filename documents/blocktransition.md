@@ -9,14 +9,13 @@
 | Block ban đầu (`TileType`) | Sau khi hit từ dưới | `m_mapData` (logic) | `m_rawGids` (texture render) |
 |---|---|---|---|
 | `HIDDEN_BLOCK` | → `SOLID_BRICK` | `SOLID_BRICK` | GID của `SOLID_BRICK` (hiện tại **2667**) |
-| `BRICK_NORMAL` | → `EMPTY` | `EMPTY` | **0** (không có tile → không vẽ) |
-| `QUESTION_COIN` | → `SOLID_BRICK` | `SOLID_BRICK` | GID của `SOLID_BRICK` (**2667**) |
-| `QUESTION_POWERUP` | → `SOLID_BRICK` | `SOLID_BRICK` | GID của `SOLID_BRICK` (**2667**) |
-| `MULTI_COIN` | → `SOLID_BRICK` | `SOLID_BRICK` | GID của `SOLID_BRICK` (**2667**) |
+| `BRICK_NORMAL` | → `EMPTY` | `EMPTY` | GID của tile `EMPTY` trong tileset (tile id 0 → **1**) |
 
 > **Quy ước "load texture X"** trong project này = gán lại GID trong `m_rawGids`.
 > Renderer vẽ texture bằng cách crop UV rect từ sprite-sheet theo GID (MapManager.cpp:377-399).
-> GID = `0` ⇔ "không có tile" ⇔ texture trống (EMPTY). GID khác 0 ⇔ vẽ đúng ô tile trong tileset.
+> GID = `0` ⇔ **"không có tile"** (ô trống, không vẽ gì). `EMPTY` là một tile **thật**
+> trong tileset (tile id 0 → GID `firstGid`), vì vậy `setTile(EMPTY)` phải gán GID của
+> tile EMPTY để load đúng texture EMPTY.
 
 ---
 
@@ -64,15 +63,14 @@ Ngoài ra còn có vấn đề thiết kế:
 │  + setTile(gx, gy, TileType)                 │  ← sửa CẢ 2 grid, là nơi duy nhất
 │  + onHitFromBelow(...)                       │
 │  - unordered_map<TileType, int> m_typeToGid  │  ← "texture" của từng loại
-│  - unordered_map<TileType, IBlockBehavior*>  │  ← hành vi của từng loại
+│  (ủy quyền qua factory getBlockBehavior)     │  ← hành vi của từng loại
 └──────────────────────┬───────────────────────┘
                        │ delegates (Strategy)
 ┌──────────────────────┴───────────────────────┐
 │                IBlockBehavior (abstract)      │
 │  + bool   isSolid() const                    │
-│  + int    getRenderGid() const               │
 │  + void   onHitFromBelow(MapManager&, gx, gy,│
-│                          formType)           │
+│                          formType) const     │
 └──────────────────────┬───────────────────────┘
                        │ implements
   ┌──────────────┬──────┴─────┬───────────────┬──────────────┐
@@ -125,11 +123,10 @@ private:
 
 Sau vòng lặp đọc `<tile>` (dòng 177-180), thêm:
 ```cpp
-// Đảo ngược m_gidTypeMap. Lưu ý: nếu nhiều GID cùng 1 type, GID nào cũng vẽ
-// đúng sprite; EMPTY luôn ánh xạ về 0 (không có tile → không vẽ).
-m_typeToGid[TileType::EMPTY] = 0;
-for (auto& [gid, type] : m_gidTypeMap)
-    m_typeToGid[type] = gid;
+// Build reverse lookup ngay trong vòng lặp. EMPTY cũng là tile thật trong
+// tileset → gán m_typeToGid[EMPTY] = GID của nó (firstGid + 0).
+// Lưu ý: nếu nhiều GID cùng 1 type, GID cuối cùng thắng (vẽ đúng sprite type đó).
+m_typeToGid[resolved] = gid;
 ```
 
 **Bước 3: Implement `setTile` (MapManager.cpp)**
@@ -156,10 +153,11 @@ void MapManager::setTile(int gx, int gy, TileType type) {
 
 **Bước 5: Bỏ special-case `HIDDEN_BLOCK` (MapManager.cpp)**
 
-- Render (dòng 363-372): thay khối `if (type == HIDDEN_BLOCK) {...}` bằng `if (type == TileType::HIDDEN_BLOCK) continue;` (luôn ẩn; sau khi hit nó đã là `SOLID_BRICK` nên không còn tồn tại dạng HIDDEN).
-- `isSolid` (dòng 482-486): bỏ nhánh `m_revealedHiddenBlocks`, trả `false` cho `HIDDEN_BLOCK`.
+- Render: bỏ hẳn nhánh `continue` cho `HIDDEN_BLOCK` — tile đi qua đường texture bình thường, load texture **của chính nó** trong tileset (tile id 1, nhìn giống EMPTY / trong suốt). Sau khi đập nó chuyển thành `SOLID_BRICK` (đổi GID qua `setTile`).
+- Fallback color (không có texture): bỏ qua `HIDDEN_BLOCK` cùng với `EMPTY` (đều là tile trong suốt, không có màu fallback).
+- `isSolid`: trả `false` cho `HIDDEN_BLOCK` — xuyên qua từ **trái/phải/trên** (Mario không đứng được, không lọt được từ bên hông).
+- `isSolidFromBelow`: riêng `HIDDEN_BLOCK` trả `true` (còn lại mặc định bằng `isSolid`) — Mario chỉ **bump được từ dưới lên**; `PlayerManager::tileCollisionY` dùng nó cho nhánh velocityY < 0 và dùng `isSolid` cho nhánh rơi/đứng.
 - Xóa member `m_revealedHiddenBlocks` trong MapManager.h:83.
-- Fallback color (dòng 408-409): bỏ `HIDDEN_BLOCK` khỏi cùng nhóm màu với `BRICK_NORMAL` (không còn cần).
 
 ### Phase 2 — Refactor theo State/Strategy Pattern (OOP)
 
@@ -172,30 +170,34 @@ class IBlockBehavior {
 public:
     virtual ~IBlockBehavior() = default;
     virtual bool isSolid() const = 0;
-    virtual int  getRenderGid() const = 0;
-    virtual void onHitFromBelow(MapManager& map, int gx, int gy, int formType) = 0;
+    virtual void onHitFromBelow(MapManager& map, int gx, int gy, int formType) const = 0;
 };
 ```
+
+> GID render KHÔNG nằm trong behavior — được xử lý data-driven trong `MapManager::setTile`
+> qua `m_typeToGid` (đọc từ TSX), tránh hardcode GID vào C++.
 
 **Bước 7: Tạo các behavior class**
 `GroundBehavior, PipeBehavior, BrickBehavior, QuestionCoinBehavior,
 QuestionPowerupBehavior, MultiCoinBehavior, HiddenBlockBehavior,
 SolidBrickBehavior, EmptyBehavior, DeathZoneBehavior, FlagpoleBehavior, CoinBehavior`.
 
-Mỗi class implement 3 phương thức theo transition table ở mục 1.
+Mỗi class implement 2 phương thức theo transition table ở mục 1 (các behavior không
+phản ứng chỉ dùng no-op).
 
 **Bước 8: `MapManager` dùng behavior**
 
-- Thay `switch (type)` trong `onHitFromBelow` (507-532) bằng lookup:
-  `if (auto* b = behaviorOf(type)) b->onHitFromBelow(*this, gx, gy, formType);`
-- `behaviorOf` có thể là factory nhỏ (static map `TileType → IBlockBehavior*`).
-- `isSolid` ủy quyền: `return behaviorOf(type)->isSolid();`
-- Renderer ủy quyền lấy GID: ưu tiên `m_rawGids` (giữ nguyên); fallback color map theo type.
+- Thay `switch (type)` trong `onHitFromBelow` bằng:
+  `getBlockBehavior(type).onHitFromBelow(*this, gx, gy, formType);`
+- `getBlockBehavior` là free function factory (BlockBehavior.cpp), trả
+  `const IBlockBehavior&` (singleton tĩnh, không quản lý ownership).
+- `isSolid` ủy quyền: `return getBlockBehavior(type).isSolid();`
+- Renderer giữ nguyên dùng `m_rawGids` (đã được `setTile` đồng bộ).
 
 **Bước 9: Di chuyển side-effect vào public API của MapManager**
-Các method hiện đang `private` mà behavior cần gọi (spawn debris, coin pop, spawn item)
-phải thành `public` hoặc `friend class IBlockBehavior`. Khuyến nghị `public`:
-`spawnBrickDebris(int,int)`, `spawnCoinPopAt(int,int)`, `spawnItemForFormType(int,int,int)`.
+Các method mà behavior cần gọi phải thành `public` (khuyến nghị, thay vì `friend`):
+`setTile(int,int,TileType)`, `spawnBrickDebris(int,int)`, `spawnCoinPop(int,int)`,
+`spawnItemForFormType(int,int,int)`, `setMultiCoinActive(int,int)`.
 
 ---
 
@@ -247,7 +249,8 @@ Sau khi implement, chạy game và test từng trường hợp:
 
 | Thao tác | Kỳ vọng |
 |---|---|
-| Đập `HIDDEN_BLOCK` từ dưới | Trước khi đập: vô hình + không chặn di chuyển. Sau khi đập: trở thành block solid có texture `SOLID_BRICK` |
+| Đập `HIDDEN_BLOCK` từ dưới | Trước khi đập: vô hình (texture EMPTY), xuyên qua từ trái/phải/trên, nhưng Mario đập được từ dưới. Sau khi đập: thành block solid có texture `SOLID_BRICK` |
+| Đứng/đi xuyên `HIDDEN_BLOCK` chưa đập | Mario rơi qua từ trên, đi xuyên từ bên hông — không bị chặn |
 | Đập `BRICK_NORMAL` từ dưới | Mảnh gạch bay + tile **biến mất** (không còn texture, không chặn) |
 | Đập `QUESTION_COIN` | Coin pop + nhận coin + block hóa thành `SOLID_BRICK` (texture đổi ngay) |
 | Đập `QUESTION_POWERUP` | Spawn Mushroom/FireFlower + block hóa `SOLID_BRICK` |
@@ -270,11 +273,13 @@ Sau khi implement, chạy game và test từng trường hợp:
 
 ---
 
-## 8. File thay đổi (tổng kết)
+## 8. File thay đổi (tổng kết — đã implement)
 
-- `src/entities/map/MapManager.h` — bỏ `m_revealedHiddenBlocks`; thêm `m_typeToGid`, `setTile`, map behaviors
-- `src/entities/map/MapManager.cpp` — build `m_typeToGid`; sửa 5 handler; sửa render/isSolid/update; bỏ special-case HIDDEN
-- `src/entities/map/block/IBlockBehavior.h` — **(mới)** interface
-- `src/entities/map/block/*Behavior.h/.cpp` — **(mới)** các behavior concrete
+- `src/entities/map/MapManager.h` — bỏ `m_revealedHiddenBlocks`; thêm `m_typeToGid`, `setTile`, side-effect API public
+- `src/entities/map/MapManager.cpp` — build `m_typeToGid`; dispatch qua `getBlockBehavior`; sửa render/isSolid/update; bỏ special-case HIDDEN
+- `src/entities/map/block/IBlockBehavior.h` — **(mới)** interface `isSolid()` + `onHitFromBelow()`
+- `src/entities/map/block/BlockBehavior.h` — **(mới)** 12 behavior concrete + khai báo factory
+- `src/entities/map/block/BlockBehavior.cpp` — **(mới)** implementations + factory `getBlockBehavior`
+- `CMakeLists.txt` — thêm `src/entities/map/block/BlockBehavior.cpp`
 - `assets/tileset/tileset_test.tsx` — (chỉ khi cần) chỉnh sprite `SOLID_BRICK`
 - `assets/map/map_test.tmx` — thường **không cần đổi**
