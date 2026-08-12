@@ -29,4 +29,6 @@ public:
     {
         player->collectCoin(1);
     }
+
+    void move(float dt) override {};
 };

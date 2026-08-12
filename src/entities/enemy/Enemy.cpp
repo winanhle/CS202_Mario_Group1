@@ -23,9 +23,17 @@ sf::FloatRect Enemy::getHitbox() const
     return m_sprite.getGlobalBounds();
 }
 
+void Enemy::applyGravity(float dt)
+{
+    m_velocity.y += m_gravity * dt;
+
+    if (m_velocity.y > m_maxFallSpeed)
+        m_velocity.y = m_maxFallSpeed;
+}
+
 void Enemy::move(float dt) {
     m_velocity.x = m_moveSpeed * static_cast<float>(m_direction);
-    m_sprite.move({m_velocity.x * dt, 0.f});
+    m_sprite.move({m_velocity.x * dt, m_velocity.y * dt});
 }
 
 void Enemy::reverseDirection()

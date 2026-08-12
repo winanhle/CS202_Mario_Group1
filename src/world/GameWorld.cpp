@@ -196,6 +196,7 @@ void GameWorld::injectDependencies() {
     // ItemManager ← PlayerManager
     if (m_itemManager) {
         m_itemManager->setPlayerManager(m_playerManager.get());
+        m_itemManager->setMapManager(m_mapManager.get());
     }
 
     // CameraManager ← PlayerManager (read-only)
