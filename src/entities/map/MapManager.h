@@ -10,6 +10,7 @@
 #include <set>
 #include <unordered_map>
 #include <utility>
+#include <optional>
 #include <SFML/Graphics.hpp>
 #include "../../tinyxml2.h"
 
@@ -68,6 +69,9 @@ struct MultiCoinState {
 class MapManager : public IMapManager {
 private:
     std::vector<std::vector<TileType>> m_mapData;
+    // Raw GID grid — mirrors m_mapData but stores the original Tiled GID
+    // (0 = no tile).  Used to compute UV rects into the tileset sprite-sheet.
+    std::vector<std::vector<int>> m_rawGids;
     int m_tileSize = 16; 
     
     // ─── Injected dependency ─────────────────────────────────────────────────
@@ -85,6 +89,11 @@ private:
     // ─── Live animations ──────────────────────────────────────────────────────
     std::vector<BrickDebris> m_brickDebris;
     std::vector<CoinPopAnim> m_coinPopAnims;
+
+    // ─── Tileset sprite-sheet rendering ──────────────────────────────────────
+    sf::Texture                  m_tilesetTexture;  // PNG loaded from the TSX <image> node
+    mutable std::optional<sf::Sprite> m_tileSprite; // absent until texture is ready (SFML 3 has no default ctor)
+    bool m_textureLoaded = false;                   // true once the texture loaded successfully
 
     static constexpr float DEBRIS_LIFE     = 0.7f;  // seconds
     static constexpr float COINPOP_LIFE    = 0.55f; // seconds

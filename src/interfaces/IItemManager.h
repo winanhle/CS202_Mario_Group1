@@ -49,6 +49,12 @@ public:
     // ─── NHẬN DEPENDENCY ───
     virtual void setPlayerManager(IPlayerManager* player) = 0;
 
+    /**
+     * @brief Gán Player 2 (chỉ trong chế độ 2P).
+     *        Item sẽ check collision với cả 2 player qua abstract interface.
+     */
+    virtual void setPlayerManager2(IPlayerManager* player) = 0;
+
     // ─── SPAWN API (called by MapManager on tile interactions) ───
 
     /**

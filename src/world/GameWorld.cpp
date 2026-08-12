@@ -227,9 +227,12 @@ void GameWorld::injectDependencies()
     if (m_playerManager2)
         m_playerManager2->setFireballEnemyTarget(m_enemyManager.get());
 
-    // ItemManager ← PlayerManager (P1 làm primary target)
+    // ItemManager ← PlayerManager(s)
     if (m_itemManager)
+    {
         m_itemManager->setPlayerManager(m_playerManager.get());
+        m_itemManager->setPlayerManager2(m_playerManager2.get());
+    }
 
     // MapManager ← ItemManager (để map có thể spawn item khi block bị đập)
     if (m_mapManager)

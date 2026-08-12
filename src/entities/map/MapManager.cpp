@@ -9,7 +9,7 @@ MapManager::MapManager() {}
 
 void MapManager::initialize() {
     // Prefer the Tiled TMX map; fall back to the legacy CSV if not found
-    if (!loadMapTMX("assets/map/Mario_World1.tmx")) {
+    if (!loadMapTMX("assets/map/map_test.tmx")) {
         std::cerr << "[MapManager] TMX load failed, falling back to CSV." << std::endl;
         if (!loadMapCSV("assets/map/test_map.csv")) {
             std::cerr << "[MapManager] ERROR: Could not load any map!" << std::endl;
@@ -101,6 +101,26 @@ bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
 
     m_tilesetFirstGid = firstGid;
     root->QueryIntAttribute("columns", &m_tilesetColumns);
+
+    // ── Load the sprite-sheet image declared in <image source="..."/> ─────────
+    auto* imgEl = root->FirstChildElement("image");
+    if (imgEl) {
+        const char* imgSrc = imgEl->Attribute("source");
+        if (imgSrc) {
+            // The image path is relative to the .tsx file's directory
+            std::string tsxDir = fs::path(tsxPath).parent_path().string();
+            std::string imgPath = resolvePath(tsxDir, imgSrc);
+            if (m_tilesetTexture.loadFromFile(imgPath)) {
+                m_tilesetTexture.setSmooth(false); // pixel-art: no blurring
+                // SFML 3: Sprite must be constructed with a texture (no default ctor)
+                m_tileSprite.emplace(m_tilesetTexture);
+                m_textureLoaded = true;
+                std::cout << "[MapManager] Tileset texture loaded: " << imgPath << std::endl;
+            } else {
+                std::cerr << "[MapManager] Failed to load tileset image: " << imgPath << std::endl;
+            }
+        }
+    }
 
     // Iterate over every <tile> element
     for (auto* tileEl = root->FirstChildElement("tile"); tileEl;
@@ -225,12 +245,16 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
     const char* rawText = dataEl->GetText();
     if (!rawText) { std::cerr << "[MapManager] Layer data is empty." << std::endl; return false; }
 
-    // Parse the CSV GID list into m_mapData
+    // Parse the CSV GID list into m_mapData AND m_rawGids
     m_mapData.clear();
     m_mapData.reserve(mapHeight);
+    m_rawGids.clear();
+    m_rawGids.reserve(mapHeight);
 
     std::vector<TileType> currentRow;
+    std::vector<int>      currentGids;
     currentRow.reserve(mapWidth);
+    currentGids.reserve(mapWidth);
 
     std::istringstream stream(rawText);
     std::string token;
@@ -244,18 +268,24 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
 
         int gid = std::stoi(token);
         currentRow.push_back(gidToTileType(gid));
+        currentGids.push_back(gid);
         ++col;
 
         if (col >= mapWidth) {
             m_mapData.push_back(std::move(currentRow));
+            m_rawGids.push_back(std::move(currentGids));
             currentRow.clear();
+            currentGids.clear();
             currentRow.reserve(mapWidth);
+            currentGids.reserve(mapWidth);
             col = 0;
         }
     }
     // Push any partial last row
-    if (!currentRow.empty())
+    if (!currentRow.empty()) {
         m_mapData.push_back(std::move(currentRow));
+        m_rawGids.push_back(std::move(currentGids));
+    }
 
     std::cout << "[MapManager] TMX loaded: " << tmxPath
               << "  (" << (m_mapData.empty() ? 0 : m_mapData[0].size())
@@ -316,37 +346,76 @@ void MapManager::update(float deltaTime) {
 // =============================================================================
 
 void MapManager::render(sf::RenderWindow& window) const {
+    // ── Tile rendering ────────────────────────────────────────────────────────
+    // When the tileset texture is available we render each tile as a sprite
+    // cropped from the sprite-sheet.  Otherwise we fall back to a solid-colour
+    // rectangle so the game is still playable without the asset.
+
+    // Fallback shape (used only when m_textureLoaded == false)
     sf::RectangleShape tileShape(sf::Vector2f((float)m_tileSize, (float)m_tileSize));
+
+    const bool hasRawGids = !m_rawGids.empty();
 
     for (size_t y = 0; y < m_mapData.size(); ++y) {
         for (size_t x = 0; x < m_mapData[y].size(); ++x) {
             TileType type = m_mapData[y][x];
-            
-            // EMPTY is never drawn; HIDDEN_BLOCK only drawn if revealed
-            if (type == TileType::EMPTY) continue;
+
+            // HIDDEN_BLOCK: invisible & non-solid until hit from below.
+            // After reveal it behaves like SOLID_BRICK visually, but we keep
+            // the type as HIDDEN_BLOCK in m_mapData so the GID in m_rawGids
+            // still points to its correct sprite-sheet region.
             if (type == TileType::HIDDEN_BLOCK) {
                 auto key = std::make_pair((int)x, (int)y);
                 if (m_revealedHiddenBlocks.find(key) == m_revealedHiddenBlocks.end())
-                    continue;
+                    continue; // not yet revealed → invisible
+                // revealed → fall through and render like any other tile
             }
 
-            tileShape.setPosition(sf::Vector2f((float)x * m_tileSize, (float)y * m_tileSize));
+            const float worldX = (float)x * m_tileSize;
+            const float worldY = (float)y * m_tileSize;
 
+            if (m_textureLoaded && hasRawGids &&
+                y < m_rawGids.size() && x < m_rawGids[y].size()) {
+
+                int gid = m_rawGids[y][x];
+                // GID == 0 means "no tile placed here" in Tiled → truly skip
+                // GID > 0 → always draw from sprite-sheet, including EMPTY-typed tiles
+                //           that still have a visual in the tileset
+                if (gid > 0 && m_tilesetColumns > 0) {
+                    // Convert GID → local tile index → (col, row) on the sprite-sheet
+                    int localId  = gid - m_tilesetFirstGid; // 0-based index
+                    int tileCol  = localId % m_tilesetColumns;
+                    int tileRow  = localId / m_tilesetColumns;
+
+                    // SFML 3: IntRect takes two Vector2i (position, size)
+                    m_tileSprite->setTextureRect(sf::IntRect(
+                        {tileCol * m_tileSize, tileRow * m_tileSize},
+                        {m_tileSize, m_tileSize}));
+                    // SFML 3: setPosition takes a single Vector2f
+                    m_tileSprite->setPosition({worldX, worldY});
+                    window.draw(*m_tileSprite);
+                    continue; // sprite drawn, skip fallback
+                }
+            }
+
+            // ── Fallback: solid colour (texture not available) ────────────────
+            // EMPTY tiles have no meaningful colour fallback → skip
+            if (type == TileType::EMPTY) continue;
+            tileShape.setPosition(sf::Vector2f(worldX, worldY));
             switch (type) {
-                case TileType::GROUND:          tileShape.setFillColor(sf::Color(139,  69, 19)); break;
-                case TileType::PIPE:            tileShape.setFillColor(sf::Color::Green);         break;
+                case TileType::GROUND:           tileShape.setFillColor(sf::Color(139,  69,  19)); break;
+                case TileType::PIPE:             tileShape.setFillColor(sf::Color::Green);          break;
                 case TileType::BRICK_NORMAL:
-                case TileType::HIDDEN_BLOCK:    tileShape.setFillColor(sf::Color(205, 133, 63)); break;
-                case TileType::SOLID_BRICK:     tileShape.setFillColor(sf::Color(160, 110, 80)); break; // darker exhausted brick
-                case TileType::MULTI_COIN:      tileShape.setFillColor(sf::Color(205, 133, 63)); break;
+                case TileType::HIDDEN_BLOCK:     tileShape.setFillColor(sf::Color(205, 133,  63)); break;
+                case TileType::SOLID_BRICK:      tileShape.setFillColor(sf::Color(160, 110,  80)); break;
+                case TileType::MULTI_COIN:       tileShape.setFillColor(sf::Color(205, 133,  63)); break;
                 case TileType::QUESTION_COIN:
-                case TileType::QUESTION_POWERUP:tileShape.setFillColor(sf::Color::Yellow);        break;
-                case TileType::COIN:            tileShape.setFillColor(sf::Color::White);          break;
-                case TileType::DEATH_ZONE:      tileShape.setFillColor(sf::Color::Red);            break;
-                case TileType::FLAGPOLE:        tileShape.setFillColor(sf::Color::Cyan);           break;
-                default:                        tileShape.setFillColor(sf::Color::Magenta);        break;
+                case TileType::QUESTION_POWERUP: tileShape.setFillColor(sf::Color::Yellow);         break;
+                case TileType::COIN:             tileShape.setFillColor(sf::Color::White);           break;
+                case TileType::DEATH_ZONE:       tileShape.setFillColor(sf::Color::Red);             break;
+                case TileType::FLAGPOLE:         tileShape.setFillColor(sf::Color::Cyan);            break;
+                default:                         tileShape.setFillColor(sf::Color::Magenta);         break;
             }
-
             window.draw(tileShape);
         }
     }
@@ -521,10 +590,13 @@ void MapManager::handleMultiCoin(int gx, int gy) {
 }
 
 void MapManager::handleHiddenBlock(int gx, int gy) {
-    // Reveal: make visible + solid (acts as BRICK_NORMAL from now on)
+    // Mark as revealed — render will now show it and isSolid() will return true.
+    // We deliberately keep m_mapData as HIDDEN_BLOCK so that m_rawGids[gy][gx]
+    // still contains the original GID and the correct tileset sprite is drawn.
     auto key = std::make_pair(gx, gy);
     m_revealedHiddenBlocks.insert(key);
-    m_mapData[gy][gx] = TileType::SOLID_BRICK;
+    // Do NOT overwrite m_mapData here — isSolid() already handles revealed
+    // HIDDEN_BLOCKs via the m_revealedHiddenBlocks set.
 }
 
 // =============================================================================

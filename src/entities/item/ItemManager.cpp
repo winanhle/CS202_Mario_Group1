@@ -118,6 +118,8 @@ void ItemManager::update(float deltaTime)
 
         // Check player-item collision
         item->checkCollision(m_player);
+        if (m_player2)
+            item->checkCollision(m_player2);
     }
 
     // Remove collected items

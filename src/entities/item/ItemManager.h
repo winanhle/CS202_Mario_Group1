@@ -14,7 +14,8 @@ class RenderWindow;
 class ItemManager : public IItemManager
 {
 private:
-    IPlayerManager* m_player = nullptr;
+    IPlayerManager* m_player  = nullptr;
+    IPlayerManager* m_player2 = nullptr;
     std::vector<std::unique_ptr<Item>> m_items;
     std::array<sf::Texture, 4> m_coinTextures;
     std::array<sf::Texture, 4> m_fireFlowerTextures;
@@ -33,6 +34,11 @@ public:
     void setPlayerManager(IPlayerManager* player) override
     {
         m_player = player;
+    }
+
+    void setPlayerManager2(IPlayerManager* player) override
+    {
+        m_player2 = player;
     }
 
     // ─── Spawn API (called by MapManager) ────────────────────────────────────
