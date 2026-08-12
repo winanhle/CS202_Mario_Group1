@@ -5,7 +5,7 @@
 #include "../../interfaces/ISettingsManager.h"
 
 PlayerManager::PlayerManager()
-    : m_score(0), m_lives(3), m_isAlive(true), 
+    : m_score(0), m_lives(3), m_isAlive(true),
       m_positionX(100.0f), m_positionY(150.0f),
       m_velocityX(0), m_velocityY(0),
       m_playerSprite(m_playerTexture)
@@ -16,18 +16,10 @@ PlayerManager::PlayerManager()
 
 void PlayerManager::initialize(ISettingsManager* settings)
 {
-    KeyBinding keys;
-    // Primaries come from settings when available, otherwise defaults
-    keys.jump1st  = settings ? settings->getKey(GameAction::Jump)      : sf::Keyboard::Key::Space;
-    keys.left1st  = settings ? settings->getKey(GameAction::MoveLeft)  : sf::Keyboard::Key::A;
-    keys.right1st = settings ? settings->getKey(GameAction::MoveRight) : sf::Keyboard::Key::D;
-    // Fixed secondary / tertiary alternatives so the player always has fallbacks
-    keys.jump2nd  = sf::Keyboard::Key::W;
-    keys.jump3rd  = sf::Keyboard::Key::Up;
-    keys.left2nd  = sf::Keyboard::Key::Left;
-    keys.right2nd = sf::Keyboard::Key::Right;
+    rebuildKeyBindings(settings);
 
-    m_inputHandler = std::make_unique<PlayerInputHandler>(keys);
+    if (m_isInitialized)
+        return;
 
     setupStats();
     m_currentHealth = m_maxHealth;
@@ -43,7 +35,54 @@ void PlayerManager::initialize(ISettingsManager* settings)
     m_playerSize = m_currentForm->getHitboxSize();
     m_playerSprite.setTextureRect(m_currentForm->getWalkFrame1());
     m_playerSprite.setOrigin({m_playerSize.x / 2.f, m_playerSize.y / 2.f});
+    m_isInitialized = true;
 }
+
+void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
+{
+    KeyBinding keys;
+
+    // Get primary keys from settings (or defaults)
+    keys.jump1st  = settings ? settings->getKey(GameAction::Jump)      : sf::Keyboard::Key::Space;
+    keys.left1st  = settings ? settings->getKey(GameAction::MoveLeft)  : sf::Keyboard::Key::A;
+    keys.right1st = settings ? settings->getKey(GameAction::MoveRight) : sf::Keyboard::Key::D;
+
+    // Default fallbacks (WASD + Arrow keys) are active only if the action is at its default setting.
+    // Once the user customizes an action's key in Settings, secondary fallbacks for that action are disabled.
+    if (keys.jump1st == sf::Keyboard::Key::Space) {
+        keys.jump2nd = sf::Keyboard::Key::W;
+        keys.jump3rd = sf::Keyboard::Key::Up;
+    }
+    if (keys.left1st == sf::Keyboard::Key::A) {
+        keys.left2nd = sf::Keyboard::Key::Left;
+    }
+    if (keys.right1st == sf::Keyboard::Key::D) {
+        keys.right2nd = sf::Keyboard::Key::Right;
+    }
+
+    // Conflict guard: Clear any secondary/tertiary key if it conflicts with ANY primary key of another action
+    auto isConflictWithPrimary = [&](sf::Keyboard::Key k, GameAction ownAction) {
+        if (k == sf::Keyboard::Key::Unknown) return false;
+        if (ownAction != GameAction::Jump && k == keys.jump1st) return true;
+        if (ownAction != GameAction::MoveLeft && k == keys.left1st) return true;
+        if (ownAction != GameAction::MoveRight && k == keys.right1st) return true;
+        return false;
+    };
+
+    if (isConflictWithPrimary(keys.jump2nd, GameAction::Jump) || keys.jump2nd == keys.jump1st)
+        keys.jump2nd = sf::Keyboard::Key::Unknown;
+    if (isConflictWithPrimary(keys.jump3rd, GameAction::Jump) || keys.jump3rd == keys.jump1st || keys.jump3rd == keys.jump2nd)
+        keys.jump3rd = sf::Keyboard::Key::Unknown;
+
+    if (isConflictWithPrimary(keys.left2nd, GameAction::MoveLeft) || keys.left2nd == keys.left1st)
+        keys.left2nd = sf::Keyboard::Key::Unknown;
+
+    if (isConflictWithPrimary(keys.right2nd, GameAction::MoveRight) || keys.right2nd == keys.right1st)
+        keys.right2nd = sf::Keyboard::Key::Unknown;
+
+    m_inputHandler = std::make_unique<PlayerInputHandler>(keys);
+}
+
 
 void PlayerManager::updateAnimation(float deltaTime)
 {

@@ -65,4 +65,9 @@ public:
      * @brief Persist settings to disk
      */
     virtual void save() = 0;
+
+    /**
+     * @brief Reset settings to default values
+     */
+    virtual void resetToDefault() = 0;
 };

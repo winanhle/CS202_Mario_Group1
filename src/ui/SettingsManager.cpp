@@ -4,8 +4,13 @@
 #include <sstream>
 
 SettingsManager::SettingsManager()
-    : m_volume(100.0f)
 {
+    resetToDefault();
+}
+
+void SettingsManager::resetToDefault()
+{
+    m_volume = 100.0f;
     // Default key bindings (match PlayerManager's current hardcoded keys)
     m_keys[static_cast<int>(GameAction::Jump)] = sf::Keyboard::Key::Space;
     m_keys[static_cast<int>(GameAction::MoveLeft)] = sf::Keyboard::Key::A;
@@ -83,7 +88,26 @@ sf::Keyboard::Key SettingsManager::getKey(GameAction action) const
 
 void SettingsManager::setKey(GameAction action, sf::Keyboard::Key key)
 {
-    m_keys[static_cast<int>(action)] = key;
+    // Reject keys that are reserved for system use and must never be rebound.
+    // Escape is hardcoded as the pause/cancel key throughout the UI.
+    if (key == sf::Keyboard::Key::Escape ||
+        key == sf::Keyboard::Key::Unknown)
+        return;
+
+    // Prevent duplicate bindings: if another action already uses this key,
+    // swap it to the key we are replacing so no action is ever left unbound.
+    const int actionCount = static_cast<int>(GameAction::Count);
+    const int targetIdx   = static_cast<int>(action);
+    for (int i = 0; i < actionCount; ++i)
+    {
+        if (i != targetIdx && m_keys[i] == key)
+        {
+            m_keys[i] = m_keys[targetIdx]; // displaced action gets the old key
+            break;
+        }
+    }
+
+    m_keys[targetIdx] = key;
 }
 
 void SettingsManager::save()

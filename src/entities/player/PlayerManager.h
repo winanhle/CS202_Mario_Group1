@@ -12,10 +12,10 @@ protected:
     // --- THÔNG SỐ VẬT LÝ & DI CHUYỂN ---
     float m_maxSpeed;
     float m_acceleration;
-    float m_friction;     
+    float m_friction;
     float m_jumpVelocity;
     float m_gravity;
-    
+
     // --- THÔNG SỐ RPG ---
     int m_maxHealth;
     int m_currentHealth;
@@ -26,6 +26,7 @@ protected:
     IMapManager* m_mapManager = nullptr;
     bool m_isInvincible = false;
     float m_invincibilityTimer = 0.f;
+    bool m_isInitialized       = false;
     static constexpr float INVINCIBILITY_DURATION = 2.0f; // seconds of i-frames after a hit
 
     // ─── tile collision ───
@@ -56,6 +57,11 @@ protected:
     void resetToStart();   // respawn at starting position
 
     virtual void setupStats() = 0;
+
+private:
+    // Builds a KeyBinding from settings (or hardcoded defaults) and
+    // recreates the input handler so rebinds take effect immediately.
+    void rebuildKeyBindings(ISettingsManager* settings);
 
 public:
     PlayerManager();

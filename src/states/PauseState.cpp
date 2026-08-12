@@ -2,12 +2,14 @@
 #include "MenuState.h"
 #include "../core/StateManager.h"
 #include "../interfaces/ISaveManager.h"
+#include "../interfaces/IPlayerManager.h"
 #include <SFML/Graphics.hpp>
 
 PauseState::PauseState(std::shared_ptr<ISettingsManager> settings,
-                       ISaveManager* saveManager)
+                       ISaveManager* saveManager,IPlayerManager* player)
     : m_settings(std::move(settings))
     , m_saveManager(saveManager)
+    , m_player(player)
     , m_menu(*m_settings, /*pauseContext=*/true)
 {
 }
@@ -20,6 +22,10 @@ void PauseState::handleInput(const sf::Event& event)
     {
     case SettingsMenu::Request::Resume:
     {
+        // Re-apply key bindings from the latest settings so any rebind made
+        // in the pause menu takes effect immediately when the game resumes.
+        if (m_player)
+            m_player->initialize(m_settings.get());
         auto* manager = getStateManager();
         if (manager)
         {

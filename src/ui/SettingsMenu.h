@@ -96,6 +96,11 @@ private:
     std::string itemDisplayText(const MenuItem& item) const;
     const std::vector<MenuItem>* currentItems() const;
 
+    // Convert a mouse position from window pixels into the 800x600 view
+    // space used by the menu layout (the window may be resized/maximized,
+    // which stretches the fixed-size view)
+    sf::Vector2f toViewCoords(sf::Vector2i position) const;
+
     // Shared layout constants (used by render and hit-testing)
     static constexpr float ITEM_CENTER_X = 400.0f;
     static constexpr float ITEM_START_Y = 280.0f;
@@ -107,9 +112,15 @@ private:
     Screen m_screen;
     int m_selectedIndex;
     GameAction m_rebindingAction;
+    bool m_rebindReserved = false; // true while showing "key reserved" hint
 
     sf::Font m_font;
     bool m_fontLoaded;
+
+    // Window size tracked via render() so that mouse positions can be correctly
+    // mapped into the fixed 800x600 view space when the window is resized or maximized.
+    // mutable because render() (const) refreshes it every frame.
+    mutable sf::Vector2u m_windowSize{800u, 600u};
 
     // m_font must be declared before these Texts so it's initialized first
     // m_title is mutable because render() (const) re-centers it each frame

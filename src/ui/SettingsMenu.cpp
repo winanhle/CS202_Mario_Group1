@@ -30,6 +30,7 @@ void SettingsMenu::buildScreens()
     m_settingsItems.push_back({ "JUMP", ItemKind::Rebind, GameAction::Jump, Request::None });
     m_settingsItems.push_back({ "MOVE LEFT", ItemKind::Rebind, GameAction::MoveLeft, Request::None });
     m_settingsItems.push_back({ "MOVE RIGHT", ItemKind::Rebind, GameAction::MoveRight, Request::None });
+    m_settingsItems.push_back({ "RESET TO DEFAULTS", ItemKind::Activate, GameAction::Jump, Request::None });
     m_settingsItems.push_back({ "BACK", ItemKind::Activate, GameAction::Jump, Request::None });
 }
 
@@ -121,9 +122,22 @@ std::vector<sf::FloatRect> SettingsMenu::computeItemRects() const
         itemText.setPosition({ ITEM_CENTER_X, ITEM_START_Y + i * ITEM_SPACING });
 
         sf::Vector2f topLeft = itemText.getPosition() - itemText.getOrigin();
-        rects.push_back(sf::FloatRect(topLeft, bounds.size));
+        topLeft.y = ITEM_START_Y + i * ITEM_SPACING - ITEM_SPACING / 2.0f;
+        rects.push_back(sf::FloatRect(topLeft, { bounds.size.x, ITEM_SPACING }));
     }
     return rects;
+}
+
+sf::Vector2f SettingsMenu::toViewCoords(sf::Vector2i position) const
+{
+    // The menu layout lives in the fixed 800x600 view space. When the
+    // window is resized or maximized, SFML stretches that view to fill the
+    // window, so raw window-pixel mouse positions must be scaled back into
+    // view space before hit-testing.
+    const float scaleX = 800.0f / static_cast<float>(m_windowSize.x);
+    const float scaleY = 600.0f / static_cast<float>(m_windowSize.y);
+    return { static_cast<float>(position.x) * scaleX,
+             static_cast<float>(position.y) * scaleY };
 }
 
 void SettingsMenu::handleMouseMove(sf::Vector2i position)
@@ -131,7 +145,7 @@ void SettingsMenu::handleMouseMove(sf::Vector2i position)
     if (m_screen == Screen::Rebind)
         return;
 
-    sf::Vector2f mouse(static_cast<float>(position.x), static_cast<float>(position.y));
+    sf::Vector2f mouse = toViewCoords(position);
     std::vector<sf::FloatRect> rects = computeItemRects();
     for (int i = 0; i < static_cast<int>(rects.size()); ++i)
     {
@@ -148,7 +162,7 @@ SettingsMenu::Request SettingsMenu::handleMouseClick(sf::Vector2i position)
     if (m_screen == Screen::Rebind)
         return Request::None;
 
-    sf::Vector2f mouse(static_cast<float>(position.x), static_cast<float>(position.y));
+    sf::Vector2f mouse = toViewCoords(position);
     std::vector<sf::FloatRect> rects = computeItemRects();
     const std::vector<MenuItem>* items = currentItems();
     if (!items)
@@ -202,9 +216,17 @@ SettingsMenu::Request SettingsMenu::handleInput(const sf::Event& event)
     {
         if (keyEvent->code == sf::Keyboard::Key::Escape)
         {
+            m_rebindReserved = false;
             m_screen = Screen::Settings;
             return Request::None;
         }
+        // Reject reserved / invalid keys and stay in capture mode
+        if (keyEvent->code == sf::Keyboard::Key::Unknown)
+        {
+            m_rebindReserved = true;
+            return Request::None;
+        }
+        m_rebindReserved = false;
         m_settings.setKey(m_rebindingAction, keyEvent->code);
         m_settings.save();
         m_screen = Screen::Settings;
@@ -284,6 +306,12 @@ SettingsMenu::Request SettingsMenu::activateSelected()
             m_screen = Screen::Rebind;
             return Request::None;
         }
+        if (item.label == "RESET TO DEFAULTS")
+        {
+            m_settings.resetToDefault();
+            m_settings.save();
+            return Request::None;
+        }
         if (item.label == "BACK")
         {
             return goBack();
@@ -321,6 +349,10 @@ void SettingsMenu::render(sf::RenderWindow& window) const
     if (!m_fontLoaded)
         return;
 
+    // Keep the stored size in sync so mouse positions can be mapped into
+    // the fixed 800x600 view space (see toViewCoords)
+    m_windowSize = window.getSize();
+
     // Title
     std::string title;
     switch (m_screen)
@@ -355,6 +387,17 @@ void SettingsMenu::render(sf::RenderWindow& window) const
                          hintBounds.position.y + hintBounds.size.y / 2.0f });
         hint.setPosition({ 400.0f, 300.0f });
         window.draw(hint);
+
+        if (m_rebindReserved)
+        {
+            sf::Text warn{m_font};
+            setupText(warn, "KEY RESERVED - try another", 20, sf::Color::Red);
+            sf::FloatRect warnBounds = warn.getLocalBounds();
+            warn.setOrigin({ warnBounds.position.x + warnBounds.size.x / 2.0f,
+                             warnBounds.position.y + warnBounds.size.y / 2.0f });
+            warn.setPosition({ 400.0f, 340.0f });
+            window.draw(warn);
+        }
         return;
     }
 

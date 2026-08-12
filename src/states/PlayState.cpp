@@ -96,7 +96,7 @@ void PlayState::handleInput(const sf::Event& event)
                                           player->getPositionX(), player->getPositionY());
                     }
                 }
-                manager->pushState(std::make_unique<PauseState>(m_settings, m_gameWorld->getSaveManager()));
+                manager->pushState(std::make_unique<PauseState>(m_settings, m_gameWorld->getSaveManager(), m_gameWorld->getPlayerManager()));
             }
             return; // don't forward the pause key to the game world
         }

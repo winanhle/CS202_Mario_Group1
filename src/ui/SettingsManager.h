@@ -28,6 +28,7 @@ public:
     void setKey(GameAction action, sf::Keyboard::Key key) override;
 
     void save() override;
+    void resetToDefault() override;
 
 private:
     std::string getSettingsFilePath() const;

@@ -4,13 +4,13 @@
 #include "Command.h"
 
 struct KeyBinding {
-    sf::Keyboard::Key jump1st;
-    sf::Keyboard::Key jump2nd;
-    sf::Keyboard::Key jump3rd;
-    sf::Keyboard::Key left1st;
-    sf::Keyboard::Key left2nd;
-    sf::Keyboard::Key right1st;
-    sf::Keyboard::Key right2nd;
+    sf::Keyboard::Key jump1st  = sf::Keyboard::Key::Unknown;
+    sf::Keyboard::Key jump2nd  = sf::Keyboard::Key::Unknown;
+    sf::Keyboard::Key jump3rd  = sf::Keyboard::Key::Unknown;
+    sf::Keyboard::Key left1st  = sf::Keyboard::Key::Unknown;
+    sf::Keyboard::Key left2nd  = sf::Keyboard::Key::Unknown;
+    sf::Keyboard::Key right1st = sf::Keyboard::Key::Unknown;
+    sf::Keyboard::Key right2nd = sf::Keyboard::Key::Unknown;
 };
 
 class PlayerInputHandler {
