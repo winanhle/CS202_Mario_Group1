@@ -34,4 +34,9 @@ public:
     {
         m_player = player;
     }
+
+    // ─── Spawn API (called by MapManager) ────────────────────────────────────
+    void spawnCoinPop    (float worldX, float worldY) override;
+    void spawnMushroom   (float worldX, float worldY) override;
+    void spawnFireFlower (float worldX, float worldY) override;
 };

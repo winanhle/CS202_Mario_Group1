@@ -2,11 +2,23 @@
 
 #include <SFML/Graphics/Rect.hpp>
 #include "IMapManager.h"
+class IEnemyManager;
 
 namespace sf {
 class RenderWindow;
 class Event;
 }
+
+/**
+ * @enum FormType
+ * @brief Represents the current power-up form of the player.
+ *        Used by MapManager::onHitFromBelow() to decide which item to spawn.
+ */
+enum class FormType {
+    Normal, // Small Mario / Luigi
+    Super,  // Big (Mushroom)
+    Fire    // Fire (FireFlower)
+};
 
 /**
  * @interface IPlayerManager
@@ -61,10 +73,12 @@ public:
     virtual int getScore() const = 0;
 
     /**
-     * @brief Get remaining lives
-     * @return Number of lives
+     * @brief Get remaining lives.
+     * @note Ở chế độ 2P, lives được quản lý tập trung bởi GameWorld (shared lives pool).
+     *       getLives() trên mỗi player instance không còn có ý nghĩa — dùng GameWorld::getSharedLives() thay thế.
+     *       Method được giữ lại để backward compatible.
      */
-    virtual int getLives() const = 0;
+    virtual int getLives() const { return 0; }
 
     /**
      * @brief Get player position for queries
@@ -87,4 +101,29 @@ public:
     virtual void bounce() = 0;
     virtual void collectCoin(int amount) = 0;
     virtual void collectPowerUp(int type) = 0;
+
+    /**
+     * @brief Instantly kills the player regardless of current form.
+     *        Used by DEATH_ZONE tile contact.
+     */
+    virtual void die() = 0;
+
+    /**
+     * @brief Returns the player's current power-up form.
+     *        Used by MapManager to decide Mushroom vs FireFlower spawn.
+     */
+    virtual FormType getFormType() const = 0;
+
+    // ─── FIREBALL ───
+    /**
+     * @brief Gán EnemyManager làm mục tiêu cho cầu lửa của player.
+     * Được GameWorld inject sau initialize().
+     */
+    virtual void setFireballEnemyTarget(IEnemyManager* enemies) = 0;
+
+    /**
+     * @brief Hồi sinh player tại vị trí spawn, cấp i-frames.
+     * Được GameWorld gọi khi shared lives pool vẫn còn > 0 sau khi cả 2 player chết.
+     */
+    virtual void respawn() = 0;
 };

@@ -2,9 +2,12 @@
 #include "PauseState.h"
 #include "GameOverState.h"
 #include "../core/StateManager.h"
+#include "../core/GameConfig.h"
 #include "../world/GameWorld.h"
 #include "../entities/player/Mario.h"
-#include "../entities/MapManager.h"
+#include "../entities/player/Luigi.h"
+#include "../entities/player/input/KeyBindingPresets.h"
+#include "../entities/map/MapManager.h"
 #include "../entities/camera/CameraManager.h"
 #include "../entities/player/PlayerManager.h"
 #include "../entities/enemy/EnemyManager.h"
@@ -12,47 +15,77 @@
 #include "../ui/HUDManager.h"
 #include "../ui/SaveManager.h"
 #include <SFML/Graphics.hpp>
+#include <memory>
 
-PlayState::PlayState()
-    : m_gameWorld(std::make_unique<GameWorld>())
+// ──────────────────────────────────────────────────────────────────
+// Helper: tạo đúng subclass theo CharacterType
+// ──────────────────────────────────────────────────────────────────
+static std::shared_ptr<PlayerManager> makePlayer(CharacterType type)
 {
-    // ==================== MODULE INITIALIZATION ====================
-    // This is where all team modules are connected to the GameWorld
-    // Each team member replaces the stub managers with their implementations
+    if (type == CharacterType::Luigi)
+        return std::make_shared<Luigi>();
+    return std::make_shared<Mario>();
+}
 
-    // TODO: Quynh Anh - INTEGRATION LEAD
-    // These manager instances need to be created by their respective developers
-    // and set on the GameWorld. For now, we use stub implementations.
+// ──────────────────────────────────────────────────────────────────
+// setup() – logic khởi tạo chung, dùng bởi cả 2 constructor
+// ──────────────────────────────────────────────────────────────────
+void PlayState::setup(const GameConfig& config)
+{
+    m_gameWorld = std::make_unique<GameWorld>();
 
-    // Module 1: Le Tran - Character/Player
-    // TODO: Le Tran - Replace with your PlayerManager implementation
+    // ── Map / Camera ─────────────────────────────────────────────
     m_gameWorld->setMapManager(std::make_shared<MapManager>());
     m_gameWorld->setCameraManager(std::make_shared<CameraManager>());
-    m_gameWorld->setPlayerManager(std::make_shared<Mario>());
 
-    // Module 2: Dinh Anh - Enemies
-    // TODO: Dinh Anh - Replace with your EnemyManager implementation
+    // ── Player 1 ─────────────────────────────────────────────────
+    auto p1 = makePlayer(config.player1Character);
+    if (config.mode == GameMode::SinglePlayer)
+        p1->setKeyBinding(KeyBindingPresets::singlePlayer());
+    else
+        p1->setKeyBinding(KeyBindingPresets::player1TwoPlayer());
+
+    m_gameWorld->setPlayerManager(p1);
+
+    // ── Player 2 (chỉ ở 2P mode) ─────────────────────────────────
+    if (config.mode == GameMode::TwoPlayer)
+    {
+        auto p2 = makePlayer(config.player2Character);
+        p2->setKeyBinding(KeyBindingPresets::player2TwoPlayer());
+        m_gameWorld->setPlayerManager2(p2);
+    }
+
+    // ── Enemies / Items / HUD / Save ─────────────────────────────
     m_gameWorld->setEnemyManager(std::make_shared<EnemyManager>());
-
-    // Module 3: Dinh Anh - Items
-    // TODO: Dinh Anh - Replace with your ItemManager implementation
     m_gameWorld->setItemManager(std::make_shared<ItemManager>());
-
-    // Module 4: Nguyen Phuc - UI/HUD
-    // TODO: Nguyen Phuc - Replace with your HUDManager implementation
     m_gameWorld->setHUDManager(std::make_shared<HUDManager>());
-
-    // Module 5: Nguyen Phuc - Save/Load
-    // TODO: Nguyen Phuc - Replace with your SaveManager implementation
     m_gameWorld->setSaveManager(std::make_shared<SaveManager>());
 
-    // Initialize the game world
     m_gameWorld->initialize();
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Constructor nhận config từ ModeSelectState
+// ──────────────────────────────────────────────────────────────────
+PlayState::PlayState(const GameConfig& config)
+{
+    setup(config);
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Constructor mặc định: 1P với Mario (dùng cho quick-test / debug)
+// ──────────────────────────────────────────────────────────────────
+PlayState::PlayState()
+{
+    GameConfig defaultConfig;
+    defaultConfig.player1Character = CharacterType::Mario;
+    defaultConfig.mode             = GameMode::SinglePlayer;
+    setup(defaultConfig);
 }
 
 PlayState::~PlayState()
 {
-    // GameWorld will be automatically cleaned up via unique_ptr
+    // GameWorld cleanup via unique_ptr
 }
 
 void PlayState::handleInput(const sf::Event& event)
@@ -63,33 +96,24 @@ void PlayState::handleInput(const sf::Event& event)
         {
             auto* manager = getStateManager();
             if (manager)
-            {
                 manager->pushState(std::make_unique<PauseState>());
-            }
-            return; // don't forward the pause key to the game world
+            return;
         }
     }
 
-    // Delegate input to GameWorld
     m_gameWorld->handleInput(event);
 }
 
 void PlayState::update(float deltaTime)
 {
-    // Delegate all game logic to GameWorld
     m_gameWorld->update(deltaTime);
 
-    // Check if the player ran out of lives
     if (m_gameWorld->isGameOver())
     {
         auto* manager = getStateManager();
         if (manager)
         {
-            // Grab score before destroying game world
-            int finalScore = 0;
-            if (auto* player = m_gameWorld->getPlayerManager())
-                finalScore = player->getScore();
-
+            int finalScore = m_gameWorld->getTotalScore();
             auto gameOverState = std::make_unique<GameOverState>();
             gameOverState->setFinalScore(finalScore);
             manager->changeState(std::move(gameOverState));
@@ -99,6 +123,5 @@ void PlayState::update(float deltaTime)
 
 void PlayState::render(sf::RenderWindow& window) const
 {
-    // Render game world and all its systems
     m_gameWorld->render(window);
 }

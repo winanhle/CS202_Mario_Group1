@@ -31,4 +31,6 @@ public:
     void setPlayerManager(IPlayerManager* player) override { m_player = player; }
 
     void setMapManager(IMapManager* map) override { m_mapManager = map; }
+
+    bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox) override;
 };

@@ -1,5 +1,6 @@
 #pragma once
 #include "IMapManager.h"
+#include <SFML/Graphics/Rect.hpp>
 class IPlayerManager;
 
 namespace sf {
@@ -49,4 +50,11 @@ public:
     // ─── NHẬN DEPENDENCY ───
     virtual void setPlayerManager(IPlayerManager* player) = 0;
     virtual void setMapManager(IMapManager* map) = 0;
+
+    /**
+     * @brief Enemy bị cầu lửa của player trúng.
+     * @param fireballHitbox Hitbox cầu lửa hiện tại.
+     * @return true nếu có ít nhất 1 enemy bị tiêu diệt (cầu lửa nên nổ).
+     */
+    virtual bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox) = 0;
 };

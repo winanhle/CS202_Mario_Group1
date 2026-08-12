@@ -24,6 +24,8 @@ set(COMMON_SOURCES
     src/entities/player/forms/NormalForm.cpp
     src/entities/player/forms/SuperForm.cpp
     src/entities/player/forms/FireForm.cpp
+    src/entities/projectile/Fireball.cpp
+    src/entities/projectile/FireballManager.cpp
 )
 
 set(SHARED_SOURCES
@@ -34,8 +36,10 @@ set(SHARED_SOURCES
     src/states/PlayState.cpp
     src/states/PauseState.cpp
     src/states/GameOverState.cpp
+    src/states/CharacterSelectState.cpp
+    src/states/ModeSelectState.cpp
     src/world/GameWorld.cpp
-    src/entities/MapManager.cpp
+    src/entities/map/MapManager.cpp
     src/entities/enemy/Enemy.cpp
     src/entities/enemy/EnemyManager.cpp
     src/entities/item/Item.cpp
@@ -43,6 +47,7 @@ set(SHARED_SOURCES
     src/entities/camera/CameraManager.cpp
     src/ui/HUDManager.cpp
     src/ui/SaveManager.cpp
+    src/tinyxml2.cpp
 )
 
 add_executable(MarioGame

@@ -1,5 +1,5 @@
 #include "MenuState.h"
-#include "PlayState.h"
+#include "CharacterSelectState.h"
 #include "../core/StateManager.h"
 #include "../ui/SaveManager.h"
 #include <SFML/Graphics.hpp>
@@ -133,12 +133,12 @@ void MenuState::render(sf::RenderWindow& window) const
 
 void MenuState::startGame(bool loadSave)
 {
-    // TODO: when loadSave is true, PlayState should restore the save after
-    // initializing (needs PlayerManager to accept a starting position).
+    // TODO: khi loadSave=true, khôi phục save sau khi khởi tạo PlayState.
     (void)loadSave;
     auto* manager = getStateManager();
     if (manager)
     {
-        manager->changeState(std::make_unique<PlayState>());
+        // Điều hướng qua màn hình chọn nhân vật → chọn chế độ → PlayState
+        manager->changeState(std::make_unique<CharacterSelectState>());
     }
 }

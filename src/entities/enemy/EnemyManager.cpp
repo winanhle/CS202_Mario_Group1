@@ -85,3 +85,19 @@ int EnemyManager::getEnemyCount() const
 {
     return static_cast<int>(m_enemies.size());
 }
+
+bool EnemyManager::takeDamageFromFireball(const sf::FloatRect& fireballHitbox)
+{
+    for (auto& enemy : m_enemies)
+    {
+        if (enemy->isDead())
+            continue;
+
+        if (enemy->getHitbox().findIntersection(fireballHitbox))
+        {
+            enemy->onStomp(); // bị cầu lửa tiêu diệt (giống bị stomp)
+            return true;
+        }
+    }
+    return false;
+}

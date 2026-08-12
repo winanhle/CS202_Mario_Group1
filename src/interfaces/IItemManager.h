@@ -48,4 +48,24 @@ public:
 
     // ─── NHẬN DEPENDENCY ───
     virtual void setPlayerManager(IPlayerManager* player) = 0;
+
+    // ─── SPAWN API (called by MapManager on tile interactions) ───
+
+    /**
+     * @brief Spawn a coin-pop animation at the given world position
+     *        and immediately award the player 1 coin via collectCoin(1).
+     * @param worldX  Pixel X of the tile's left edge
+     * @param worldY  Pixel Y of the tile's top edge
+     */
+    virtual void spawnCoinPop(float worldX, float worldY) = 0;
+
+    /**
+     * @brief Spawn a Mushroom item above the given world position.
+     */
+    virtual void spawnMushroom(float worldX, float worldY) = 0;
+
+    /**
+     * @brief Spawn a FireFlower item above the given world position.
+     */
+    virtual void spawnFireFlower(float worldX, float worldY) = 0;
 };

@@ -11,6 +11,7 @@ struct KeyBinding {
     sf::Keyboard::Key left2nd;
     sf::Keyboard::Key right1st;
     sf::Keyboard::Key right2nd;
+    sf::Keyboard::Key shoot; // phím bắn, ví dụ F / Period
 };
 
 class PlayerInputHandler {
@@ -22,6 +23,7 @@ private:
     MoveLeftCommand m_moveLeftCommand;
     MoveRightCommand m_moveRightCommand;
     StopHorizontalCommand m_stopHorizontalCommand;
+    ShootCommand m_shootCommand;
 
 public:
     // Trả về con trỏ thô (raw pointer) vì InputHandler vẫn giữ quyền sở hữu các Command này

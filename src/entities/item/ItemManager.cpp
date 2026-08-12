@@ -149,3 +149,34 @@ int ItemManager::getItemCount() const
 {
     return static_cast<int>(m_items.size());
 }
+
+// =============================================================================
+//  SPAWN API  – called by MapManager on tile interactions
+// =============================================================================
+
+void ItemManager::spawnCoinPop(float worldX, float worldY)
+{
+    // Award the coin immediately to the player (visual pop is handled by MapManager)
+    if (m_player)
+        m_player->collectCoin(1);
+}
+
+void ItemManager::spawnMushroom(float worldX, float worldY)
+{
+    m_items.push_back(
+        std::make_unique<Mushroom>(worldX, worldY, m_mushroomTexture)
+    );
+}
+
+void ItemManager::spawnFireFlower(float worldX, float worldY)
+{
+    std::array<sf::Texture*, 4> flowerFrames{
+        &m_fireFlowerTextures[0],
+        &m_fireFlowerTextures[1],
+        &m_fireFlowerTextures[2],
+        &m_fireFlowerTextures[3]
+    };
+    m_items.push_back(
+        std::make_unique<FireFlower>(worldX, worldY, flowerFrames)
+    );
+}

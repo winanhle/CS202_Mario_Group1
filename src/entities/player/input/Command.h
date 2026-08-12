@@ -31,4 +31,9 @@ public:
 class StopHorizontalCommand : public Command {
 public:
     void execute(PlayerManager& player) override;
+};
+
+class ShootCommand : public Command {
+public:
+    void execute(PlayerManager& player) override;
 }; 
