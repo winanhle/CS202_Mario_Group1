@@ -10,6 +10,15 @@ protected:
     sf::Vector2f m_position;
     sf::Vector2f m_size;
     sf::Sprite m_sprite;
+    
+    bool m_onGround = false;
+
+    sf::Vector2f m_velocity{0.f, 0.f};
+    float m_gravity = 900.f;
+    float m_moveSpeed = 70.f;
+    float m_maxFallSpeed = 400.f;
+
+    int m_direction = 1;
     bool m_collected;
 
 public:
@@ -33,4 +42,33 @@ public:
     // Position
     sf::Vector2f getPosition() const;
     void setPosition(const sf::Vector2f& pos);
+    
+    void applyGravity(float dt);
+    virtual void move(float dt);
+    void reverseDirection();
+
+    sf::Vector2f getVelocity() const
+    {
+        return m_velocity;
+    }
+
+    void setVelocityY(float y)
+    {
+        m_velocity.y = y;
+    }
+
+    void setMoveSpeed(float speed)
+    {
+        m_moveSpeed = speed;
+    }
+
+    int getDirection() const
+    {
+        return m_direction;
+    }
+
+    void setPositionY(float y) {
+        m_position.y = y;
+        m_sprite.setPosition(m_position);
+    }
 };

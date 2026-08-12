@@ -29,4 +29,6 @@ public:
     {
         player->collectPowerUp(1);
     }
+
+    void move(float dt) override {};
 };

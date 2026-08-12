@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../interfaces/IItemManager.h"
+#include "../../interfaces/IMapManager.h"
 #include "Item.h"
 #include <memory>
 #include <vector>
@@ -16,6 +17,7 @@ class ItemManager : public IItemManager
 private:
     IPlayerManager* m_player  = nullptr;
     IPlayerManager* m_player2 = nullptr;
+    IMapManager* m_mapManager = nullptr;
     std::vector<std::unique_ptr<Item>> m_items;
     std::array<sf::Texture, 4> m_coinTextures;
     std::array<sf::Texture, 4> m_fireFlowerTextures;
@@ -34,6 +36,10 @@ public:
     void setPlayerManager(IPlayerManager* player) override
     {
         m_player = player;
+    }
+
+    void setMapManager(IMapManager* map) override {
+        m_mapManager = map;
     }
 
     void setPlayerManager2(IPlayerManager* player) override

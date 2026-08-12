@@ -63,6 +63,13 @@ void ItemManager::initialize()
         &m_coinTextures[3]
     };
 
+    std::array<sf::Texture*, 4> flowerFrames{
+        &m_fireFlowerTextures[0],
+        &m_fireFlowerTextures[1],
+        &m_fireFlowerTextures[2],
+        &m_fireFlowerTextures[3]
+    };
+
     m_items.push_back(
         std::make_unique<Coin>(
             120.f,
@@ -82,8 +89,9 @@ void ItemManager::initialize()
 
 void ItemManager::update(float deltaTime)
 {
-    if (!m_player)
-        return;
+    if (!m_player) return;
+
+    //ground collision 
 
     for (auto& item : m_items)
     {
@@ -92,6 +100,85 @@ void ItemManager::update(float deltaTime)
 
         // Update animation / movement
         item->update(deltaTime);
+        item->applyGravity(deltaTime);
+
+        if (!m_mapManager)
+        {
+            item->move(deltaTime);
+            continue;
+        }
+        //horizontal collision
+        sf::FloatRect hitbox = item->getHitbox();
+
+        float checkX;
+
+        if (item->getDirection() < 0) {
+            checkX = hitbox.position.x - 1.f;
+        }
+        else {
+            checkX =
+                hitbox.position.x +
+                hitbox.size.x +
+                1.f;
+        }
+
+        float checkTop =
+            hitbox.position.y + 2.f;
+
+        float checkBottom =
+            hitbox.position.y +
+            hitbox.size.y - 2.f;
+
+        bool hitWall =
+            m_mapManager->isSolid(checkX, checkTop) ||
+            m_mapManager->isSolid(checkX, checkBottom);
+
+        if (hitWall)
+        {
+            item->reverseDirection();
+        }
+
+        item->move(deltaTime);
+        //ground collision
+        sf::FloatRect newHitbox = item->getHitbox();
+
+        float feetY =
+            newHitbox.position.y +
+            newHitbox.size.y;
+
+        float checkGroundY =
+            feetY + 1.f;
+
+        // Check cả chân trái và chân phải
+        float leftFoot =
+            newHitbox.position.x + 2.f;
+
+        float rightFoot =
+            newHitbox.position.x +
+            newHitbox.size.x - 2.f;
+
+        bool onGround =
+            m_mapManager->isSolid(leftFoot, checkGroundY) ||
+            m_mapManager->isSolid(rightFoot, checkGroundY);
+        // resolve ground collision
+        if (onGround && item->getVelocity().y >= 0.f)
+        {
+            int tileSize =
+                m_mapManager->getTileSize();
+
+            // Tile mà chân item đang chạm vào
+            float groundY =
+                static_cast<float>(
+                    static_cast<int>(checkGroundY / tileSize)
+                    * tileSize
+                );
+
+            // Đặt item chính xác lên trên tile
+            item->setPositionY(groundY - newHitbox.size.y);
+
+            // Stop falling
+            item->setVelocityY(0.f);
+        }
 
         // Check player-item collision
         item->checkCollision(m_player);
@@ -158,4 +245,4 @@ void ItemManager::spawnFireFlower(float worldX, float worldY)
     m_items.push_back(
         std::make_unique<FireFlower>(worldX, worldY, flowerFrames)
     );
-}
+}

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "IMapManager.h"
 class IPlayerManager;
 
 namespace sf {
@@ -74,4 +74,5 @@ public:
      * @brief Spawn a FireFlower item above the given world position.
      */
     virtual void spawnFireFlower(float worldX, float worldY) = 0;
+    virtual void setMapManager(IMapManager* map) = 0;
 };

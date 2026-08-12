@@ -231,6 +231,7 @@ void GameWorld::injectDependencies()
     if (m_itemManager)
     {
         m_itemManager->setPlayerManager(m_playerManager.get());
+        m_itemManager->setMapManager(m_mapManager.get());
         m_itemManager->setPlayerManager2(m_playerManager2.get());
     }
 
