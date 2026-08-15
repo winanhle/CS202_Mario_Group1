@@ -155,32 +155,38 @@ void EnemyManager::update(float deltaTime) {
         }
 
         if (m_player)
-        {
-            sf::FloatRect playerBox = m_player->getHitbox();
-            sf::FloatRect enemyBox = enemy->getHitbox();
+            resolvePlayerCollision(*enemy, m_player, 0);
 
-            bool isOverlapping = playerBox.findIntersection(enemyBox).has_value();
-            bool wasOverlapping = enemy->wasPlayerOverlapping();
-
-            if (isOverlapping && !wasOverlapping)
-            {
-                float playerBottom = playerBox.position.y + playerBox.size.y;
-                float enemyTop = enemyBox.position.y;
-
-                // Stomp: player's feet land in the top slice of the enemy's hitbox.
-                // Tweak the 0.5f fraction if stomps feel too easy/hard to land.
-                float stompZone = enemyBox.size.y * 0.5f;
-                bool isStomp = playerBottom <= enemyTop + stompZone;
-
-                if (isStomp)
-                    enemy->onStomp();
-                else
-                    enemy->onPlayerCollision(m_player);
-            }
-
-            enemy->setPlayerOverlapping(isOverlapping);
-        }
+        if (m_player2)
+            resolvePlayerCollision(*enemy, m_player2, 1);
     }
+}
+
+void EnemyManager::resolvePlayerCollision(Enemy& enemy, IPlayerManager* player, int playerIndex)
+{
+    sf::FloatRect playerBox = player->getHitbox();
+    sf::FloatRect enemyBox = enemy.getHitbox();
+
+    bool isOverlapping = playerBox.findIntersection(enemyBox).has_value();
+    bool wasOverlapping = enemy.wasPlayerOverlapping(playerIndex);
+
+    if (isOverlapping && !wasOverlapping)
+    {
+        float playerBottom = playerBox.position.y + playerBox.size.y;
+        float enemyTop = enemyBox.position.y;
+
+        // Stomp: player's feet land in the top slice of the enemy's hitbox.
+        // Tweak the 0.5f fraction if stomps feel too easy/hard to land.
+        float stompZone = enemyBox.size.y * 0.5f;
+        bool isStomp = playerBottom <= enemyTop + stompZone;
+
+        if (isStomp)
+            enemy.onStomp();
+        else
+            enemy.onPlayerCollision(player);
+    }
+
+    enemy.setPlayerOverlapping(playerIndex, isOverlapping);
 }
 
 void EnemyManager::render(sf::RenderWindow& window) const {

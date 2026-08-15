@@ -18,7 +18,7 @@ protected:
     
     int m_direction = -1; // -1 = left, 1 = right
 
-    bool m_playerOverlapping = false; // see wasPlayerOverlapping()/setPlayerOverlapping()
+    bool m_playerOverlapping[2] = { false, false }; // see wasPlayerOverlapping()/setPlayerOverlapping()
 
 public:
     Enemy(float x,
@@ -40,12 +40,6 @@ public:
     void move(float dt);
     void reverseDirection();
 
-    // Swaps the sprite's texture while keeping its feet (bottom edge) and
-    // horizontal center anchored in place. Use this instead of calling
-    // m_sprite.setTexture() directly whenever animation frames might differ
-    // in size (e.g. a walking frame vs. a shell frame) - otherwise the
-    // sprite visibly jumps/glitches each time the texture changes, since
-    // sf::Sprite's position always refers to its top-left corner.
     void setSpriteTexture(sf::Texture& texture)
     {
         sf::FloatRect oldBounds = m_sprite.getGlobalBounds();
@@ -82,14 +76,14 @@ public:
         return m_dead;
     }
 
-    bool wasPlayerOverlapping() const
+    bool wasPlayerOverlapping(int playerIndex) const
     {
-        return m_playerOverlapping;
+        return m_playerOverlapping[playerIndex];
     }
 
-    void setPlayerOverlapping(bool overlapping)
+    void setPlayerOverlapping(int playerIndex, bool overlapping)
     {
-        m_playerOverlapping = overlapping;
+        m_playerOverlapping[playerIndex] = overlapping;
     }
 
     void setPositionY(float y) {
