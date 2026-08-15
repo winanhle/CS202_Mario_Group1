@@ -28,6 +28,11 @@ public:
     virtual void update(float deltaTime);
     virtual void render(sf::RenderWindow& window) const;
 
+    // Called by ItemManager right after ground collision snaps the item onto
+    // a tile (velocity.y just got zeroed and position snapped). Base does
+    // nothing; override this to react to landing, e.g. Star bounces back up.
+    virtual void onLanded() {}
+
     // Item interaction
     virtual void OnInteract(IPlayerManager* player) = 0;
 
