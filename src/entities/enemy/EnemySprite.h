@@ -17,10 +17,6 @@ namespace EnemySprite
     constexpr const char* Koopa2 = "assets/texture/enemy/Koopa2.PNG";
     constexpr const char* Koopa3 = "assets/texture/enemy/Koopa3.PNG";
     constexpr const char* Koopa4 = "assets/texture/enemy/Koopa4.PNG";
-    constexpr const char* Koopa5 = "assets/texture/enemy/Koopa5.PNG";
-    constexpr const char* Koopa6 = "assets/texture/enemy/Koopa6.PNG";
-    constexpr const char* Koopa7 = "assets/texture/enemy/Koopa7.PNG";
-    constexpr const char* Koopa8 = "assets/texture/enemy/Koopa8.PNG";
     constexpr const char* KoopaShell1 = "assets/texture/enemy/KoopaShell1.PNG";
     constexpr const char* KoopaShell2 = "assets/texture/enemy/KoopaShell2.PNG";
 };

@@ -17,8 +17,12 @@ class EnemyManager : public IEnemyManager
     IPlayerManager* m_player = nullptr;
     IMapManager* m_mapManager = nullptr;
     std::vector<std::unique_ptr<Enemy>> m_enemies;
+
     std::array<sf::Texture, 2> m_goombaTextures;
     sf::Texture m_goombaDeadTexture;
+
+    std::array<sf::Texture, 5> m_buzzyBeetleTextures; // 1,2 = left; 3 = shell; 4,5 = right
+    std::array<sf::Texture, 6> m_koopaTroopaTextures; // 1,2 = left; 3,4 = right; shell1,2 = shell
 public:
     EnemyManager();
     ~EnemyManager() override = default;
