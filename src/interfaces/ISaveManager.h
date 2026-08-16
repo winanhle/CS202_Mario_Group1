@@ -41,6 +41,11 @@ public:
     virtual bool hasSaveFile() const = 0;
 
     /**
+     * @brief Delete the save file (e.g. on game over)
+     */
+    virtual void deleteSave() = 0;
+
+    /**
      * @brief Stage the data to be persisted by the next saveGame() call
      * @param score Player score
      * @param lives Player lives

@@ -51,4 +51,5 @@ public:
     void spawnCoinPop    (float worldX, float worldY) override;
     void spawnMushroom   (float worldX, float worldY) override;
     void spawnFireFlower (float worldX, float worldY) override;
+    void spawnStar       (float worldX, float worldY) override;
 };

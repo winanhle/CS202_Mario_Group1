@@ -219,6 +219,7 @@ void GameWorld::injectDependencies()
     if (m_enemyManager) {
         m_enemyManager->setPlayerManager(m_playerManager.get());
         m_enemyManager->setMapManager(m_mapManager.get());
+        m_enemyManager->setPlayerManager2(m_playerManager2.get());
     }
 
     // FireballManager ← EnemyManager (để cầu lửa có thể tiêu diệt enemy)

@@ -97,6 +97,13 @@ bool SaveManager::hasSaveFile() const
     return m_hasSave;
 }
 
+void SaveManager::deleteSave()
+{
+    std::remove(getSaveFilePath().c_str());
+    m_hasSave = false;
+    std::cout << "[SaveManager] Save file deleted." << std::endl;
+}
+
 void SaveManager::setSaveData(int score, int lives, float posX, float posY)
 {
     m_savedScore = score;

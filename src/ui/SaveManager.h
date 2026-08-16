@@ -22,6 +22,7 @@ public:
     bool saveGame() override;
     bool loadGame() override;
     bool hasSaveFile() const override;
+    void deleteSave() override;
 
     // Additional helpers for setting/reading saved data
     void setSaveData(int score, int lives, float posX, float posY) override;

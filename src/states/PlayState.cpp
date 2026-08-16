@@ -154,6 +154,10 @@ void PlayState::update(float deltaTime)
         auto* manager = getStateManager();
         if (manager)
         {
+            // Delete save file — the player lost, no game to continue
+            if (auto* save = m_gameWorld->getSaveManager())
+                save->deleteSave();
+
             int finalScore = m_gameWorld->getTotalScore();
             auto gameOverState = std::make_unique<GameOverState>(m_settings);
             gameOverState->setFinalScore(finalScore);
