@@ -22,13 +22,19 @@ public:
     bool saveGame() override;
     bool loadGame() override;
     bool hasSaveFile() const override;
+    void deleteSave() override;
 
     // Additional helpers for setting/reading saved data
-    void setSaveData(int score, int lives, float posX, float posY);
-    int getSavedScore() const;
-    int getSavedLives() const;
-    float getSavedPosX() const;
-    float getSavedPosY() const;
+    void setSaveData(int score, int lives, float posX, float posY) override;
+    int getSavedScore() const override;
+    int getSavedLives() const override;
+    float getSavedPosX() const override;
+    float getSavedPosY() const override;
+
+    void setGameConfig(int p1Char, int p2Char, int mode) override;
+    int getSavedP1Char() const override;
+    int getSavedP2Char() const override;
+    int getSavedMode() const override;
 
     // Static so any state (e.g. MenuState) can check for a save file
     // without owning a SaveManager instance.
@@ -46,4 +52,8 @@ private:
     int m_savedLives;
     float m_savedPosX;
     float m_savedPosY;
+
+    int m_savedP1Char = 0;
+    int m_savedP2Char = 1;
+    int m_savedMode = 0;
 };

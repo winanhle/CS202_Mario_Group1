@@ -38,6 +38,9 @@ bool SaveManager::saveGame()
     file << "lives=" << m_savedLives << "\n";
     file << "posX=" << m_savedPosX << "\n";
     file << "posY=" << m_savedPosY << "\n";
+    file << "p1Char=" << m_savedP1Char << "\n";
+    file << "p2Char=" << m_savedP2Char << "\n";
+    file << "mode=" << m_savedMode << "\n";
 
     file.close();
     m_hasSave = true;
@@ -70,6 +73,9 @@ bool SaveManager::loadGame()
                 else if (key == "lives") m_savedLives = std::stoi(value);
                 else if (key == "posX") m_savedPosX = std::stof(value);
                 else if (key == "posY") m_savedPosY = std::stof(value);
+                else if (key == "p1Char") m_savedP1Char = std::stoi(value);
+                else if (key == "p2Char") m_savedP2Char = std::stoi(value);
+                else if (key == "mode") m_savedMode = std::stoi(value);
             }
             catch (const std::exception& e)
             {
@@ -91,6 +97,13 @@ bool SaveManager::hasSaveFile() const
     return m_hasSave;
 }
 
+void SaveManager::deleteSave()
+{
+    std::remove(getSaveFilePath().c_str());
+    m_hasSave = false;
+    std::cout << "[SaveManager] Save file deleted." << std::endl;
+}
+
 void SaveManager::setSaveData(int score, int lives, float posX, float posY)
 {
     m_savedScore = score;
@@ -103,6 +116,17 @@ int SaveManager::getSavedScore() const { return m_savedScore; }
 int SaveManager::getSavedLives() const { return m_savedLives; }
 float SaveManager::getSavedPosX() const { return m_savedPosX; }
 float SaveManager::getSavedPosY() const { return m_savedPosY; }
+
+void SaveManager::setGameConfig(int p1Char, int p2Char, int mode)
+{
+    m_savedP1Char = p1Char;
+    m_savedP2Char = p2Char;
+    m_savedMode = mode;
+}
+
+int SaveManager::getSavedP1Char() const { return m_savedP1Char; }
+int SaveManager::getSavedP2Char() const { return m_savedP2Char; }
+int SaveManager::getSavedMode() const { return m_savedMode; }
 
 std::string SaveManager::getSaveFilePath() const
 {

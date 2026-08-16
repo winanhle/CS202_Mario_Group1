@@ -4,8 +4,9 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 
-GameOverState::GameOverState()
-    : m_fontLoaded(false)
+GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings)
+    : m_settings(std::move(settings))
+    , m_fontLoaded(false)
     , m_blinkTimer(0.0f)
     , m_showPrompt(true)
     , m_finalScore(0)
@@ -123,6 +124,6 @@ void GameOverState::returnToMenu()
     auto* manager = getStateManager();
     if (manager)
     {
-        manager->changeState(std::make_unique<MenuState>());
+        manager->changeState(std::make_unique<MenuState>(m_settings));
     }
 }

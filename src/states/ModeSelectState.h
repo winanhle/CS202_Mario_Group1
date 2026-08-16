@@ -12,10 +12,12 @@
  * ← / → để chọn mode, Enter để xác nhận và bắt đầu game.
  * Escape để quay lại CharacterSelectState.
  */
+class ISettingsManager;
+
 class ModeSelectState : public GameState
 {
 public:
-    explicit ModeSelectState(const GameConfig& config);
+    explicit ModeSelectState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, bool loadSave);
     ~ModeSelectState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -48,4 +50,7 @@ private:
 
     static constexpr float WIN_W = 800.f;
     static constexpr float WIN_H = 600.f;
+
+    std::shared_ptr<ISettingsManager> m_settings;
+    bool m_loadSave;
 };

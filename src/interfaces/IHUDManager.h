@@ -58,8 +58,14 @@ public:
     virtual void updateLives(int lives) = 0;
 
     /**
-     * @brief Update HUD with enemy count
-     * @param count Number of enemies
+     * @brief Update HUD with item count
+     * @param count Number of items in the world
      */
-    virtual void updateEnemyCount(int count) = 0;
+    virtual void updateItemCount(int count) = 0;
+
+    /**
+     * @brief Check whether the countdown timer has reached zero
+     * @return True when time is up (game over condition)
+     */
+    virtual bool isTimeUp() const = 0;
 };

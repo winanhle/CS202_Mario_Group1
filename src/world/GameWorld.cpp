@@ -24,10 +24,10 @@ void GameWorld::initialize()
         m_mapManager->initialize();
 
     if (m_playerManager)
-        m_playerManager->initialize();
+        m_playerManager->initialize(m_settings.get());
 
     if (m_playerManager2)
-        m_playerManager2->initialize();
+        m_playerManager2->initialize(m_settings.get());
 
     if (m_enemyManager)
         m_enemyManager->initialize();
@@ -84,9 +84,8 @@ void GameWorld::update(float deltaTime)
         // Lives: shared pool
         m_hudManager->updateLives(m_sharedLives);
 
-        if (m_enemyManager)
-            m_hudManager->updateEnemyCount(m_enemyManager->getEnemyCount());
-
+        if (m_itemManager)
+            m_hudManager->updateItemCount(m_itemManager->getItemCount());
         m_hudManager->update(deltaTime);
     }
 
@@ -187,6 +186,8 @@ void GameWorld::handleInput(const sf::Event& event)
 
 bool GameWorld::isGameOver() const
 {
+    if (m_hudManager && m_hudManager->isTimeUp())
+        return true;
     return m_isGameOver;
 }
 
@@ -290,6 +291,11 @@ void GameWorld::setSaveManager(std::shared_ptr<ISaveManager> saveManager)
 void GameWorld::setCameraManager(std::shared_ptr<ICameraManager> cameraManager)
 {
     m_cameraManager = cameraManager;
+}
+
+void GameWorld::setSettings(std::shared_ptr<ISettingsManager> settings)
+{
+    m_settings = std::move(settings);
 }
 
 // ==================== ACCESSORS ====================

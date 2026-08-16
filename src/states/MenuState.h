@@ -1,8 +1,12 @@
 #pragma once
 
 #include "../core/GameState.h"
+#include "../ui/SettingsMenu.h"
 #include <SFML/Graphics.hpp>
+#include <memory>
 #include <string>
+
+class ISettingsManager;
 
 /**
  * @class MenuState
@@ -10,12 +14,13 @@
  * 
  * Displays the main menu with "SUPER MARIO" title using the SuperMario256 font.
  * Press SPACE to start the game and transition to PlayState.
+ * Press ESC to open the settings menu.
  */
 
 class MenuState : public GameState
 {
 public:
-    MenuState();
+    explicit MenuState(std::shared_ptr<ISettingsManager> settings);
     ~MenuState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -36,4 +41,11 @@ private:
     float m_blinkTimer;
     static constexpr float BLINK_INTERVAL = 0.5f;
     bool m_showPrompt;
+
+    // Settings menu (opened with ESC)
+    // m_settings must be declared before m_settingsMenu so it is
+    // initialized first (m_settingsMenu is constructed with *m_settings)
+    std::shared_ptr<ISettingsManager> m_settings;
+    SettingsMenu m_settingsMenu;
+    bool m_inSettings;
 };

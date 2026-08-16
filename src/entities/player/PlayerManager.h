@@ -17,10 +17,10 @@ protected:
     // --- THÔNG SỐ VẬT LÝ & DI CHUYỂN ---
     float m_maxSpeed;
     float m_acceleration;
-    float m_friction;     
+    float m_friction;
     float m_jumpVelocity;
     float m_gravity;
-    
+
     // --- THÔNG SỐ RPG ---
     int m_maxHealth;
     int m_currentHealth;
@@ -31,7 +31,8 @@ protected:
     IMapManager* m_mapManager = nullptr;
     bool m_isInvincible = false;
     float m_invincibilityTimer = 0.f;
-    static constexpr float INVINCIBILITY_DURATION = 2.0f;
+    bool m_isInitialized       = false;
+    static constexpr float INVINCIBILITY_DURATION = 2.0f; // seconds of i-frames after a hit
 
     // ─── tile collision ───
     void tileCollisionX(float deltaTime);
@@ -72,11 +73,16 @@ protected:
 
     virtual void setupStats() = 0;
 
+private:
+    // Builds a KeyBinding from settings (or hardcoded defaults) and
+    // recreates the input handler so rebinds take effect immediately.
+    void rebuildKeyBindings(ISettingsManager* settings);
+
 public:
     PlayerManager();
     ~PlayerManager() override = default;
 
-    void initialize() override;
+    void initialize(ISettingsManager* settings = nullptr) override;
     void update(float deltaTime) override;
     void render(sf::RenderWindow& window) const override;
     void handleInput(const sf::Event& event) override;
@@ -85,6 +91,7 @@ public:
     int   getScore()    const override;
     float getPositionX() const override;
     float getPositionY() const override;
+    void restoreState(int score, int lives, float posX, float posY) override;
 
     void jump();
     void stopJump();

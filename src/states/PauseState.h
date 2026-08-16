@@ -1,21 +1,32 @@
 #pragma once
 
 #include "../core/GameState.h"
-#include <SFML/Graphics.hpp>
-#include <string>
+#include "../ui/SettingsMenu.h"
+#include <memory>
+
+class ISettingsManager;
+class ISaveManager;
+class IPlayerManager;
 
 /**
  * @class PauseState
- * @brief Game pause state
+ * @brief Pause menu state shown when ESC is pressed during gameplay
  * 
- * Displays a pause menu overlay.
- * Pushed on top of PlayState so the game world stays alive underneath and
- * can be resumed by popping this state.
+ * Opens the settings/pause menu:
+ *   - PAUSED context -> root menu (Resume / Settings / Save & Quit / Quit to Menu)
+ *   - Settings sub-screen for volume and key bindings
+ * 
+ * Receives a non-owning pointer to the game's SaveManager so "Save & Quit"
+ * can persist the current player state before returning to the main menu,
+ * and a non-owning pointer to the player so key rebinds made in the menu
+ * are applied when the game resumes.
  */
 class PauseState : public GameState
 {
 public:
-    PauseState();
+    explicit PauseState(std::shared_ptr<ISettingsManager> settings,
+                        ISaveManager* saveManager,
+                        IPlayerManager* player);
     ~PauseState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -23,17 +34,10 @@ public:
     void render(sf::RenderWindow& window) const override;
 
 private:
-    void resumeGame();
+    void saveAndQuitToMenu();
 
-    sf::Font m_font;
-    bool m_fontLoaded;
-
-    // m_font must be declared before these Texts so it's initialized first
-    sf::Text m_pauseTitle{m_font};
-    sf::Text m_promptText{m_font};
-
-    // Blinks the "Press P to resume" prompt
-    float m_blinkTimer;
-    static constexpr float BLINK_INTERVAL = 0.5f;
-    bool m_showPrompt;
+    std::shared_ptr<ISettingsManager> m_settings;
+    ISaveManager* m_saveManager; // non-owning; owned by GameWorld
+    IPlayerManager* m_player;     // non-owning; owned by GameWorld
+    SettingsMenu m_menu;
 };

@@ -10,6 +10,7 @@ class IItemManager;
 class IHUDManager;
 class ISaveManager;
 class ICameraManager;
+class ISettingsManager;
 
 namespace sf {
 class RenderWindow;
@@ -97,6 +98,12 @@ public:
     void setSaveManager(std::shared_ptr<ISaveManager> saveManager);
     void setCameraManager(std::shared_ptr<ICameraManager> cameraManager);
 
+    /**
+     * @brief Set the shared settings manager (injected from Game)
+     * Used to pass key bindings down to the player module.
+     */
+    void setSettings(std::shared_ptr<ISettingsManager> settings);
+
     // ==================== ACCESSORS ====================
 
     IPlayerManager* getPlayerManager();
@@ -117,6 +124,7 @@ private:
     std::shared_ptr<IHUDManager>    m_hudManager;
     std::shared_ptr<ISaveManager>   m_saveManager;
     std::shared_ptr<ICameraManager> m_cameraManager;
+    std::shared_ptr<ISettingsManager> m_settings;
 
     // --- Shared lives pool (1P & 2P) ---
     static constexpr int INITIAL_LIVES = 3;

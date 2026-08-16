@@ -4,6 +4,8 @@
 #include <memory>
 #include <SFML/Graphics.hpp>
 
+class ISettingsManager;
+
 /**
  * @class Game
  * @brief Main game class that manages the window, game loop, and state manager
@@ -50,4 +52,7 @@ private:
     std::unique_ptr<sf::RenderWindow> m_window;
     StateManager m_stateManager;
     sf::Clock m_frameClock;
+
+    // Shared settings instance, injected into every state that needs it
+    std::shared_ptr<ISettingsManager> m_settings;
 };

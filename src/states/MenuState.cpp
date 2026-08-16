@@ -1,14 +1,19 @@
 #include "MenuState.h"
 #include "CharacterSelectState.h"
 #include "../core/StateManager.h"
+#include "../core/GameConfig.h"
 #include "../ui/SaveManager.h"
+#include "PlayState.h"
 #include <SFML/Graphics.hpp>
 
-MenuState::MenuState()
+MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
     : m_fontLoaded(false)
     , m_hasSave(false)
     , m_blinkTimer(0.0f)
     , m_showPrompt(true)
+    , m_settings(std::move(settings))
+    , m_settingsMenu(*m_settings, /*pauseContext=*/false)
+    , m_inSettings(false)
 {
     // Load the Mario font
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
@@ -88,6 +93,17 @@ MenuState::MenuState()
 
 void MenuState::handleInput(const sf::Event& event)
 {
+    // While the settings menu is open, it consumes all input
+    if (m_inSettings)
+    {
+        SettingsMenu::Request request = m_settingsMenu.handleInput(event);
+        if (request == SettingsMenu::Request::ExitSettings)
+        {
+            m_inSettings = false;
+        }
+        return;
+    }
+
     if (const auto* keyEvent = event.getIf<sf::Event::KeyPressed>())
     {
         if (keyEvent->code == sf::Keyboard::Key::Space)
@@ -98,11 +114,22 @@ void MenuState::handleInput(const sf::Event& event)
         {
             startGame(true);
         }
+        else if (keyEvent->code == sf::Keyboard::Key::Escape)
+        {
+            m_inSettings = true;
+            m_settingsMenu.openSettings();
+        }
     }
 }
 
 void MenuState::update(float deltaTime)
 {
+    if (m_inSettings)
+    {
+        m_settingsMenu.update(deltaTime);
+        return;
+    }
+
     // Toggle prompt visibility on a timer
     m_blinkTimer += deltaTime;
     if (m_blinkTimer >= BLINK_INTERVAL)
@@ -117,6 +144,12 @@ void MenuState::render(sf::RenderWindow& window) const
     sf::RectangleShape background({ 800.0f, 600.0f });
     background.setFillColor(sf::Color(50, 50, 180));  // deeper blue
     window.draw(background);
+
+    if (m_inSettings)
+    {
+        m_settingsMenu.render(window);
+        return;
+    }
 
     window.draw(m_titleText);
 
@@ -133,12 +166,24 @@ void MenuState::render(sf::RenderWindow& window) const
 
 void MenuState::startGame(bool loadSave)
 {
-    // TODO: khi loadSave=true, khôi phục save sau khi khởi tạo PlayState.
-    (void)loadSave;
     auto* manager = getStateManager();
     if (manager)
     {
-        // Điều hướng qua màn hình chọn nhân vật → chọn chế độ → PlayState
-        manager->changeState(std::make_unique<CharacterSelectState>());
+        if (loadSave)
+        {
+            SaveManager tempSave;
+            if (tempSave.loadGame())
+            {
+                GameConfig config;
+                config.player1Character = static_cast<CharacterType>(tempSave.getSavedP1Char());
+                config.player2Character = static_cast<CharacterType>(tempSave.getSavedP2Char());
+                config.mode = static_cast<GameMode>(tempSave.getSavedMode());
+                manager->changeState(std::make_unique<PlayState>(config, m_settings, loadSave));
+            }
+        }
+        else
+        {
+            manager->changeState(std::make_unique<CharacterSelectState>(m_settings, loadSave));
+        }
     }
 }

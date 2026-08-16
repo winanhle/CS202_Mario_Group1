@@ -1,14 +1,17 @@
 #include "Game.h"
 #include "../states/MenuState.h"
+#include "../ui/SettingsManager.h"
 
 Game::Game()
     : m_window(std::make_unique<sf::RenderWindow>(
         sf::VideoMode({ 800u, 600u }),
         "Mario"
     ))
+    , m_settings(std::make_shared<SettingsManager>())
 {
+    m_settings->initialize();
     m_window->setFramerateLimit(static_cast<unsigned int>(FRAME_RATE));
-    m_stateManager.changeState(std::make_unique<MenuState>());
+    m_stateManager.changeState(std::make_unique<MenuState>(m_settings));
 }
 
 void Game::run()
