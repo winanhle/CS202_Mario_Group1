@@ -61,3 +61,24 @@ void Item::setPosition(const sf::Vector2f& pos)
     m_position = pos;
     m_sprite.setPosition(m_position);
 }
+
+void Item::applyGravity(float dt)
+{
+    m_velocity.y += m_gravity * dt;
+
+    if (m_velocity.y > m_maxFallSpeed)
+        m_velocity.y = m_maxFallSpeed;
+}
+
+void Item::move(float dt)
+{
+    m_velocity.x = m_moveSpeed * static_cast<float>(m_direction);
+
+    m_position += m_velocity * dt;
+    m_sprite.setPosition(m_position);
+}
+
+void Item::reverseDirection()
+{
+    m_direction *= -1;
+}

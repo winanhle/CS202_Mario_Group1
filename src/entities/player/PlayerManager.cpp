@@ -3,15 +3,19 @@
 #include "input/Command.h"
 #include "input/PlayerInputHandler.h"
 #include "../../interfaces/ISettingsManager.h"
+#include "forms/FireForm.h"
+#include "../../entities/map/MapManager.h"
 
 PlayerManager::PlayerManager()
-    : m_score(0), m_lives(3), m_isAlive(true),
+    : m_score(0), m_isAlive(true), 
       m_positionX(100.0f), m_positionY(150.0f),
-      m_velocityX(0), m_velocityY(0),
+      m_spawnX(100.0f),    m_spawnY(150.0f),
+      m_velocityX(0),      m_velocityY(0),
       m_playerSprite(m_playerTexture)
 {
     // Key bindings are built in initialize() from ISettingsManager
     // (or defaults) so settings-menu rebinds take effect.
+    // KeyBinding can also be set from outside via setKeyBinding() before the game loop.
 }
 
 void PlayerManager::initialize(ISettingsManager* settings)
@@ -24,8 +28,8 @@ void PlayerManager::initialize(ISettingsManager* settings)
     setupStats();
     m_currentHealth = m_maxHealth;
 
-    if (!m_playerTexture.loadFromFile("assets/texture/hero/mario.png")) {
-        throw std::runtime_error("Failed to load mario sprite sheet.");
+    if (!m_playerTexture.loadFromFile(getTexturePath())) {
+        throw std::runtime_error("Failed to load player sprite sheet: " + getTexturePath());
     }
     m_playerSprite.setTexture(m_playerTexture);
 
@@ -36,6 +40,14 @@ void PlayerManager::initialize(ISettingsManager* settings)
     m_playerSprite.setTextureRect(m_currentForm->getWalkFrame1());
     m_playerSprite.setOrigin({m_playerSize.x / 2.f, m_playerSize.y / 2.f});
     m_isInitialized = true;
+
+    if (m_fireballManager)
+        m_fireballManager->initialize();
+}
+
+void PlayerManager::setKeyBinding(const KeyBinding& keys)
+{
+    m_inputHandler = std::make_unique<PlayerInputHandler>(keys);
 }
 
 void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
@@ -43,9 +55,9 @@ void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
     KeyBinding keys;
 
     // Get primary keys from settings (or defaults)
-    keys.jump1st  = settings ? settings->getKey(GameAction::Jump)      : sf::Keyboard::Key::Space;
-    keys.left1st  = settings ? settings->getKey(GameAction::MoveLeft)  : sf::Keyboard::Key::A;
-    keys.right1st = settings ? settings->getKey(GameAction::MoveRight) : sf::Keyboard::Key::D;
+    keys.jump1st  = settings ? settings->getKey(GameAction::P1Jump)      : sf::Keyboard::Key::Space;
+    keys.left1st  = settings ? settings->getKey(GameAction::P1MoveLeft)  : sf::Keyboard::Key::A;
+    keys.right1st = settings ? settings->getKey(GameAction::P1MoveRight) : sf::Keyboard::Key::D;
 
     // Default fallbacks (WASD + Arrow keys) are active only if the action is at its default setting.
     // Once the user customizes an action's key in Settings, secondary fallbacks for that action are disabled.
@@ -63,21 +75,21 @@ void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
     // Conflict guard: Clear any secondary/tertiary key if it conflicts with ANY primary key of another action
     auto isConflictWithPrimary = [&](sf::Keyboard::Key k, GameAction ownAction) {
         if (k == sf::Keyboard::Key::Unknown) return false;
-        if (ownAction != GameAction::Jump && k == keys.jump1st) return true;
-        if (ownAction != GameAction::MoveLeft && k == keys.left1st) return true;
-        if (ownAction != GameAction::MoveRight && k == keys.right1st) return true;
+        if (ownAction != GameAction::P1Jump && k == keys.jump1st) return true;
+        if (ownAction != GameAction::P1MoveLeft && k == keys.left1st) return true;
+        if (ownAction != GameAction::P1MoveRight && k == keys.right1st) return true;
         return false;
     };
 
-    if (isConflictWithPrimary(keys.jump2nd, GameAction::Jump) || keys.jump2nd == keys.jump1st)
+    if (isConflictWithPrimary(keys.jump2nd, GameAction::P1Jump) || keys.jump2nd == keys.jump1st)
         keys.jump2nd = sf::Keyboard::Key::Unknown;
-    if (isConflictWithPrimary(keys.jump3rd, GameAction::Jump) || keys.jump3rd == keys.jump1st || keys.jump3rd == keys.jump2nd)
+    if (isConflictWithPrimary(keys.jump3rd, GameAction::P1Jump) || keys.jump3rd == keys.jump1st || keys.jump3rd == keys.jump2nd)
         keys.jump3rd = sf::Keyboard::Key::Unknown;
 
-    if (isConflictWithPrimary(keys.left2nd, GameAction::MoveLeft) || keys.left2nd == keys.left1st)
+    if (isConflictWithPrimary(keys.left2nd, GameAction::P1MoveLeft) || keys.left2nd == keys.left1st)
         keys.left2nd = sf::Keyboard::Key::Unknown;
 
-    if (isConflictWithPrimary(keys.right2nd, GameAction::MoveRight) || keys.right2nd == keys.right1st)
+    if (isConflictWithPrimary(keys.right2nd, GameAction::P1MoveRight) || keys.right2nd == keys.right1st)
         keys.right2nd = sf::Keyboard::Key::Unknown;
 
     m_inputHandler = std::make_unique<PlayerInputHandler>(keys);
@@ -106,15 +118,17 @@ void PlayerManager::updateAnimation(float deltaTime)
     m_playerSprite.setTextureRect(currentRect);
     m_playerSprite.setOrigin({(float)currentRect.size.x / 2.f, (float)currentRect.size.y / 2.f});
 
-    if (m_velocityX < 0.f) {
+    if (m_facingDirection < 0) {
         m_playerSprite.setScale({-1.f, 1.f});
-    } else if (m_velocityX > 0.f) {
+    } else if (m_facingDirection > 0) {
         m_playerSprite.setScale({1.f, 1.f});
     }
 }
 
 void PlayerManager::update(float deltaTime)
 {
+    if (!m_isAlive) return;
+
     // Tick down invincibility i-frames
     if (m_isInvincible) {
         m_invincibilityTimer -= deltaTime;
@@ -131,6 +145,13 @@ void PlayerManager::update(float deltaTime)
 
     m_velocityY += m_gravity * deltaTime;
 
+    // Tick cooldown của form hiện tại (FireForm → shoot cooldown)
+    if (m_currentForm)
+        m_currentForm->update(deltaTime);
+
+    if (m_fireballManager)
+        m_fireballManager->update(deltaTime);
+
     tileCollisionX(deltaTime);
     tileCollisionY(deltaTime);
 
@@ -143,7 +164,7 @@ void PlayerManager::update(float deltaTime)
 }
 
 void PlayerManager::handleInput(const sf::Event& event) {
-    if (!m_inputHandler) return;
+    if (!m_isAlive || !m_inputHandler) return;
 
     Command* command = m_inputHandler->handleEvent(event);
     if (command) {
@@ -153,7 +174,10 @@ void PlayerManager::handleInput(const sf::Event& event) {
 
 void PlayerManager::render(sf::RenderWindow& window) const
 {
+    if (!m_isAlive) return;
     window.draw(m_playerSprite);
+    if (m_fireballManager)
+        m_fireballManager->render(window);
 }
 
 void PlayerManager::setForm(std::unique_ptr<IPlayerForm> newForm)
@@ -183,20 +207,16 @@ int PlayerManager::getScore() const
     return m_score;
 }
 
-int PlayerManager::getLives() const
-{
-    return m_lives;
-}
 
 void PlayerManager::restoreState(int score, int lives, float posX, float posY)
 {
     m_score = score;
-    m_lives = lives;
+    // m_lives = lives; // Managed by GameWorld
+    (void)lives;
     m_positionX = posX;
     m_positionY = posY;
     m_isAlive = true;
 }
-
 float PlayerManager::getPositionX() const
 {
     return m_positionX;
@@ -208,13 +228,62 @@ float PlayerManager::getPositionY() const
 }
 
 // ==================== COMMAND PATTERN ====================
-void JumpCommand::execute(PlayerManager& player) { player.jump(); }
-void StopJumpCommand::execute(PlayerManager& player) { player.stopJump(); }
-void MoveLeftCommand::execute(PlayerManager& player) { player.moveLeft(); }
-void MoveRightCommand::execute(PlayerManager& player) { player.moveRight(); }
-void StopHorizontalCommand::execute(PlayerManager& player) { player.stopHorizontal(); }
+void JumpCommand::execute(PlayerManager& player)          { player.jump(); }
+void StopJumpCommand::execute(PlayerManager& player)      { player.stopJump(); }
+void MoveLeftCommand::execute(PlayerManager& player)      { player.moveLeft(); }
+void MoveRightCommand::execute(PlayerManager& player)     { player.moveRight(); }
+void StopHorizontalCommand::execute(PlayerManager& player){ player.stopHorizontal(); }
+void ShootCommand::execute(PlayerManager& player)         { player.shoot(); }
 
-// ==================== EDGE CASES ====================
+// ==================== DEPENDENCY INJECTION ====================
+
+void PlayerManager::setMapManager(IMapManager* map)
+{
+    m_mapManager = map;
+    if (m_fireballManager)
+        m_fireballManager->setMapManager(map);
+}
+
+// ==================== DIE / FORM-TYPE ====================
+
+void PlayerManager::die()
+{
+    m_isAlive = false;
+}
+
+FormType PlayerManager::getFormType() const
+{
+    if (dynamic_cast<FireForm*>(m_currentForm.get()))  return FormType::Fire;
+    if (dynamic_cast<SuperForm*>(m_currentForm.get())) return FormType::Super;
+    return FormType::Normal;
+}
+
+void PlayerManager::setFireballEnemyTarget(IEnemyManager* enemies)
+{
+    if (m_fireballManager)
+        m_fireballManager->setEnemyManager(enemies);
+}
+
+// ==================== SHOOT ====================
+
+void PlayerManager::shoot()
+{
+    // Chỉ bắn nếu đang là FireForm VÀ cooldown đã xong
+    if (auto* ff = dynamic_cast<FireForm*>(m_currentForm.get()))
+    {
+        if (ff->canShoot() && m_fireballManager)
+        {
+            // Bắn theo hướng nhìn của player (đã được flip sprite)
+            int dir = m_facingDirection;
+            float spawnX = m_positionX + m_playerSize.x / 2.f;
+            float spawnY = m_positionY + m_playerSize.y / 2.f;
+            m_fireballManager->spawnFireball(spawnX, spawnY, dir);
+            ff->triggerShootCooldown();
+        }
+    }
+}
+
+// ==================== MOVEMENT ====================
 
 void PlayerManager::jump() {
     if (m_isGrounded) {
@@ -231,9 +300,9 @@ void PlayerManager::stopJump() {
     }
 }
 
-void PlayerManager::moveLeft() { m_velocityX = -m_maxSpeed; }
-void PlayerManager::moveRight() { m_velocityX = m_maxSpeed; }
-void PlayerManager::stopHorizontal() { m_velocityX = 0; }
+void PlayerManager::moveLeft()       { m_facingDirection = -1; m_velocityX = -m_maxSpeed; }
+void PlayerManager::moveRight()      { m_facingDirection =  1; m_velocityX =  m_maxSpeed; }
+void PlayerManager::stopHorizontal() { m_velocityX =  0; }
 
 // ==================== HITBOX ====================
 
@@ -248,20 +317,34 @@ void PlayerManager::tileCollisionX(float deltaTime) {
     float tileSize = static_cast<float>(m_mapManager->getTileSize());
     float newX = m_positionX + m_velocityX * deltaTime;
 
-    float left = newX;
-    float right = newX + m_playerSize.x - 0.01f;
-    float top = m_positionY;
+    float left   = newX;
+    float right  = newX + m_playerSize.x - 0.01f;
+    float top    = m_positionY;
     float bottom = m_positionY + m_playerSize.y - 0.01f;
 
-    int gridX_min = static_cast<int>(left / tileSize);
-    int gridX_max = static_cast<int>(right / tileSize);
-    int gridY_min = static_cast<int>(top / tileSize);
+    int gridX_min = static_cast<int>(left   / tileSize);
+    int gridX_max = static_cast<int>(right  / tileSize);
+    int gridY_min = static_cast<int>(top    / tileSize);
     int gridY_max = static_cast<int>(bottom / tileSize);
 
     bool collided = false;
     for (int gy = gridY_min; gy <= gridY_max; ++gy) {
         for (int gx = gridX_min; gx <= gridX_max; ++gx) {
-            if (m_mapManager->isSolid(gx * tileSize + 1.0f, gy * tileSize + 1.0f)) {
+            float probeX = gx * tileSize + 1.0f;
+            float probeY = gy * tileSize + 1.0f;
+
+            // Check DEATH_ZONE on the side
+            MapManager* mm = dynamic_cast<MapManager*>(m_mapManager);
+            if (mm) {
+                TileType sideType = mm->getTileType(probeX, probeY);
+                if (sideType == TileType::DEATH_ZONE) {
+                    die();
+                    m_positionX = newX;
+                    return;
+                }
+            }
+
+            if (m_mapManager->isSolid(probeX, probeY)) {
                 if (m_velocityX > 0) {
                     newX = gx * tileSize - m_playerSize.x;
                 } else if (m_velocityX < 0) {
@@ -282,85 +365,113 @@ void PlayerManager::tileCollisionY(float deltaTime) {
     float tileSize = static_cast<float>(m_mapManager->getTileSize());
     float newY = m_positionY + m_velocityY * deltaTime;
 
-    m_isGrounded = false; 
+    m_isGrounded = false;
 
-    float left = m_positionX;
-    float right = m_positionX + m_playerSize.x - 0.01f;
-    float top = newY;
+    float left   = m_positionX;
+    float right  = m_positionX + m_playerSize.x - 0.01f;
+    float top    = newY;
     float bottom = newY + m_playerSize.y - 0.01f;
 
-    int gridX_min = static_cast<int>(left / tileSize);
-    int gridX_max = static_cast<int>(right / tileSize);
-    int gridY_min = static_cast<int>(top / tileSize);
+    int gridX_min = static_cast<int>(left   / tileSize);
+    int gridX_max = static_cast<int>(right  / tileSize);
+    int gridY_min = static_cast<int>(top    / tileSize);
     int gridY_max = static_cast<int>(bottom / tileSize);
 
     bool collided = false;
     for (int gy = gridY_min; gy <= gridY_max; ++gy) {
         for (int gx = gridX_min; gx <= gridX_max; ++gx) {
-            if (m_mapManager->isSolid(gx * tileSize + 1.0f, gy * tileSize + 1.0f)) {
-                if (m_velocityY > 0) {
+            float probeX = gx * tileSize + 1.0f;
+            float probeY = gy * tileSize + 1.0f;
+
+            if (m_velocityY > 0) {
+                // ── Falling → chỉ va chạm khi tile solid bình thường (HIDDEN xuyên qua) ──
+                if (m_mapManager->isSolid(probeX, probeY)) {
                     newY = gy * tileSize - m_playerSize.y;
                     m_isGrounded = true;
-                } else if (m_velocityY < 0) {
-                    newY = (gy + 1) * tileSize;
+                    m_velocityY = 0;
+                    collided = true;
+                    break;
                 }
-                m_velocityY = 0;
-                collided = true;
-                break;
+            } else if (m_velocityY < 0) {
+                // ── Đi lên → đập underside (HIDDEN_BLOCK chỉ bump được ở đây) ─────────────
+                if (m_mapManager->isSolidFromBelow(probeX, probeY)) {
+                    newY = (gy + 1) * tileSize;
+                    // Fire tile interaction
+                    m_mapManager->onHitFromBelow(gx, gy, static_cast<int>(getFormType()));
+                    m_velocityY = 0;
+                    collided = true;
+                    break;
+                }
             }
         }
         if (collided) break;
     }
     m_positionY = newY;
+
+    // ── DEATH_ZONE scan: any tile overlapping player's body kills instantly ──
+    {
+        MapManager* mm = dynamic_cast<MapManager*>(m_mapManager);
+        if (mm && m_isAlive) {
+            // Sample the four corners of the final hitbox
+            float r = m_positionX + m_playerSize.x - 0.01f;
+            float b = m_positionY + m_playerSize.y - 0.01f;
+            float cx = m_positionX + m_playerSize.x * 0.5f;
+            const float checkPoints[4][2] = {
+                { m_positionX + 1.f, m_positionY + 1.f },
+                { r, m_positionY + 1.f },
+                { m_positionX + 1.f, b },
+                { r, b }
+            };
+            for (auto& pt : checkPoints) {
+                TileType t = mm->getTileType(pt[0], pt[1]);
+                if (t == TileType::DEATH_ZONE) {
+                    die();
+                    break;
+                }
+            }
+        }
+    }
 }
 
 // ==================== BEHAVIOR ====================
 
 void PlayerManager::resetToStart()
 {
-    // Return to spawn position and clear momentum
-    m_positionX = 100.0f;
-    m_positionY = 150.0f;
+    m_positionX = m_spawnX;
+    m_positionY = m_spawnY;
     m_velocityX = 0.f;
     m_velocityY = 0.f;
     m_isGrounded = false;
 }
 
+void PlayerManager::respawn()
+{
+    resetToStart();
+    m_isAlive    = true;
+    m_isInvincible      = true;
+    m_invincibilityTimer = INVINCIBILITY_DURATION;
+}
+
 void PlayerManager::takeDamage()
 {
-    if (m_isInvincible)
-        return;
+    if (m_isInvincible) return;
 
-    // Try to demote form first (Fire→Super, Super→Normal)
+    // Cố gắng demote form (Fire→Super, Super→Normal)
     if (auto newForm = m_currentForm->takeDamage())
     {
         setForm(std::move(newForm));
-        // Grant i-frames after form demotion
-        m_isInvincible = true;
+        m_isInvincible       = true;
         m_invincibilityTimer = INVINCIBILITY_DURATION;
     }
     else
     {
-        // Already in NormalForm — lose a life
-        --m_lives;
-        if (m_lives <= 0)
-        {
-            // No lives left — signal game over
-            m_lives = 0;
-            m_isAlive = false;
-        }
-        else
-        {
-            // Respawn: keep NormalForm, reset position, grant i-frames
-            resetToStart();
-            m_isInvincible = true;
-            m_invincibilityTimer = INVINCIBILITY_DURATION;
-        }
+        // NormalForm → chết, GameWorld sẽ xử lý shared lives
+        m_isAlive = false;
     }
 }
 
 void PlayerManager::bounce() {
-    m_velocityY = m_jumpVelocity * 0.7f;
+    m_velocityY  = m_jumpVelocity * 0.7f;
     m_isGrounded = false;
 }
 

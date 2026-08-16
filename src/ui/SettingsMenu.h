@@ -81,7 +81,7 @@ private:
 
     void setupText(sf::Text& text, const std::string& str,
                    unsigned int size, sf::Color color) const;
-    void moveSelection(int direction);
+    void moveSelection(int dx, int dy);
     Request activateSelected();
     Request goBack();
     void buildScreens();
@@ -95,6 +95,7 @@ private:
     std::vector<sf::FloatRect> computeItemRects() const;
     std::string itemDisplayText(const MenuItem& item) const;
     const std::vector<MenuItem>* currentItems() const;
+    sf::Vector2f getItemPosition(int index) const;
 
     // Convert a mouse position from window pixels into the 800x600 view
     // space used by the menu layout (the window may be resized/maximized,
@@ -103,7 +104,7 @@ private:
 
     // Shared layout constants (used by render and hit-testing)
     static constexpr float ITEM_CENTER_X = 400.0f;
-    static constexpr float ITEM_START_Y = 280.0f;
+    static constexpr float ITEM_START_Y = 200.0f;
     static constexpr float ITEM_SPACING = 55.0f;
 
     ISettingsManager& m_settings;

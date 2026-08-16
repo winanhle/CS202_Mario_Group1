@@ -1,12 +1,22 @@
 #pragma once
 #include "IPlayerForm.h"
 
+/**
+ * @class SuperForm
+ * @brief Dạng lớn (sau khi ăn Mushroom).
+ */
 class SuperForm : public IPlayerForm {
+    FormFrames                  m_frames;
+    const CharacterFormOffsets* m_offsets;
 public:
-    sf::IntRect getWalkFrame1() const override { return {{1, 31}, {15, 26}}; }
-    sf::IntRect getWalkFrame2() const override { return {{18, 31}, {15, 26}}; }
-    sf::IntRect getJumpFrame() const override  { return {{52, 31}, {15, 26}}; }
-    sf::Vector2f getHitboxSize() const override { return {15.f, 26.f}; }
+    explicit SuperForm(const CharacterFormOffsets& offsets)
+        : m_frames(offsets.superForm), m_offsets(&offsets) {}
+
+    sf::IntRect  getWalkFrame1() const override { return m_frames.walkFrame1; }
+    sf::IntRect  getWalkFrame2() const override { return m_frames.walkFrame2; }
+    sf::IntRect  getJumpFrame()  const override { return m_frames.jumpFrame;  }
+    sf::Vector2f getHitboxSize() const override { return m_frames.hitboxSize; }
+
     std::unique_ptr<IPlayerForm> takeDamage() const override;
     std::unique_ptr<IPlayerForm> evolve(PowerUpType type) const override;
 };

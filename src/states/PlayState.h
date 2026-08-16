@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../core/GameState.h"
+#include "../core/GameConfig.h"
 #include <memory>
 
 namespace sf {
@@ -14,20 +15,25 @@ class ISettingsManager;
 /**
  * @class PlayState
  * @brief Main gameplay state
- * 
+ *
  * PlayState owns and coordinates the GameWorld.
  * It delegates all game logic to GameWorld and its modules.
- * 
+ *
+ * Nhận GameConfig từ ModeSelectState để biết:
+ *   - Nhân vật Player 1 (Mario / Luigi)
+ *   - Nhân vật Player 2 (chỉ dùng ở 2P mode)
+ *   - Chế độ chơi (SinglePlayer / TwoPlayer)
+ *
  * Quynh Anh (Architect) maintains this class.
- * Other developers should NOT modify this file.
- * 
- * PlayState is the bridge between StateManager (game flow)
- * and GameWorld (actual gameplay systems).
  */
 class PlayState : public GameState
 {
 public:
-    explicit PlayState(std::shared_ptr<ISettingsManager> settings, bool loadSave = false);
+    /** Khởi tạo với config từ màn hình lựa chọn */
+    explicit PlayState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, bool loadSave = false);
+
+    /** Constructor mặc định: 1P, Mario (dùng để quick-test) */
+    PlayState();
     ~PlayState() override;
 
     void handleInput(const sf::Event& event) override;
@@ -37,5 +43,7 @@ public:
 private:
     std::unique_ptr<GameWorld> m_gameWorld;
     std::shared_ptr<ISettingsManager> m_settings;
+    GameConfig m_config;
     bool m_loadSave;
+    void setup(const GameConfig& config);
 };

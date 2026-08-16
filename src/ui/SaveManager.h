@@ -30,6 +30,11 @@ public:
     float getSavedPosX() const override;
     float getSavedPosY() const override;
 
+    void setGameConfig(int p1Char, int p2Char, int mode) override;
+    int getSavedP1Char() const override;
+    int getSavedP2Char() const override;
+    int getSavedMode() const override;
+
     // Static so any state (e.g. MenuState) can check for a save file
     // without owning a SaveManager instance.
     static bool saveFileExists();
@@ -46,4 +51,8 @@ private:
     int m_savedLives;
     float m_savedPosX;
     float m_savedPosY;
+
+    int m_savedP1Char = 0;
+    int m_savedP2Char = 1;
+    int m_savedMode = 0;
 };

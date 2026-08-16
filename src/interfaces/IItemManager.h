@@ -1,5 +1,5 @@
 #pragma once
-
+#include "IMapManager.h"
 class IPlayerManager;
 
 namespace sf {
@@ -48,4 +48,31 @@ public:
 
     // ─── NHẬN DEPENDENCY ───
     virtual void setPlayerManager(IPlayerManager* player) = 0;
+
+    /**
+     * @brief Gán Player 2 (chỉ trong chế độ 2P).
+     *        Item sẽ check collision với cả 2 player qua abstract interface.
+     */
+    virtual void setPlayerManager2(IPlayerManager* player) = 0;
+
+    // ─── SPAWN API (called by MapManager on tile interactions) ───
+
+    /**
+     * @brief Spawn a coin-pop animation at the given world position
+     *        and immediately award the player 1 coin via collectCoin(1).
+     * @param worldX  Pixel X of the tile's left edge
+     * @param worldY  Pixel Y of the tile's top edge
+     */
+    virtual void spawnCoinPop(float worldX, float worldY) = 0;
+
+    /**
+     * @brief Spawn a Mushroom item above the given world position.
+     */
+    virtual void spawnMushroom(float worldX, float worldY) = 0;
+
+    /**
+     * @brief Spawn a FireFlower item above the given world position.
+     */
+    virtual void spawnFireFlower(float worldX, float worldY) = 0;
+    virtual void setMapManager(IMapManager* map) = 0;
 };

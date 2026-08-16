@@ -13,7 +13,9 @@ protected:
 
     sf::Vector2f m_velocity{0.f, 0.f}; // Movement
     float m_moveSpeed = 40.f;
-
+    float m_gravity = 800.f;
+    float m_maxFallSpeed = 400.f;
+    
     int m_direction = -1; // -1 = left, 1 = right
 
 public:
@@ -32,8 +34,19 @@ public:
 
     sf::FloatRect getHitbox() const;
     
+    void applyGravity(float dt);
     void move(float dt);
     void reverseDirection();
+
+    sf::Vector2f getVelocity() const
+    {
+        return m_velocity;
+    }
+
+    void setVelocityY(float y)
+    {
+        m_velocity.y = y;
+    }
 
     void setMoveSpeed(float speed)
     {
@@ -48,5 +61,10 @@ public:
     bool isDead() const
     {
         return m_dead;
+    }
+
+    void setPositionY(float y) {
+        auto position = m_sprite.getPosition();
+        m_sprite.setPosition({position.x, y});
     }
 };

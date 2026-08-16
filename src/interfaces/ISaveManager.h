@@ -68,4 +68,10 @@ public:
      * @brief Get the saved Y position (valid after loadGame())
      */
     virtual float getSavedPosY() const = 0;
+
+    // --- GAME CONFIG ---
+    virtual void setGameConfig(int p1Char, int p2Char, int mode) = 0;
+    virtual int getSavedP1Char() const = 0;
+    virtual int getSavedP2Char() const = 0;
+    virtual int getSavedMode() const = 0;
 };

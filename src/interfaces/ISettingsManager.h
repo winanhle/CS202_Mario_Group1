@@ -13,9 +13,14 @@
  */
 enum class GameAction
 {
-    Jump,
-    MoveLeft,
-    MoveRight,
+    P1Jump,
+    P1MoveLeft,
+    P1MoveRight,
+    P1Shoot,
+    P2Jump,
+    P2MoveLeft,
+    P2MoveRight,
+    P2Shoot,
     Count // number of actions, must stay last
 };
 

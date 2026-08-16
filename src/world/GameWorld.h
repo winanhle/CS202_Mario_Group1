@@ -20,24 +20,14 @@ class Event;
 /**
  * @class GameWorld
  * @brief Central coordinator for all game modules
- * 
+ *
  * GameWorld acts as the mediator/facade that coordinates all major systems.
  * It provides extension points for each module without requiring them to know about each other.
- * 
+ *
  * Ownership:
- * - Owns all manager instances (Player, Enemy, Item, HUD, SaveManager)
+ * - Owns all manager instances (Player 1 & 2, Enemy, Item, HUD, SaveManager)
+ * - Owns shared lives pool (m_sharedLives) for both 1P and 2P modes
  * - Provides controlled access to each system
- * 
- * Dependencies:
- * - Depends on module interfaces (IPlayerManager, IEnemyManager, etc.)
- * - Does NOT depend on concrete implementations (injected via setters)
- * 
- * Extension Points:
- * - setPlayerManager() - for Player module integration
- * - setEnemyManager() - for Enemy module integration
- * - setItemManager() - for Item module integration
- * - setHUDManager() - for UI module integration
- * - setSaveManager() - for SaveManager module integration
  */
 class GameWorld
 {
@@ -74,54 +64,38 @@ public:
     void handleInput(const sf::Event& event);
 
     /**
-     * @brief Returns true when the player has no lives remaining.
-     * PlayState polls this after update() to decide whether to push GameOverState.
+     * @brief Returns true when shared lives pool is exhausted.
      */
     bool isGameOver() const;
+
+    /**
+     * @brief Returns combined score of all active players.
+     */
+    int getTotalScore() const;
+
+    /**
+     * @brief Returns current shared lives count.
+     */
+    int getSharedLives() const;
 
     // ─── sau initialize, inject dependency ───
     void injectDependencies();
 
     // ==================== EXTENSION POINTS ====================
-    // Module setters - called during initialization
-    // Each module is optional and can be nullptr
 
     void setMapManager(std::shared_ptr<IMapManager> mapManager);
     IMapManager* getMapManager();
 
-    /**
-     * @brief Set the player manager implementation
-     * EXTENSION POINT: Le Tran - Character/Player module
-     */
+    /** Player 1 (hoặc player duy nhất ở chế độ 1P) */
     void setPlayerManager(std::shared_ptr<IPlayerManager> playerManager);
 
-    /**
-     * @brief Set the enemy manager implementation
-     * EXTENSION POINT: Dinh Anh - Enemy module
-     */
+    /** Player 2 – chỉ set ở chế độ 2P */
+    void setPlayerManager2(std::shared_ptr<IPlayerManager> playerManager2);
+
     void setEnemyManager(std::shared_ptr<IEnemyManager> enemyManager);
-
-    /**
-     * @brief Set the item manager implementation
-     * EXTENSION POINT: Dinh Anh - Item module
-     */
     void setItemManager(std::shared_ptr<IItemManager> itemManager);
-
-    /**
-     * @brief Set the HUD manager implementation
-     * EXTENSION POINT: Nguyen Phuc - UI/HUD module
-     */
     void setHUDManager(std::shared_ptr<IHUDManager> hudManager);
-
-    /**
-     * @brief Set the save manager implementation
-     * EXTENSION POINT: Nguyen Phuc - SaveManager module
-     */
     void setSaveManager(std::shared_ptr<ISaveManager> saveManager);
-
-    /**
-     * @brief Set the camera manager implementation
-     */
     void setCameraManager(std::shared_ptr<ICameraManager> cameraManager);
 
     /**
@@ -131,54 +105,38 @@ public:
     void setSettings(std::shared_ptr<ISettingsManager> settings);
 
     // ==================== ACCESSORS ====================
-    // Provide read-only access to modules for inter-module communication
 
-    /**
-     * @brief Get the player manager
-     * Used by other systems that need to query player state
-     */
     IPlayerManager* getPlayerManager();
-
-    /**
-     * @brief Get the enemy manager
-     * Used by collision detection, UI, etc.
-     */
-    IEnemyManager* getEnemyManager();
-
-    /**
-     * @brief Get the item manager
-     * Used by collision detection, player, etc.
-     */
-    IItemManager* getItemManager();
-
-    /**
-     * @brief Get the HUD manager
-     * Used to update displayed information
-     */
-    IHUDManager* getHUDManager();
-
-    /**
-     * @brief Get the save manager
-     * Used for save/load operations
-     */
-    ISaveManager* getSaveManager();
-
-    /**
-     * @brief Get the camera manager
-     */
+    IPlayerManager* getPlayerManager2();
+    IEnemyManager*  getEnemyManager();
+    IItemManager*   getItemManager();
+    IHUDManager*    getHUDManager();
+    ISaveManager*   getSaveManager();
     ICameraManager* getCameraManager();
 
 private:
-    // Module manager instances (all optional)
-    std::shared_ptr<IMapManager> m_mapManager;
+    // --- Module manager instances ---
+    std::shared_ptr<IMapManager>    m_mapManager;
     std::shared_ptr<IPlayerManager> m_playerManager;
-    std::shared_ptr<IEnemyManager> m_enemyManager;
-    std::shared_ptr<IItemManager> m_itemManager;
-    std::shared_ptr<IHUDManager> m_hudManager;
-    std::shared_ptr<ISaveManager> m_saveManager;
+    std::shared_ptr<IPlayerManager> m_playerManager2; // null trong 1P mode
+    std::shared_ptr<IEnemyManager>  m_enemyManager;
+    std::shared_ptr<IItemManager>   m_itemManager;
+    std::shared_ptr<IHUDManager>    m_hudManager;
+    std::shared_ptr<ISaveManager>   m_saveManager;
     std::shared_ptr<ICameraManager> m_cameraManager;
     std::shared_ptr<ISettingsManager> m_settings;
 
-    // Internal state
-    bool m_isInitialized;
+    // --- Shared lives pool (1P & 2P) ---
+    static constexpr int INITIAL_LIVES = 3;
+    int  m_sharedLives  = INITIAL_LIVES;
+    bool m_isGameOver   = false;
+    bool m_isInitialized = false;
+
+    /**
+     * @brief Kiểm tra điều kiện "round death" và xử lý respawn / game over.
+     *
+     * 1P:  player1 chết → trừ 1 shared live → respawn nếu còn live.
+     * 2P:  cả 2 player đều chết → trừ 1 shared live → respawn cả 2 nếu còn live.
+     */
+    void checkAndHandleDeath();
 };

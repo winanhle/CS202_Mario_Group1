@@ -4,9 +4,13 @@ PlayerInputHandler::PlayerInputHandler(const KeyBinding& keys) : m_keys(keys) {}
 
 Command* PlayerInputHandler::handleEvent(const sf::Event& event) {
     if (const auto* keyEvent = event.getIf<sf::Event::KeyPressed>()) {
-        if (keyEvent->code != sf::Keyboard::Key::Unknown &&
-           (keyEvent->code == m_keys.jump1st || keyEvent->code == m_keys.jump2nd || keyEvent->code == m_keys.jump3rd)) {
-            return &m_jumpCommand;
+        if (keyEvent->code != sf::Keyboard::Key::Unknown) {
+            if (keyEvent->code == m_keys.shoot) {
+                return &m_shootCommand;
+            }
+            if (keyEvent->code == m_keys.jump1st || keyEvent->code == m_keys.jump2nd || keyEvent->code == m_keys.jump3rd) {
+                return &m_jumpCommand;
+            }
         }
     }
     else if (const auto* keyReleased = event.getIf<sf::Event::KeyReleased>()) {

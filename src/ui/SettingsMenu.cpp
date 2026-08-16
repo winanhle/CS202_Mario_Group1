@@ -6,7 +6,7 @@ SettingsMenu::SettingsMenu(ISettingsManager& settings, bool pauseContext)
     , m_pauseContext(pauseContext)
     , m_screen(pauseContext ? Screen::Root : Screen::Settings)
     , m_selectedIndex(0)
-    , m_rebindingAction(GameAction::Jump)
+    , m_rebindingAction(GameAction::P1Jump)
     , m_fontLoaded(false)
 {
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
@@ -20,18 +20,23 @@ void SettingsMenu::buildScreens()
 
     if (m_pauseContext)
     {
-        m_rootItems.push_back({ "RESUME", ItemKind::Activate, GameAction::Jump, Request::Resume });
-        m_rootItems.push_back({ "SETTINGS", ItemKind::Activate, GameAction::Jump, Request::None });
-        m_rootItems.push_back({ "SAVE & QUIT", ItemKind::Activate, GameAction::Jump, Request::SaveAndQuit });
-        m_rootItems.push_back({ "QUIT TO MENU", ItemKind::Activate, GameAction::Jump, Request::QuitToMenu });
+        m_rootItems.push_back({ "RESUME", ItemKind::Activate, GameAction::P1Jump, Request::Resume });
+        m_rootItems.push_back({ "SETTINGS", ItemKind::Activate, GameAction::P1Jump, Request::None });
+        m_rootItems.push_back({ "SAVE & QUIT", ItemKind::Activate, GameAction::P1Jump, Request::SaveAndQuit });
+        m_rootItems.push_back({ "QUIT TO MENU", ItemKind::Activate, GameAction::P1Jump, Request::QuitToMenu });
     }
 
-    m_settingsItems.push_back({ "VOLUME", ItemKind::Slider, GameAction::Jump, Request::None });
-    m_settingsItems.push_back({ "JUMP", ItemKind::Rebind, GameAction::Jump, Request::None });
-    m_settingsItems.push_back({ "MOVE LEFT", ItemKind::Rebind, GameAction::MoveLeft, Request::None });
-    m_settingsItems.push_back({ "MOVE RIGHT", ItemKind::Rebind, GameAction::MoveRight, Request::None });
-    m_settingsItems.push_back({ "RESET TO DEFAULTS", ItemKind::Activate, GameAction::Jump, Request::None });
-    m_settingsItems.push_back({ "BACK", ItemKind::Activate, GameAction::Jump, Request::None });
+    m_settingsItems.push_back({ "VOLUME", ItemKind::Slider, GameAction::P1Jump, Request::None });
+    m_settingsItems.push_back({ "P1 JUMP", ItemKind::Rebind, GameAction::P1Jump, Request::None });
+    m_settingsItems.push_back({ "P1 LEFT", ItemKind::Rebind, GameAction::P1MoveLeft, Request::None });
+    m_settingsItems.push_back({ "P1 RIGHT", ItemKind::Rebind, GameAction::P1MoveRight, Request::None });
+    m_settingsItems.push_back({ "P1 SHOOT", ItemKind::Rebind, GameAction::P1Shoot, Request::None });
+    m_settingsItems.push_back({ "P2 JUMP", ItemKind::Rebind, GameAction::P2Jump, Request::None });
+    m_settingsItems.push_back({ "P2 LEFT", ItemKind::Rebind, GameAction::P2MoveLeft, Request::None });
+    m_settingsItems.push_back({ "P2 RIGHT", ItemKind::Rebind, GameAction::P2MoveRight, Request::None });
+    m_settingsItems.push_back({ "P2 SHOOT", ItemKind::Rebind, GameAction::P2Shoot, Request::None });
+    m_settingsItems.push_back({ "RESET TO DEFAULTS", ItemKind::Activate, GameAction::P1Jump, Request::None });
+    m_settingsItems.push_back({ "BACK", ItemKind::Activate, GameAction::P1Jump, Request::None });
 }
 
 void SettingsMenu::openRoot()
@@ -70,9 +75,14 @@ std::string SettingsMenu::actionLabel(GameAction action) const
 {
     switch (action)
     {
-    case GameAction::Jump: return "JUMP";
-    case GameAction::MoveLeft: return "MOVE LEFT";
-    case GameAction::MoveRight: return "MOVE RIGHT";
+    case GameAction::P1Jump: return "P1 JUMP";
+    case GameAction::P1MoveLeft: return "P1 MOVE LEFT";
+    case GameAction::P1MoveRight: return "P1 MOVE RIGHT";
+    case GameAction::P1Shoot: return "P1 SHOOT";
+    case GameAction::P2Jump: return "P2 JUMP";
+    case GameAction::P2MoveLeft: return "P2 MOVE LEFT";
+    case GameAction::P2MoveRight: return "P2 MOVE RIGHT";
+    case GameAction::P2Shoot: return "P2 SHOOT";
     default: return "?";
     }
 }
@@ -104,6 +114,23 @@ std::string SettingsMenu::itemDisplayText(const MenuItem& item) const
     return text;
 }
 
+sf::Vector2f SettingsMenu::getItemPosition(int i) const
+{
+    if (m_screen == Screen::Root)
+    {
+        return { ITEM_CENTER_X, ITEM_START_Y + i * ITEM_SPACING };
+    }
+    else if (m_screen == Screen::Settings)
+    {
+        if (i == 0) return { ITEM_CENTER_X, ITEM_START_Y }; // Volume
+        if (i >= 1 && i <= 4) return { ITEM_CENTER_X - 180.0f, ITEM_START_Y + i * ITEM_SPACING }; // P1
+        if (i >= 5 && i <= 8) return { ITEM_CENTER_X + 180.0f, ITEM_START_Y + (i - 4) * ITEM_SPACING }; // P2
+        if (i == 9) return { ITEM_CENTER_X, ITEM_START_Y + 5 * ITEM_SPACING }; // Reset
+        if (i == 10) return { ITEM_CENTER_X, ITEM_START_Y + 6 * ITEM_SPACING }; // Back
+    }
+    return { ITEM_CENTER_X, ITEM_START_Y };
+}
+
 std::vector<sf::FloatRect> SettingsMenu::computeItemRects() const
 {
     std::vector<sf::FloatRect> rects;
@@ -119,10 +146,12 @@ std::vector<sf::FloatRect> SettingsMenu::computeItemRects() const
         sf::FloatRect bounds = itemText.getLocalBounds();
         itemText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
                              bounds.position.y + bounds.size.y / 2.0f });
-        itemText.setPosition({ ITEM_CENTER_X, ITEM_START_Y + i * ITEM_SPACING });
+        sf::Vector2f pos = getItemPosition(i);
+        itemText.setPosition(pos);
 
         sf::Vector2f topLeft = itemText.getPosition() - itemText.getOrigin();
-        topLeft.y = ITEM_START_Y + i * ITEM_SPACING - ITEM_SPACING / 2.0f;
+        // The hitbox height is ITEM_SPACING, centered on the text Y
+        topLeft.y = pos.y - ITEM_SPACING / 2.0f;
         rects.push_back(sf::FloatRect(topLeft, { bounds.size.x, ITEM_SPACING }));
     }
     return rects;
@@ -236,10 +265,10 @@ SettingsMenu::Request SettingsMenu::handleInput(const sf::Event& event)
     switch (keyEvent->code)
     {
     case sf::Keyboard::Key::Up:
-        moveSelection(-1);
+        moveSelection(0, -1);
         break;
     case sf::Keyboard::Key::Down:
-        moveSelection(1);
+        moveSelection(0, 1);
         break;
     case sf::Keyboard::Key::Left:
         if (m_screen == Screen::Settings && m_selectedIndex == 0)
@@ -247,12 +276,20 @@ SettingsMenu::Request SettingsMenu::handleInput(const sf::Event& event)
             m_settings.setVolume(m_settings.getVolume() - 5.0f);
             m_settings.save();
         }
+        else
+        {
+            moveSelection(-1, 0);
+        }
         break;
     case sf::Keyboard::Key::Right:
         if (m_screen == Screen::Settings && m_selectedIndex == 0)
         {
             m_settings.setVolume(m_settings.getVolume() + 5.0f);
             m_settings.save();
+        }
+        else
+        {
+            moveSelection(1, 0);
         }
         break;
     case sf::Keyboard::Key::Enter:
@@ -265,17 +302,47 @@ SettingsMenu::Request SettingsMenu::handleInput(const sf::Event& event)
     return Request::None;
 }
 
-void SettingsMenu::moveSelection(int direction)
+void SettingsMenu::moveSelection(int dx, int dy)
 {
     const std::vector<MenuItem>* items = currentItems();
     if (!items || items->empty())
         return;
 
-    m_selectedIndex += direction;
-    if (m_selectedIndex < 0)
-        m_selectedIndex = static_cast<int>(items->size()) - 1;
-    if (m_selectedIndex >= static_cast<int>(items->size()))
-        m_selectedIndex = 0;
+    int n = static_cast<int>(items->size());
+
+    if (m_screen != Screen::Settings)
+    {
+        if (dy != 0)
+        {
+            m_selectedIndex += dy;
+            if (m_selectedIndex < 0) m_selectedIndex = n - 1;
+            if (m_selectedIndex >= n) m_selectedIndex = 0;
+        }
+        return;
+    }
+
+    // 2D Spatial Navigation for Settings Screen
+    if (dy == -1) // Up
+    {
+        if (m_selectedIndex == 0) m_selectedIndex = 10; // Vol -> Back
+        else if (m_selectedIndex >= 1 && m_selectedIndex <= 4) m_selectedIndex = (m_selectedIndex == 1) ? 0 : m_selectedIndex - 1;
+        else if (m_selectedIndex >= 5 && m_selectedIndex <= 8) m_selectedIndex = (m_selectedIndex == 5) ? 0 : m_selectedIndex - 1;
+        else if (m_selectedIndex == 9) m_selectedIndex = 4; // Reset -> P1 Shoot
+        else if (m_selectedIndex == 10) m_selectedIndex = 9; // Back -> Reset
+    }
+    else if (dy == 1) // Down
+    {
+        if (m_selectedIndex == 0) m_selectedIndex = 1; // Vol -> P1 Jump
+        else if (m_selectedIndex >= 1 && m_selectedIndex <= 4) m_selectedIndex = (m_selectedIndex == 4) ? 9 : m_selectedIndex + 1;
+        else if (m_selectedIndex >= 5 && m_selectedIndex <= 8) m_selectedIndex = (m_selectedIndex == 8) ? 9 : m_selectedIndex + 1;
+        else if (m_selectedIndex == 9) m_selectedIndex = 10; // Reset -> Back
+        else if (m_selectedIndex == 10) m_selectedIndex = 0; // Back -> Vol
+    }
+    else if (dx == -1 || dx == 1) // Left or Right
+    {
+        if (m_selectedIndex >= 1 && m_selectedIndex <= 4) m_selectedIndex += 4;
+        else if (m_selectedIndex >= 5 && m_selectedIndex <= 8) m_selectedIndex -= 4;
+    }
 }
 
 SettingsMenu::Request SettingsMenu::activateSelected()
@@ -417,7 +484,7 @@ void SettingsMenu::render(sf::RenderWindow& window) const
         sf::FloatRect bounds = itemText.getLocalBounds();
         itemText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
                              bounds.position.y + bounds.size.y / 2.0f });
-        itemText.setPosition({ ITEM_CENTER_X, ITEM_START_Y + i * ITEM_SPACING });
+        itemText.setPosition(getItemPosition(i));
         window.draw(itemText);
     }
 }

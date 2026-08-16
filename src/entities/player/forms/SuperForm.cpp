@@ -3,11 +3,11 @@
 #include "FireForm.h"
 
 std::unique_ptr<IPlayerForm> SuperForm::takeDamage() const {
-    return std::make_unique<NormalForm>();
+    return std::make_unique<NormalForm>(*m_offsets);
 }
 
 std::unique_ptr<IPlayerForm> SuperForm::evolve(PowerUpType type) const {
     if (type == PowerUpType::FireFlower)
-        return std::make_unique<FireForm>();
+        return std::make_unique<FireForm>(*m_offsets);
     return nullptr;
 }

@@ -17,7 +17,8 @@ class EnemyManager : public IEnemyManager
     IPlayerManager* m_player = nullptr;
     IMapManager* m_mapManager = nullptr;
     std::vector<std::unique_ptr<Enemy>> m_enemies;
-    sf::Texture m_goombaTexture;
+    std::array<sf::Texture, 2> m_goombaTextures;
+    sf::Texture m_goombaDeadTexture;
 public:
     EnemyManager();
     ~EnemyManager() override = default;
@@ -31,4 +32,6 @@ public:
     void setPlayerManager(IPlayerManager* player) override { m_player = player; }
 
     void setMapManager(IMapManager* map) override { m_mapManager = map; }
+
+    bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox) override;
 };

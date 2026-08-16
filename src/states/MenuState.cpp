@@ -1,7 +1,9 @@
 #include "MenuState.h"
-#include "PlayState.h"
+#include "CharacterSelectState.h"
 #include "../core/StateManager.h"
+#include "../core/GameConfig.h"
 #include "../ui/SaveManager.h"
+#include "PlayState.h"
 #include <SFML/Graphics.hpp>
 
 MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
@@ -167,6 +169,21 @@ void MenuState::startGame(bool loadSave)
     auto* manager = getStateManager();
     if (manager)
     {
-        manager->changeState(std::make_unique<PlayState>(m_settings, loadSave));
+        if (loadSave)
+        {
+            SaveManager tempSave;
+            if (tempSave.loadGame())
+            {
+                GameConfig config;
+                config.player1Character = static_cast<CharacterType>(tempSave.getSavedP1Char());
+                config.player2Character = static_cast<CharacterType>(tempSave.getSavedP2Char());
+                config.mode = static_cast<GameMode>(tempSave.getSavedMode());
+                manager->changeState(std::make_unique<PlayState>(config, m_settings, loadSave));
+            }
+        }
+        else
+        {
+            manager->changeState(std::make_unique<CharacterSelectState>(m_settings, loadSave));
+        }
     }
 }

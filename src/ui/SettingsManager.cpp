@@ -11,10 +11,16 @@ SettingsManager::SettingsManager()
 void SettingsManager::resetToDefault()
 {
     m_volume = 100.0f;
-    // Default key bindings (match PlayerManager's current hardcoded keys)
-    m_keys[static_cast<int>(GameAction::Jump)] = sf::Keyboard::Key::Space;
-    m_keys[static_cast<int>(GameAction::MoveLeft)] = sf::Keyboard::Key::A;
-    m_keys[static_cast<int>(GameAction::MoveRight)] = sf::Keyboard::Key::D;
+    // Default key bindings (P1 uses WASD+F, P2 uses Arrows+Period)
+    m_keys[static_cast<int>(GameAction::P1Jump)] = sf::Keyboard::Key::Space;
+    m_keys[static_cast<int>(GameAction::P1MoveLeft)] = sf::Keyboard::Key::A;
+    m_keys[static_cast<int>(GameAction::P1MoveRight)] = sf::Keyboard::Key::D;
+    m_keys[static_cast<int>(GameAction::P1Shoot)] = sf::Keyboard::Key::F;
+    
+    m_keys[static_cast<int>(GameAction::P2Jump)] = sf::Keyboard::Key::Up;
+    m_keys[static_cast<int>(GameAction::P2MoveLeft)] = sf::Keyboard::Key::Left;
+    m_keys[static_cast<int>(GameAction::P2MoveRight)] = sf::Keyboard::Key::Right;
+    m_keys[static_cast<int>(GameAction::P2Shoot)] = sf::Keyboard::Key::Period;
 }
 
 void SettingsManager::initialize()
@@ -40,20 +46,37 @@ void SettingsManager::initialize()
             {
                 m_volume = std::stof(value);
             }
-            else if (key == "jump")
+            else if (key == "p1Jump")
             {
-                m_keys[static_cast<int>(GameAction::Jump)] =
-                    static_cast<sf::Keyboard::Key>(std::stoi(value));
+                m_keys[static_cast<int>(GameAction::P1Jump)] = static_cast<sf::Keyboard::Key>(std::stoi(value));
             }
-            else if (key == "moveLeft")
+            else if (key == "p1MoveLeft")
             {
-                m_keys[static_cast<int>(GameAction::MoveLeft)] =
-                    static_cast<sf::Keyboard::Key>(std::stoi(value));
+                m_keys[static_cast<int>(GameAction::P1MoveLeft)] = static_cast<sf::Keyboard::Key>(std::stoi(value));
             }
-            else if (key == "moveRight")
+            else if (key == "p1MoveRight")
             {
-                m_keys[static_cast<int>(GameAction::MoveRight)] =
-                    static_cast<sf::Keyboard::Key>(std::stoi(value));
+                m_keys[static_cast<int>(GameAction::P1MoveRight)] = static_cast<sf::Keyboard::Key>(std::stoi(value));
+            }
+            else if (key == "p1Shoot")
+            {
+                m_keys[static_cast<int>(GameAction::P1Shoot)] = static_cast<sf::Keyboard::Key>(std::stoi(value));
+            }
+            else if (key == "p2Jump")
+            {
+                m_keys[static_cast<int>(GameAction::P2Jump)] = static_cast<sf::Keyboard::Key>(std::stoi(value));
+            }
+            else if (key == "p2MoveLeft")
+            {
+                m_keys[static_cast<int>(GameAction::P2MoveLeft)] = static_cast<sf::Keyboard::Key>(std::stoi(value));
+            }
+            else if (key == "p2MoveRight")
+            {
+                m_keys[static_cast<int>(GameAction::P2MoveRight)] = static_cast<sf::Keyboard::Key>(std::stoi(value));
+            }
+            else if (key == "p2Shoot")
+            {
+                m_keys[static_cast<int>(GameAction::P2Shoot)] = static_cast<sf::Keyboard::Key>(std::stoi(value));
             }
         }
         catch (const std::exception& e)
@@ -123,9 +146,15 @@ void SettingsManager::save()
     // Keys are stored as their SFML enum integer value so they round-trip
     // reliably across keyboard layouts.
     file << "volume=" << static_cast<int>(m_volume) << "\n";
-    file << "jump=" << static_cast<int>(m_keys[static_cast<int>(GameAction::Jump)]) << "\n";
-    file << "moveLeft=" << static_cast<int>(m_keys[static_cast<int>(GameAction::MoveLeft)]) << "\n";
-    file << "moveRight=" << static_cast<int>(m_keys[static_cast<int>(GameAction::MoveRight)]) << "\n";
+    file << "p1Jump=" << static_cast<int>(m_keys[static_cast<int>(GameAction::P1Jump)]) << "\n";
+    file << "p1MoveLeft=" << static_cast<int>(m_keys[static_cast<int>(GameAction::P1MoveLeft)]) << "\n";
+    file << "p1MoveRight=" << static_cast<int>(m_keys[static_cast<int>(GameAction::P1MoveRight)]) << "\n";
+    file << "p1Shoot=" << static_cast<int>(m_keys[static_cast<int>(GameAction::P1Shoot)]) << "\n";
+    
+    file << "p2Jump=" << static_cast<int>(m_keys[static_cast<int>(GameAction::P2Jump)]) << "\n";
+    file << "p2MoveLeft=" << static_cast<int>(m_keys[static_cast<int>(GameAction::P2MoveLeft)]) << "\n";
+    file << "p2MoveRight=" << static_cast<int>(m_keys[static_cast<int>(GameAction::P2MoveRight)]) << "\n";
+    file << "p2Shoot=" << static_cast<int>(m_keys[static_cast<int>(GameAction::P2Shoot)]) << "\n";
 
     file.close();
     std::cout << "[SettingsManager] Settings saved to " << getSettingsFilePath() << std::endl;
