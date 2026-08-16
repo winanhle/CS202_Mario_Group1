@@ -261,11 +261,22 @@ void GameWorld::setMapManager(std::shared_ptr<IMapManager> mapManager)
 void GameWorld::setPlayerManager(std::shared_ptr<IPlayerManager> playerManager)
 {
     m_playerManager = playerManager;
+    if (m_playerManager) {
+        m_playerManager->setPlayerIndex(1);
+        m_playerManager->setTwoPlayerMode(m_playerManager2 != nullptr);
+    }
 }
 
 void GameWorld::setPlayerManager2(std::shared_ptr<IPlayerManager> playerManager2)
 {
     m_playerManager2 = playerManager2;
+    if (m_playerManager2) {
+        m_playerManager2->setPlayerIndex(2);
+        m_playerManager2->setTwoPlayerMode(true);
+    }
+    if (m_playerManager) {
+        m_playerManager->setTwoPlayerMode(m_playerManager2 != nullptr);
+    }
 }
 
 void GameWorld::setEnemyManager(std::shared_ptr<IEnemyManager> enemyManager)

@@ -45,6 +45,16 @@ void PlayerManager::initialize(ISettingsManager* settings)
         m_fireballManager->initialize();
 }
 
+void PlayerManager::setPlayerIndex(int index)
+{
+    m_playerIndex = index;
+}
+
+void PlayerManager::setTwoPlayerMode(bool isTwoPlayer)
+{
+    m_isTwoPlayerMode = isTwoPlayer;
+}
+
 void PlayerManager::setKeyBinding(const KeyBinding& keys)
 {
     m_inputHandler = std::make_unique<PlayerInputHandler>(keys);
@@ -54,43 +64,64 @@ void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
 {
     KeyBinding keys;
 
-    // Get primary keys from settings (or defaults)
-    keys.jump1st  = settings ? settings->getKey(GameAction::P1Jump)      : sf::Keyboard::Key::Space;
-    keys.left1st  = settings ? settings->getKey(GameAction::P1MoveLeft)  : sf::Keyboard::Key::A;
-    keys.right1st = settings ? settings->getKey(GameAction::P1MoveRight) : sf::Keyboard::Key::D;
+    if (m_playerIndex == 1)
+    {
+        // Player 1 strictly uses P1 keybindings (default: Space, A, D, F)
+        keys.jump1st  = settings ? settings->getKey(GameAction::P1Jump)      : sf::Keyboard::Key::Space;
+        keys.left1st  = settings ? settings->getKey(GameAction::P1MoveLeft)  : sf::Keyboard::Key::A;
+        keys.right1st = settings ? settings->getKey(GameAction::P1MoveRight) : sf::Keyboard::Key::D;
+        keys.shoot    = settings ? settings->getKey(GameAction::P1Shoot)     : sf::Keyboard::Key::F;
 
-    // Default fallbacks (WASD + Arrow keys) are active only if the action is at its default setting.
-    // Once the user customizes an action's key in Settings, secondary fallbacks for that action are disabled.
-    if (keys.jump1st == sf::Keyboard::Key::Space) {
-        keys.jump2nd = sf::Keyboard::Key::W;
-        keys.jump3rd = sf::Keyboard::Key::Up;
+        // Default jump keys: both Space (primary) and W (secondary) work by default in both 1P and 2P modes.
+        // If the player customizes P1 Jump in Settings (e.g. to J, K, etc.), the W fallback is disabled.
+        if (keys.jump1st == sf::Keyboard::Key::Space) {
+            keys.jump2nd = sf::Keyboard::Key::W;
+        }
+
+        // Arrow key fallbacks for P1 are active ONLY in single-player mode.
+        // In 2-Player mode, Player 1 must NOT capture Arrow keys since they belong to Player 2.
+        if (!m_isTwoPlayerMode)
+        {
+            if (keys.jump1st == sf::Keyboard::Key::Space) {
+                keys.jump3rd = sf::Keyboard::Key::Up;
+            }
+            if (keys.left1st == sf::Keyboard::Key::A) {
+                keys.left2nd = sf::Keyboard::Key::Left;
+            }
+            if (keys.right1st == sf::Keyboard::Key::D) {
+                keys.right2nd = sf::Keyboard::Key::Right;
+            }
+        }
+
+        // Conflict guard: Clear any secondary/tertiary key if it conflicts with ANY primary key of another action
+        auto isConflictWithPrimary = [&](sf::Keyboard::Key k, GameAction ownAction) {
+            if (k == sf::Keyboard::Key::Unknown) return false;
+            if (ownAction != GameAction::P1Jump && k == keys.jump1st) return true;
+            if (ownAction != GameAction::P1MoveLeft && k == keys.left1st) return true;
+            if (ownAction != GameAction::P1MoveRight && k == keys.right1st) return true;
+            if (k == keys.shoot) return true;
+            return false;
+        };
+
+        if (isConflictWithPrimary(keys.jump2nd, GameAction::P1Jump) || keys.jump2nd == keys.jump1st)
+            keys.jump2nd = sf::Keyboard::Key::Unknown;
+        if (isConflictWithPrimary(keys.jump3rd, GameAction::P1Jump) || keys.jump3rd == keys.jump1st || keys.jump3rd == keys.jump2nd)
+            keys.jump3rd = sf::Keyboard::Key::Unknown;
+
+        if (isConflictWithPrimary(keys.left2nd, GameAction::P1MoveLeft) || keys.left2nd == keys.left1st)
+            keys.left2nd = sf::Keyboard::Key::Unknown;
+
+        if (isConflictWithPrimary(keys.right2nd, GameAction::P1MoveRight) || keys.right2nd == keys.right1st)
+            keys.right2nd = sf::Keyboard::Key::Unknown;
     }
-    if (keys.left1st == sf::Keyboard::Key::A) {
-        keys.left2nd = sf::Keyboard::Key::Left;
+    else if (m_playerIndex == 2)
+    {
+        // Player 2 strictly uses P2 keybindings (default: Up, Left, Right, Period)
+        keys.jump1st  = settings ? settings->getKey(GameAction::P2Jump)      : sf::Keyboard::Key::Up;
+        keys.left1st  = settings ? settings->getKey(GameAction::P2MoveLeft)  : sf::Keyboard::Key::Left;
+        keys.right1st = settings ? settings->getKey(GameAction::P2MoveRight) : sf::Keyboard::Key::Right;
+        keys.shoot    = settings ? settings->getKey(GameAction::P2Shoot)     : sf::Keyboard::Key::Period;
     }
-    if (keys.right1st == sf::Keyboard::Key::D) {
-        keys.right2nd = sf::Keyboard::Key::Right;
-    }
-
-    // Conflict guard: Clear any secondary/tertiary key if it conflicts with ANY primary key of another action
-    auto isConflictWithPrimary = [&](sf::Keyboard::Key k, GameAction ownAction) {
-        if (k == sf::Keyboard::Key::Unknown) return false;
-        if (ownAction != GameAction::P1Jump && k == keys.jump1st) return true;
-        if (ownAction != GameAction::P1MoveLeft && k == keys.left1st) return true;
-        if (ownAction != GameAction::P1MoveRight && k == keys.right1st) return true;
-        return false;
-    };
-
-    if (isConflictWithPrimary(keys.jump2nd, GameAction::P1Jump) || keys.jump2nd == keys.jump1st)
-        keys.jump2nd = sf::Keyboard::Key::Unknown;
-    if (isConflictWithPrimary(keys.jump3rd, GameAction::P1Jump) || keys.jump3rd == keys.jump1st || keys.jump3rd == keys.jump2nd)
-        keys.jump3rd = sf::Keyboard::Key::Unknown;
-
-    if (isConflictWithPrimary(keys.left2nd, GameAction::P1MoveLeft) || keys.left2nd == keys.left1st)
-        keys.left2nd = sf::Keyboard::Key::Unknown;
-
-    if (isConflictWithPrimary(keys.right2nd, GameAction::P1MoveRight) || keys.right2nd == keys.right1st)
-        keys.right2nd = sf::Keyboard::Key::Unknown;
 
     m_inputHandler = std::make_unique<PlayerInputHandler>(keys);
 }

@@ -26,7 +26,8 @@ class PauseState : public GameState
 public:
     explicit PauseState(std::shared_ptr<ISettingsManager> settings,
                         ISaveManager* saveManager,
-                        IPlayerManager* player);
+                        IPlayerManager* player1,
+                        IPlayerManager* player2 = nullptr);
     ~PauseState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -38,6 +39,7 @@ private:
 
     std::shared_ptr<ISettingsManager> m_settings;
     ISaveManager* m_saveManager; // non-owning; owned by GameWorld
-    IPlayerManager* m_player;     // non-owning; owned by GameWorld
+    IPlayerManager* m_player1;   // non-owning; owned by GameWorld
+    IPlayerManager* m_player2;   // non-owning; owned by GameWorld
     SettingsMenu m_menu;
 };

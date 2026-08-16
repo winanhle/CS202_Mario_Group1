@@ -47,6 +47,8 @@ protected:
     bool  m_isGrounded;
     bool  m_isJumping;
     int   m_facingDirection = 1; // 1 = phải, -1 = trái — hướng nhìn, giữ nguyên khi đứng yên
+    int   m_playerIndex = 1;     // 1 = P1, 2 = P2
+    bool  m_isTwoPlayerMode = false;
 
     // --- PATTERNS ---
     std::unique_ptr<PlayerInputHandler> m_inputHandler;
@@ -83,6 +85,8 @@ public:
     ~PlayerManager() override = default;
 
     void initialize(ISettingsManager* settings = nullptr) override;
+    void setPlayerIndex(int index) override;
+    void setTwoPlayerMode(bool isTwoPlayer) override;
     void update(float deltaTime) override;
     void render(sf::RenderWindow& window) const override;
     void handleInput(const sf::Event& event) override;

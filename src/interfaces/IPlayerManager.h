@@ -46,6 +46,8 @@ public:
      *        hardcoded defaults
      */
     virtual void initialize(ISettingsManager* settings = nullptr) = 0;
+    virtual void setPlayerIndex(int index) { (void)index; }
+    virtual void setTwoPlayerMode(bool isTwoPlayer) { (void)isTwoPlayer; }
 
     /**
      * @brief Update player logic
