@@ -56,35 +56,9 @@ void ItemManager::initialize()
             "assets/texture/item/Star.PNG"))
         throw std::runtime_error("Failed to load Star.PNG");
 
-    std::array<sf::Texture*, 4> coinFrames{
-        &m_coinTextures[0],
-        &m_coinTextures[1],
-        &m_coinTextures[2],
-        &m_coinTextures[3]
-    };
-
-    std::array<sf::Texture*, 4> flowerFrames{
-        &m_fireFlowerTextures[0],
-        &m_fireFlowerTextures[1],
-        &m_fireFlowerTextures[2],
-        &m_fireFlowerTextures[3]
-    };
-
-    m_items.push_back(
-        std::make_unique<Coin>(
-            120.f,
-            160.f,
-            coinFrames
-        )
-    );
-
-    m_items.push_back(
-        std::make_unique<Star>(
-            400.f,
-            160.f,
-            m_starTexture
-        )
-    );
+    // NOTE: no items are placed here anymore. Textures above are just
+    // preloaded so spawnCoinPop()/spawnMushroom()/spawnFireFlower() (called
+    // by MapManager when a brick/? block is hit) can use them instantly.
 }
 
 void ItemManager::update(float deltaTime)
@@ -178,6 +152,9 @@ void ItemManager::update(float deltaTime)
 
             // Stop falling
             item->setVelocityY(0.f);
+
+            // Let the item react to landing (e.g. Star bounces back up)
+            item->onLanded();
         }
 
         // Check player-item collision
@@ -244,5 +221,12 @@ void ItemManager::spawnFireFlower(float worldX, float worldY)
     };
     m_items.push_back(
         std::make_unique<FireFlower>(worldX, worldY, flowerFrames)
+    );
+}
+
+void ItemManager::spawnStar(float worldX, float worldY)
+{
+    m_items.push_back(
+        std::make_unique<Star>(worldX, worldY, m_starTexture)
     );
 }

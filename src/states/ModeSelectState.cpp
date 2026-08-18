@@ -12,10 +12,12 @@ static const sf::Color MS_CARD_SEL  = sf::Color(60, 160,  60, 230);
 static const sf::Color MS_OUT_SEL   = sf::Color(130, 230, 130);
 static const sf::Color MS_OUT_IDLE  = sf::Color(40,  90,  40);
 
-ModeSelectState::ModeSelectState(const GameConfig& config)
+ModeSelectState::ModeSelectState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, bool loadSave)
     : m_config(config)
     , m_selectedIndex(0)
     , m_fontLoaded(false)
+    , m_settings(std::move(settings))
+    , m_loadSave(loadSave)
 {
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
 
@@ -134,7 +136,7 @@ void ModeSelectState::handleInput(const sf::Event& event)
 
         case sf::Keyboard::Key::Escape:
             if (auto* mgr = getStateManager())
-                mgr->changeState(std::make_unique<CharacterSelectState>());
+                mgr->changeState(std::make_unique<CharacterSelectState>(m_settings, m_loadSave));
             break;
 
         default:
@@ -150,7 +152,7 @@ void ModeSelectState::confirm()
         : GameMode::TwoPlayer;
 
     if (auto* mgr = getStateManager())
-        mgr->changeState(std::make_unique<PlayState>(m_config));
+        mgr->changeState(std::make_unique<PlayState>(m_config, m_settings, m_loadSave));
 }
 
 void ModeSelectState::update(float deltaTime)

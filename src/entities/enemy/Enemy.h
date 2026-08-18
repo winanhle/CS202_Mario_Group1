@@ -18,6 +18,8 @@ protected:
     
     int m_direction = -1; // -1 = left, 1 = right
 
+    bool m_playerOverlapping[2] = { false, false }; // see wasPlayerOverlapping()/setPlayerOverlapping()
+
 public:
     Enemy(float x,
           float y,
@@ -37,6 +39,17 @@ public:
     void applyGravity(float dt);
     void move(float dt);
     void reverseDirection();
+
+    void setSpriteTexture(sf::Texture& texture)
+    {
+        sf::FloatRect oldBounds = m_sprite.getGlobalBounds();
+        m_sprite.setTexture(texture, true);
+        sf::FloatRect newBounds = m_sprite.getGlobalBounds();
+
+        float widthDiff = newBounds.size.x - oldBounds.size.x;
+        float heightDiff = newBounds.size.y - oldBounds.size.y;
+        m_sprite.move({-widthDiff / 2.f, -heightDiff});
+    }
 
     sf::Vector2f getVelocity() const
     {
@@ -61,6 +74,16 @@ public:
     bool isDead() const
     {
         return m_dead;
+    }
+
+    bool wasPlayerOverlapping(int playerIndex) const
+    {
+        return m_playerOverlapping[playerIndex];
+    }
+
+    void setPlayerOverlapping(int playerIndex, bool overlapping)
+    {
+        m_playerOverlapping[playerIndex] = overlapping;
     }
 
     void setPositionY(float y) {

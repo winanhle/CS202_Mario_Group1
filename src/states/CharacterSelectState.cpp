@@ -12,10 +12,12 @@ static const sf::Color CARD_SEL  = sf::Color(80, 120, 220, 230);
 static const sf::Color OUTLINE_SEL = sf::Color(160, 200, 255);
 static const sf::Color OUTLINE_IDLE = sf::Color(60,  60, 140);
 
-CharacterSelectState::CharacterSelectState()
+CharacterSelectState::CharacterSelectState(std::shared_ptr<ISettingsManager> settings, bool loadSave)
     : m_selectedIndex(0)
     , m_fontLoaded(false)
     , m_preview{sf::Sprite(m_marioTexture), sf::Sprite(m_luigiTexture)}
+    , m_settings(std::move(settings))
+    , m_loadSave(loadSave)
 {
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
 
@@ -160,7 +162,7 @@ void CharacterSelectState::confirm()
         : CharacterType::Mario;
 
     if (auto* mgr = getStateManager())
-        mgr->changeState(std::make_unique<ModeSelectState>(m_config));
+        mgr->changeState(std::make_unique<ModeSelectState>(m_config, m_settings, m_loadSave));
 }
 
 void CharacterSelectState::update(float deltaTime)

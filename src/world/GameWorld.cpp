@@ -24,10 +24,10 @@ void GameWorld::initialize()
         m_mapManager->initialize();
 
     if (m_playerManager)
-        m_playerManager->initialize();
+        m_playerManager->initialize(m_settings.get());
 
     if (m_playerManager2)
-        m_playerManager2->initialize();
+        m_playerManager2->initialize(m_settings.get());
 
     if (m_enemyManager)
         m_enemyManager->initialize();
@@ -84,9 +84,8 @@ void GameWorld::update(float deltaTime)
         // Lives: shared pool
         m_hudManager->updateLives(m_sharedLives);
 
-        if (m_enemyManager)
-            m_hudManager->updateEnemyCount(m_enemyManager->getEnemyCount());
-
+        if (m_itemManager)
+            m_hudManager->updateItemCount(m_itemManager->getItemCount());
         m_hudManager->update(deltaTime);
     }
 
@@ -187,6 +186,8 @@ void GameWorld::handleInput(const sf::Event& event)
 
 bool GameWorld::isGameOver() const
 {
+    if (m_hudManager && m_hudManager->isTimeUp())
+        return true;
     return m_isGameOver;
 }
 
@@ -218,6 +219,7 @@ void GameWorld::injectDependencies()
     if (m_enemyManager) {
         m_enemyManager->setPlayerManager(m_playerManager.get());
         m_enemyManager->setMapManager(m_mapManager.get());
+        m_enemyManager->setPlayerManager2(m_playerManager2.get());
     }
 
     // FireballManager ← EnemyManager (để cầu lửa có thể tiêu diệt enemy)
@@ -259,11 +261,22 @@ void GameWorld::setMapManager(std::shared_ptr<IMapManager> mapManager)
 void GameWorld::setPlayerManager(std::shared_ptr<IPlayerManager> playerManager)
 {
     m_playerManager = playerManager;
+    if (m_playerManager) {
+        m_playerManager->setPlayerIndex(1);
+        m_playerManager->setTwoPlayerMode(m_playerManager2 != nullptr);
+    }
 }
 
 void GameWorld::setPlayerManager2(std::shared_ptr<IPlayerManager> playerManager2)
 {
     m_playerManager2 = playerManager2;
+    if (m_playerManager2) {
+        m_playerManager2->setPlayerIndex(2);
+        m_playerManager2->setTwoPlayerMode(true);
+    }
+    if (m_playerManager) {
+        m_playerManager->setTwoPlayerMode(m_playerManager2 != nullptr);
+    }
 }
 
 void GameWorld::setEnemyManager(std::shared_ptr<IEnemyManager> enemyManager)
@@ -289,6 +302,11 @@ void GameWorld::setSaveManager(std::shared_ptr<ISaveManager> saveManager)
 void GameWorld::setCameraManager(std::shared_ptr<ICameraManager> cameraManager)
 {
     m_cameraManager = cameraManager;
+}
+
+void GameWorld::setSettings(std::shared_ptr<ISettingsManager> settings)
+{
+    m_settings = std::move(settings);
 }
 
 // ==================== ACCESSORS ====================

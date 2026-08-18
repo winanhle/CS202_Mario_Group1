@@ -13,7 +13,11 @@ private:
     std::size_t m_currentFrame = 0;
     float m_animationTimer = 0.f;
 
+    bool m_squished = false;
+    float m_deathTimer = 0.f;
+
     static constexpr float FRAME_DURATION = 0.15f;
+    static constexpr float DEATH_DISPLAY_DURATION = 0.6f; // seconds to show the squished sprite before it vanishes
 
 public:
     Goomba(
@@ -30,7 +34,14 @@ public:
 
     void update(float deltaTime) override
     {
-        if (isDead()) return;
+        if (m_squished)
+        {
+            // Corpse stays visible and inert while this counts down.
+            m_deathTimer -= deltaTime;
+            if (m_deathTimer <= 0.f)
+                m_dead = true; // now render()/EnemyManager treat it as fully gone
+            return;
+        }
 
         m_animationTimer += deltaTime;
 
@@ -38,19 +49,27 @@ public:
         {
             m_animationTimer -= FRAME_DURATION;
             m_currentFrame = (m_currentFrame + 1) % m_walkFrames.size();
-            m_sprite.setTexture(*m_walkFrames[m_currentFrame], true);
+            setSpriteTexture(*m_walkFrames[m_currentFrame]);
         }
     }
 
     void onPlayerCollision(IPlayerManager* player) override
     {
-        if (!player)return;
+        // A squished corpse can't hurt the player anymore
+        if (!player || m_squished)
+            return;
+
         player->takeDamage();
     }
 
     void onStomp() override
     {
-        m_dead = true;
-        if (m_deadTexture) m_sprite.setTexture(*m_deadTexture, true);
+        if (m_squished)
+            return; // already stomped/killed, ignore repeat hits (e.g. a fireball)
+
+        m_squished = true;
+        m_deathTimer = DEATH_DISPLAY_DURATION;
+        m_moveSpeed = 0.f; // stop walking, but EnemyManager keeps calling update() so this timer still runs
+        if (m_deadTexture) setSpriteTexture(*m_deadTexture);
     }
 };

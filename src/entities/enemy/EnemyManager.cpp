@@ -1,5 +1,7 @@
 #include "EnemyManager.h"
 #include "enemies/Goomba.h"
+#include "enemies/BuzzyBeetle.h"
+#include "enemies/KoopaTroopa.h"
 #include "../../interfaces/IPlayerManager.h"
 #include <SFML/Graphics.hpp>
 
@@ -20,6 +22,44 @@ void EnemyManager::initialize() {
     }
     std::array<sf::Texture*, 2> goombaFrames{&m_goombaTextures[0], &m_goombaTextures[1]};
     m_enemies.push_back(std::make_unique<Goomba>(300.f, 100.f, goombaFrames, m_goombaDeadTexture));
+
+    static constexpr std::array<const char*, 5> buzzyBeetlePaths{
+        "assets/texture/enemy/BuzzyBeetle1.PNG",
+        "assets/texture/enemy/BuzzyBeetle2.PNG",
+        "assets/texture/enemy/BuzzyBeetle3.PNG",
+        "assets/texture/enemy/BuzzyBeetle4.PNG",
+        "assets/texture/enemy/BuzzyBeetle5.PNG"
+    };
+    for (size_t i = 0; i < buzzyBeetlePaths.size(); ++i)
+    {
+        if (!m_buzzyBeetleTextures[i].loadFromFile(buzzyBeetlePaths[i]))
+            throw std::runtime_error(std::string("Failed to load ") + buzzyBeetlePaths[i]);
+    }
+
+    std::array<sf::Texture*, 2> buzzyLeftFrames{&m_buzzyBeetleTextures[0], &m_buzzyBeetleTextures[1]};
+    std::array<sf::Texture*, 2> buzzyRightFrames{&m_buzzyBeetleTextures[3], &m_buzzyBeetleTextures[4]};
+    m_enemies.push_back(std::make_unique<BuzzyBeetle>(
+        400.f, 100.f, buzzyLeftFrames, buzzyRightFrames, m_buzzyBeetleTextures[2]));
+
+    static constexpr std::array<const char*, 6> koopaTroopaPaths{
+        "assets/texture/enemy/Koopa1.PNG",
+        "assets/texture/enemy/Koopa2.PNG",
+        "assets/texture/enemy/Koopa3.PNG",
+        "assets/texture/enemy/Koopa4.PNG",
+        "assets/texture/enemy/KoopaShell1.PNG",
+        "assets/texture/enemy/KoopaShell2.PNG"
+    };
+    for (size_t i = 0; i < koopaTroopaPaths.size(); ++i)
+    {
+        if (!m_koopaTroopaTextures[i].loadFromFile(koopaTroopaPaths[i]))
+            throw std::runtime_error(std::string("Failed to load ") + koopaTroopaPaths[i]);
+    }
+
+    std::array<sf::Texture*, 2> koopaLeftFrames{&m_koopaTroopaTextures[0], &m_koopaTroopaTextures[1]};
+    std::array<sf::Texture*, 2> koopaRightFrames{&m_koopaTroopaTextures[2], &m_koopaTroopaTextures[3]};
+    std::array<sf::Texture*, 2> koopaShellFrames{&m_koopaTroopaTextures[4], &m_koopaTroopaTextures[5]};
+    m_enemies.push_back(std::make_unique<KoopaTroopa>(
+        500.f, 100.f, koopaLeftFrames, koopaRightFrames, koopaShellFrames));
 }
 
 void EnemyManager::update(float deltaTime) {
@@ -114,14 +154,39 @@ void EnemyManager::update(float deltaTime) {
             enemy->setVelocityY(0.f);
         }
 
-        if (m_player && enemy->getHitbox().findIntersection(m_player->getHitbox())) {
-            if (m_player->isStarActive()) {
-                enemy->onStomp(); // Star mode: enemy ch\u1ebft ngay, player kh\u00f4ng bounce
-            } else {
-                enemy->onPlayerCollision(m_player);
-            }
-        }
+        if (m_player)
+            resolvePlayerCollision(*enemy, m_player, 0);
+
+        if (m_player2)
+            resolvePlayerCollision(*enemy, m_player2, 1);
     }
+}
+
+void EnemyManager::resolvePlayerCollision(Enemy& enemy, IPlayerManager* player, int playerIndex)
+{
+    sf::FloatRect playerBox = player->getHitbox();
+    sf::FloatRect enemyBox = enemy.getHitbox();
+
+    bool isOverlapping = playerBox.findIntersection(enemyBox).has_value();
+    bool wasOverlapping = enemy.wasPlayerOverlapping(playerIndex);
+
+    if (isOverlapping && !wasOverlapping)
+    {
+        float playerBottom = playerBox.position.y + playerBox.size.y;
+        float enemyTop = enemyBox.position.y;
+
+        // Stomp: player's feet land in the top slice of the enemy's hitbox.
+        // Tweak the 0.5f fraction if stomps feel too easy/hard to land.
+        float stompZone = enemyBox.size.y * 0.5f;
+        bool isStomp = (playerBottom <= enemyTop + stompZone) || player->isStarActive();
+
+        if (isStomp)
+            enemy.onStomp();
+        else
+            enemy.onPlayerCollision(player);
+    }
+
+    enemy.setPlayerOverlapping(playerIndex, isOverlapping);
 }
 
 void EnemyManager::render(sf::RenderWindow& window) const {

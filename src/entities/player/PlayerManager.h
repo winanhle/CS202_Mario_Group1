@@ -42,7 +42,8 @@ protected:
     IMapManager* m_mapManager = nullptr;
     bool m_isInvincible = false;
     float m_invincibilityTimer = 0.f;
-    static constexpr float INVINCIBILITY_DURATION = 2.0f;
+    bool m_isInitialized       = false;
+    static constexpr float INVINCIBILITY_DURATION = 2.0f; // seconds of i-frames after a hit
 
     // ─── Star ───
     std::unique_ptr<StarState> m_starState; // null = bình thường
@@ -68,6 +69,8 @@ protected:
     bool  m_isJumping;
     int   m_facingDirection = 1; // 1 = phải, -1 = trái — hướng nhìn, giữ nguyên khi đứng yên
     int   m_inputDirection  = 0; // -1/0/1 — hướng phím thô mỗi frame (0 = không bấm)
+    int   m_playerIndex = 1;     // 1 = P1, 2 = P2
+    bool  m_isTwoPlayerMode = false;
 
     // --- PATTERNS ---
     std::unique_ptr<PlayerInputHandler> m_inputHandler;
@@ -94,11 +97,18 @@ protected:
 
     virtual void setupStats() = 0;
 
+private:
+    // Builds a KeyBinding from settings (or hardcoded defaults) and
+    // recreates the input handler so rebinds take effect immediately.
+    void rebuildKeyBindings(ISettingsManager* settings);
+
 public:
     PlayerManager();
     ~PlayerManager() override = default;
 
-    void initialize() override;
+    void initialize(ISettingsManager* settings = nullptr) override;
+    void setPlayerIndex(int index) override;
+    void setTwoPlayerMode(bool isTwoPlayer) override;
     void update(float deltaTime) override;
     void render(sf::RenderWindow& window) const override;
     void handleInput(const sf::Event& event) override;
@@ -107,6 +117,7 @@ public:
     int   getScore()    const override;
     float getPositionX() const override;
     float getPositionY() const override;
+    void restoreState(int score, int lives, float posX, float posY) override;
 
     void jump();
     void stopJump();

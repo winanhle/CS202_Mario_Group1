@@ -49,6 +49,7 @@ public:
 
     // ─── NHẬN DEPENDENCY ───
     virtual void setPlayerManager(IPlayerManager* player) = 0;
+    virtual void setPlayerManager2(IPlayerManager* player) = 0;
     virtual void setMapManager(IMapManager* map) = 0;
 
     /**

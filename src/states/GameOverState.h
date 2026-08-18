@@ -2,7 +2,10 @@
 
 #include "../core/GameState.h"
 #include <SFML/Graphics.hpp>
+#include <memory>
 #include <string>
+
+class ISettingsManager;
 
 /**
  * @class GameOverState
@@ -14,7 +17,7 @@
 class GameOverState : public GameState
 {
 public:
-    GameOverState();
+    explicit GameOverState(std::shared_ptr<ISettingsManager> settings);
     ~GameOverState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -25,6 +28,8 @@ public:
 
 private:
     void returnToMenu();
+
+    std::shared_ptr<ISettingsManager> m_settings;
 
     sf::Font m_font;
     bool m_fontLoaded;

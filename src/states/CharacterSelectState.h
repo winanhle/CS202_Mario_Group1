@@ -12,10 +12,12 @@
  * Enter để xác nhận và chuyển sang ModeSelectState.
  * Escape để quay lại MenuState.
  */
+class ISettingsManager;
+
 class CharacterSelectState : public GameState
 {
 public:
-    CharacterSelectState();
+    CharacterSelectState(std::shared_ptr<ISettingsManager> settings, bool loadSave);
     ~CharacterSelectState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -56,4 +58,7 @@ private:
     // Kích thước màn hình
     static constexpr float WIN_W = 800.f;
     static constexpr float WIN_H = 600.f;
+
+    std::shared_ptr<ISettingsManager> m_settings;
+    bool m_loadSave;
 };

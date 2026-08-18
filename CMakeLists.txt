@@ -48,6 +48,8 @@ set(SHARED_SOURCES
     src/entities/camera/CameraManager.cpp
     src/ui/HUDManager.cpp
     src/ui/SaveManager.cpp
+    src/ui/SettingsManager.cpp
+    src/ui/SettingsMenu.cpp
     src/tinyxml2.cpp
 )
 
