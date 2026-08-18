@@ -28,6 +28,7 @@ namespace KeyBindingPresets
         kb.right1st = sf::Keyboard::Key::D;
         kb.right2nd = sf::Keyboard::Key::Right;
         kb.shoot    = sf::Keyboard::Key::F;
+        kb.run      = sf::Keyboard::Key::LShift;
         return kb;
     }
 
@@ -46,6 +47,7 @@ namespace KeyBindingPresets
         kb.right1st = sf::Keyboard::Key::D;
         kb.right2nd = sf::Keyboard::Key::D;  // slot dư
         kb.shoot    = sf::Keyboard::Key::F;
+        kb.run      = sf::Keyboard::Key::LShift;
         return kb;
     }
 
@@ -64,6 +66,7 @@ namespace KeyBindingPresets
         kb.right1st = sf::Keyboard::Key::Right;
         kb.right2nd = sf::Keyboard::Key::Right; // slot dư
         kb.shoot    = sf::Keyboard::Key::Period;
+        kb.run      = sf::Keyboard::Key::RShift;
         return kb;
     }
 }

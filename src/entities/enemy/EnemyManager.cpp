@@ -115,7 +115,11 @@ void EnemyManager::update(float deltaTime) {
         }
 
         if (m_player && enemy->getHitbox().findIntersection(m_player->getHitbox())) {
-            enemy->onPlayerCollision(m_player);
+            if (m_player->isStarActive()) {
+                enemy->onStomp(); // Star mode: enemy ch\u1ebft ngay, player kh\u00f4ng bounce
+            } else {
+                enemy->onPlayerCollision(m_player);
+            }
         }
     }
 }

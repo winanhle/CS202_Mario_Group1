@@ -8,6 +8,7 @@
 #include "forms/SuperForm.h"
 #include "forms/FireForm.h"
 #include "../projectile/FireballManager.h"
+#include "StarState.h"
 #include <memory>
 #include <string>
 
@@ -15,11 +16,21 @@ class PlayerManager : public IPlayerManager
 {
 protected:
     // --- THÔNG SỐ VẬT LÝ & DI CHUYỂN ---
-    float m_maxSpeed;
-    float m_acceleration;
-    float m_friction;     
+    float m_maxSpeed;          // WALK max speed
+    float m_runMaxSpeed;       // RUN max speed (khi giữ phím chạy)
+    float m_acceleration;      // gia tốc cùng hướng (đất, cả walk & run)
+    float m_deceleration;      // ma sát tuyến tính khi thả phím (chậm hơn accel)
+    float m_skidDeceleration;  // phanh gấp khi bấm ngược hướng (2-3 lần accel)
+    float m_airAcceleration;   // air control rất yếu — chỉ "nắn" quỹ đạo
     float m_jumpVelocity;
     float m_gravity;
+
+    bool m_isSkidding = false; // true khi đang phanh gấp (skid) — dùng cho animation
+
+    // ── Variable jump (nhấn GIỮ nút nhảy → nhảy cao hơn, tới giới hạn) ──
+    float m_jumpHoldGrace = 0.30f; // giới hạn thời gian giữ (s) để tăng thêm độ cao
+    float m_jumpHoldBoost = 0.30f; // tỉ lệ GIẢM trọng lực trong đà lên khi đang giữ
+    float m_jumpHoldTimer = 0.f;   // thời gian đã giữ trong lần nhảy hiện tại
     
     // --- THÔNG SỐ RPG ---
     int m_maxHealth;
@@ -33,9 +44,19 @@ protected:
     float m_invincibilityTimer = 0.f;
     static constexpr float INVINCIBILITY_DURATION = 2.0f;
 
+    // ─── Star ───
+    std::unique_ptr<StarState> m_starState; // null = bình thường
+
     // ─── tile collision ───
     void tileCollisionX(float deltaTime);
     void tileCollisionY(float deltaTime);
+
+    /**
+     * @brief Vật lý di chuyển ngang kiểu Mario NES: tăng tốc dần trên đất,
+     * giữ động lượng trên không (không đảo hướng được khi đang nhảy);
+     * friction khi đảo chiều nhanh hơn khi thả phím tự trôi.
+     */
+    void applyHorizontalPhysics(float deltaTime);
 
     // --- TRẠNG THÁI HIỆN TẠI ---
     float m_positionX, m_positionY;
@@ -46,6 +67,7 @@ protected:
     bool  m_isGrounded;
     bool  m_isJumping;
     int   m_facingDirection = 1; // 1 = phải, -1 = trái — hướng nhìn, giữ nguyên khi đứng yên
+    int   m_inputDirection  = 0; // -1/0/1 — hướng phím thô mỗi frame (0 = không bấm)
 
     // --- PATTERNS ---
     std::unique_ptr<PlayerInputHandler> m_inputHandler;
@@ -130,4 +152,10 @@ public:
      * Được gọi bởi GameWorld khi shared lives pool còn > 0.
      */
     void respawn() override;
+
+    /** Kích hoạt StarState 10 giây. */
+    void activateStar() override;
+
+    /** Trả về true nếu StarState đang còn hiệu lực. */
+    bool isStarActive() const override;
 };

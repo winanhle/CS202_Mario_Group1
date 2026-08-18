@@ -12,6 +12,11 @@ void EmptyBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType
     (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng
 }
 
+void BackgroundBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+{
+    (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng (giống EMPTY)
+}
+
 void GroundBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
 {
     (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng
@@ -85,6 +90,7 @@ void CoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType)
 const IBlockBehavior& getBlockBehavior(TileType type)
 {
     static const EmptyBehavior          empty;
+    static const BackgroundBehavior    background;
     static const GroundBehavior         ground;
     static const PipeBehavior           pipe;
     static const BrickBehavior          brick;
@@ -99,6 +105,7 @@ const IBlockBehavior& getBlockBehavior(TileType type)
 
     static const std::unordered_map<TileType, const IBlockBehavior*> table{
         {TileType::EMPTY,              &empty},
+        {TileType::BACKGROUND,         &background},
         {TileType::GROUND,             &ground},
         {TileType::PIPE,               &pipe},
         {TileType::BRICK_NORMAL,       &brick},

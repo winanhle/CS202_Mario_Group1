@@ -15,11 +15,14 @@ Luigi::Luigi() {
 }
 
 void Luigi::setupStats() {
-    m_maxSpeed     = 190.0f;
-    m_acceleration = 750.0f;
-    m_friction     = 0.85f;
-    m_jumpVelocity = -480.0f;
-    m_gravity      = 1100.0f;
+    m_maxSpeed        = 180.0f;   // WALK
+    m_runMaxSpeed     = 310.0f;   // RUN (giữ Shift)
+    m_acceleration    = 560.0f;   // tăng tốc cùng hướng
+    m_deceleration    = 420.0f;   // ma sát khi thả phím (chậm hơn accel)
+    m_skidDeceleration = 1700.0f; // phanh gấp khi bấm ngược (3x accel)
+    m_airAcceleration = 110.0f;   // air control rất yếu
+    m_jumpVelocity    = -400.0f;
+    m_gravity         = 1100.0f;
 
     m_maxHealth   = 80;
     m_attackPower = 90;

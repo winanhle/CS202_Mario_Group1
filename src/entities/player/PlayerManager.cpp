@@ -4,6 +4,8 @@
 #include "input/PlayerInputHandler.h"
 #include "forms/FireForm.h"
 #include "../../entities/map/MapManager.h"
+#include <algorithm>
+#include <cmath>
 
 PlayerManager::PlayerManager()
     : m_score(0), m_isAlive(true), 
@@ -49,6 +51,10 @@ void PlayerManager::updateAnimation(float deltaTime)
     sf::IntRect currentRect;
     if (!m_isGrounded) {
         currentRect = m_currentForm->getJumpFrame();
+    } else if (std::abs(m_velocityX) > 0.f && m_isSkidding) {
+        // SKID: đang phanh gấp → đứng hình frame (chưa có sprite skid riêng,
+        // dùng frame đứng yên + sprite đã flip theo hướng bấm ngược).
+        currentRect = m_currentForm->getWalkFrame1();
     } else if (std::abs(m_velocityX) > 0.f) {
         m_animTimer += deltaTime;
         if (m_animTimer >= FRAME_TIME) {
@@ -84,12 +90,32 @@ void PlayerManager::update(float deltaTime)
         }
     }
 
+    // Tick StarState; xoá khi hết thời gian
+    if (m_starState) {
+        m_starState->update(deltaTime);
+        if (!m_starState->isActive())
+            m_starState.reset();
+    }
+
     if (m_inputHandler) {
         Command* moveCommand = m_inputHandler->handleRealtimeInput();
         if (moveCommand) moveCommand->execute(*this);
     }
 
-    m_velocityY += m_gravity * deltaTime;
+    // Vật lý ngang mỗi frame (tăng tốc / friction / động lượng trên không)
+    applyHorizontalPhysics(deltaTime);
+
+    // Trọng lực = base; nếu ĐANG GIỮ nút nhảy lúc đà đi lên (và còn trong cửa sổ
+    // m_jumpHoldGrace) → giảm trọng lực → người nhảy cao hơn. Hết thời gian giữ
+    // hoặc đã qua đỉnh (vY >= 0) thì trọng lực trở về bình thường → độ cao bị chặn.
+    float gravity = m_gravity;
+    if (m_isJumping && m_inputHandler && m_inputHandler->isJumpKeyHeld() &&
+        m_velocityY < 0.f && m_jumpHoldTimer < m_jumpHoldGrace) {
+        gravity *= (1.f - m_jumpHoldBoost);
+        m_jumpHoldTimer += deltaTime;
+        if (m_jumpHoldTimer > m_jumpHoldGrace) m_jumpHoldTimer = m_jumpHoldGrace;
+    }
+    m_velocityY += gravity * deltaTime;
 
     // Tick cooldown của form hiện tại (FireForm → shoot cooldown)
     if (m_currentForm)
@@ -124,6 +150,9 @@ void PlayerManager::render(sf::RenderWindow& window) const
     window.draw(m_playerSprite);
     if (m_fireballManager)
         m_fireballManager->render(window);
+    // Vẽ hiệu ứng chop nháy 4 màu khi đang Star state
+    if (m_starState)
+        m_starState->render(window, getHitbox());
 }
 
 void PlayerManager::setForm(std::unique_ptr<IPlayerForm> newForm)
@@ -226,6 +255,7 @@ void PlayerManager::jump() {
         m_velocityY = m_jumpVelocity;
         m_isGrounded = false;
         m_isJumping = true;
+        m_jumpHoldTimer = 0.f; // bắt đầu cửa sổ giữ nút để nhảy cao hơn
     }
 }
 
@@ -236,9 +266,62 @@ void PlayerManager::stopJump() {
     }
 }
 
-void PlayerManager::moveLeft()       { m_facingDirection = -1; m_velocityX = -m_maxSpeed; }
-void PlayerManager::moveRight()      { m_facingDirection =  1; m_velocityX =  m_maxSpeed; }
-void PlayerManager::stopHorizontal() { m_velocityX =  0; }
+// Các hàm nhập chỉ GHI hướng phím (m_inputDirection); tốc độ do
+// applyHorizontalPhysics tính mỗi frame — không còn đặt vận tốc tức thời.
+void PlayerManager::moveLeft() {
+    m_inputDirection = -1;
+    if (m_isGrounded) m_facingDirection = -1;
+}
+void PlayerManager::moveRight() {
+    m_inputDirection = 1;
+    if (m_isGrounded) m_facingDirection = 1;
+}
+void PlayerManager::stopHorizontal() { m_inputDirection = 0; }
+
+void PlayerManager::applyHorizontalPhysics(float deltaTime) {
+    m_isSkidding = false; // reset mỗi frame, set lại nếu đang phanh gấp
+
+    const int  input  = m_inputDirection;
+    const bool running = m_inputHandler && m_inputHandler->isRunKeyHeld();
+    // Max speed kép: giữ phím chạy → RUN, ngược lại → WALK (gia tốc như nhau)
+    const float currentMax = running ? m_runMaxSpeed : m_maxSpeed;
+    float v = m_velocityX;
+
+    if (m_isGrounded) {
+        if (input != 0) {
+            if (v * input < 0.f) {
+                // ── SKID: bấm ngược hướng di chuyển → phanh cực mạnh ──
+                m_isSkidding = true;
+                v += static_cast<float>(input) * m_skidDeceleration * deltaTime;
+                if (v * input > 0.f) v = 0.f; // không bật ngược hướng trong cùng frame
+            } else {
+                // ── Cùng hướng → tăng tốc tuyến tính tới currentMax ──
+                v += static_cast<float>(input) * m_acceleration * deltaTime;
+                if (v * input > currentMax)
+                    v = static_cast<float>(input) * currentMax;
+            }
+        } else {
+            // ── Thả phím → ma sát TUYẾN TÍNH (hằng số) về 0, không bị giật lùi ──
+            if (v > 0.f)      v = std::max(0.f, v - m_deceleration * deltaTime);
+            else if (v < 0.f) v = std::min(0.f, v + m_deceleration * deltaTime);
+        }
+    } else {
+        // ── TRÊN KHÔNG: giữ quán tính lúc rời đất, air control RẤT yếu ──
+        if (input != 0) {
+            v += static_cast<float>(input) * m_airAcceleration * deltaTime;
+            if (v >  currentMax) v =  currentMax;
+            if (v < -currentMax) v = -currentMax;
+        }
+        // Không bấm gì → giữ nguyên vận tốc ngang (NES không có air friction)
+    }
+
+    m_velocityX = v;
+
+    // Hướng nhìn: LUÔN theo phím bấm ở mọi trạng thái (kể cả trên không).
+    // Quán tính (m_velocityX) để vật lý xử lý, sprite quay đầu ngay lập tức
+    // → player luôn cảm thấy kiểm soát tuyệt đối (chuẩn Mario feel).
+    if (input != 0) m_facingDirection = input;
+}
 
 // ==================== HITBOX ====================
 
@@ -377,6 +460,7 @@ void PlayerManager::resetToStart()
     m_positionY = m_spawnY;
     m_velocityX = 0.f;
     m_velocityY = 0.f;
+    m_inputDirection = 0;
     m_isGrounded = false;
 }
 
@@ -390,6 +474,9 @@ void PlayerManager::respawn()
 
 void PlayerManager::takeDamage()
 {
+    // Star state → bất tử, bỏ qua hoàn toàn
+    if (m_starState && m_starState->isActive()) return;
+
     if (m_isInvincible) return;
 
     // Cố gắng demote form (Fire→Super, Super→Normal)
@@ -404,6 +491,18 @@ void PlayerManager::takeDamage()
         // NormalForm → chết, GameWorld sẽ xử lý shared lives
         m_isAlive = false;
     }
+}
+
+// ==================== STAR ====================
+
+void PlayerManager::activateStar()
+{
+    m_starState = std::make_unique<StarState>();
+}
+
+bool PlayerManager::isStarActive() const
+{
+    return m_starState && m_starState->isActive();
 }
 
 void PlayerManager::bounce() {

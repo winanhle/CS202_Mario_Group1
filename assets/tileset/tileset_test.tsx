@@ -21,6 +21,31 @@
    <property name="type" value="FLAGPOLE"/>
   </properties>
  </tile>
+ <tile id="660">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="661">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="662">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="663">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="664">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
  <tile id="830">
   <properties>
    <property name="type" value="FLAGPOLE"/>
@@ -29,6 +54,31 @@
  <tile id="831">
   <properties>
    <property name="type" value="FLAGPOLE"/>
+  </properties>
+ </tile>
+ <tile id="871">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="872">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="873">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="874">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="875">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
   </properties>
  </tile>
  <tile id="1042">
@@ -86,9 +136,84 @@
    <property name="type" value="FLAGPOLE"/>
   </properties>
  </tile>
+ <tile id="2110">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2111">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2112">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2113">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2114">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
  <tile id="2308">
   <properties>
    <property name="type" value="FLAGPOLE"/>
+  </properties>
+ </tile>
+ <tile id="2321">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2322">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2323">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2324">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2325">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2332">
+  <properties>
+   <property name="type" value="EMPTY"/>
+  </properties>
+ </tile>
+ <tile id="2333">
+  <properties>
+   <property name="type" value="EMPTY"/>
+  </properties>
+ </tile>
+ <tile id="2334">
+  <properties>
+   <property name="type" value="EMPTY"/>
+  </properties>
+ </tile>
+ <tile id="2335">
+  <properties>
+   <property name="type" value="EMPTY"/>
+  </properties>
+ </tile>
+ <tile id="2336">
+  <properties>
+   <property name="type" value="EMPTY"/>
   </properties>
  </tile>
  <tile id="2349">
@@ -104,6 +229,56 @@
  <tile id="2519">
   <properties>
    <property name="type" value="FLAGPOLE"/>
+  </properties>
+ </tile>
+ <tile id="2532">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2533">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2534">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2535">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2536">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2543">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2544">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2545">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2546">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
+  </properties>
+ </tile>
+ <tile id="2547">
+  <properties>
+   <property name="type" value="BACKGROUND"/>
   </properties>
  </tile>
  <tile id="2560">

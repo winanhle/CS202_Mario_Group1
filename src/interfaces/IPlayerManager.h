@@ -126,4 +126,17 @@ public:
      * Được GameWorld gọi khi shared lives pool vẫn còn > 0 sau khi cả 2 player chết.
      */
     virtual void respawn() = 0;
+
+    // ─── STAR ───
+    /**
+     * @brief Kích hoạt StarState (10 giây bất tử + tiêu diệt enemy khi chạm).
+     * Được gọi bởi Star::OnInteract().
+     */
+    virtual void activateStar() = 0;
+
+    /**
+     * @brief Trả về true nếu player đang trong StarState (còn thời gian hiệu lực).
+     * Được EnemyManager kiểm tra để quyết định collision behavior.
+     */
+    virtual bool isStarActive() const = 0;
 };

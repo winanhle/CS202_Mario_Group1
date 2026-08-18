@@ -27,7 +27,8 @@ enum class TileType {
     DEATH_ZONE = 8,
     FLAGPOLE = 9,
     COIN = 10,
-    SOLID_BRICK = 11  
+    SOLID_BRICK = 11,
+    BACKGROUND = 12  // trang trí (bụi cỏ, đám mây) — xử lý giống hệt EMPTY  
 };
 
 // ─── Animation Structs ────────────────────────────────────────────────────────

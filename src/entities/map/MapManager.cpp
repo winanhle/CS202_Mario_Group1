@@ -61,6 +61,7 @@ TileType MapManager::stringToTileType(const std::string& s) {
     if (s == "DEATH_ZONE")       return TileType::DEATH_ZONE;
     if (s == "FLAGPOLE")         return TileType::FLAGPOLE;
     if (s == "SOLID_BRICK")      return TileType::SOLID_BRICK;
+    if (s == "BACKGROUND")       return TileType::BACKGROUND; // trang trí, giống EMPTY
     return TileType::EMPTY; // unknown / decorative
 }
 
@@ -394,8 +395,9 @@ void MapManager::render(sf::RenderWindow& window) const {
             }
 
             // ── Fallback: solid colour (texture not available) ────────────────
-            // EMPTY / HIDDEN_BLOCK không có màu fallback (đều là tile trong suốt) → skip
-            if (type == TileType::EMPTY || type == TileType::HIDDEN_BLOCK) continue;
+            // EMPTY / HIDDEN_BLOCK / BACKGROUND không có màu fallback (tile trong suốt) → skip
+            if (type == TileType::EMPTY || type == TileType::HIDDEN_BLOCK ||
+                type == TileType::BACKGROUND) continue;
             tileShape.setPosition(sf::Vector2f(worldX, worldY));
             switch (type) {
                 case TileType::GROUND:           tileShape.setFillColor(sf::Color(139,  69,  19)); break;

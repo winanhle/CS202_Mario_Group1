@@ -14,6 +14,15 @@ public:
     void onHitFromBelow(MapManager& map, int gx, int gy, int formType) const override;
 };
 
+class BackgroundBehavior final : public IBlockBehavior {
+public:
+    // BACKGROUND (bụi cỏ, đám mây trang trí) giống hệt EMPTY:
+    // không solid, không phản ứng khi bị đập.
+    bool isSolid() const override { return false; }
+    bool isSolidFromBelow() const override { return false; }
+    void onHitFromBelow(MapManager& map, int gx, int gy, int formType) const override;
+};
+
 class GroundBehavior final : public IBlockBehavior {
 public:
     bool isSolid() const override { return true; }
