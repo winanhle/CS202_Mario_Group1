@@ -14,22 +14,7 @@
 #include <SFML/Graphics.hpp>
 #include "../../tinyxml2.h"
 #include "block/IBlockBehavior.h"
-
-enum class TileType {
-    EMPTY = 0,
-    GROUND = 1,
-    PIPE = 2,
-    BRICK_NORMAL = 3,
-    QUESTION_COIN = 4,
-    QUESTION_POWERUP = 5,
-    MULTI_COIN = 6,
-    HIDDEN_BLOCK = 7,
-    DEATH_ZONE = 8,
-    FLAGPOLE = 9,
-    COIN = 10,
-    SOLID_BRICK = 11,
-    BACKGROUND = 12  // trang trí (bụi cỏ, đám mây) — xử lý giống hệt EMPTY  
-};
+#include "MapData.h"
 
 // ─── Animation Structs ────────────────────────────────────────────────────────
 
@@ -79,6 +64,9 @@ private:
     // ─── Injected dependency ─────────────────────────────────────────────────
     IItemManager* m_itemManager = nullptr;
 
+    // ─── Parsed object layer data ─────────────────────────────────────────────
+    MapObjectData m_objectData;
+
     // ─── MULTI_COIN per-tile state ────────────────────────────────────────────
     std::map<std::pair<int,int>, MultiCoinState> m_multiCoinStates;
     static constexpr float MULTI_COIN_DURATION = 3.5f;
@@ -112,6 +100,9 @@ private:
     // Resolves a path relative to a base directory
     static std::string resolvePath(const std::string& baseDir, const std::string& relativePath);
 
+    // Parses <objectgroup> layers from TMX for enemy/player spawn points
+    void parseObjectGroups(tinyxml2::XMLElement* mapElement);
+
     // GID → TileType lookup table (populated by loadTileset)
     std::unordered_map<int, TileType> m_gidTypeMap;
     // TileType → GID lookup table (reverse of m_gidTypeMap, built in loadTileset).
@@ -127,6 +118,8 @@ public:
 
     // Các hàm được override từ IMapManager
     void initialize() override;
+    void loadMap(const std::string& tmxPath) override;
+    const MapObjectData& getMapObjectData() const override;
     void update(float deltaTime) override;
     void render(sf::RenderWindow& window) const override;
     
@@ -143,7 +136,7 @@ public:
     }
     
     // Hàm mở rộng: Lấy chính xác loại Tile để xử lý đụng đầu
-    TileType getTileType(float x, float y) const;
+    TileType getTileType(float x, float y) const override;
 
     // ─── Block transition API ─────────────────────────────────────────────────
     // Điểm duy nhất thay đổi tile: cập nhật ĐỒNG THỜI m_mapData (logic)

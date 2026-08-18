@@ -9,13 +9,13 @@ namespace fs = std::filesystem;
 MapManager::MapManager() {}
 
 void MapManager::initialize() {
-    // Prefer the Tiled TMX map; fall back to the legacy CSV if not found
-    if (!loadMapTMX("assets/map/map_test.tmx")) {
-        std::cerr << "[MapManager] TMX load failed, falling back to CSV." << std::endl;
-        if (!loadMapCSV("assets/map/test_map.csv")) {
-            std::cerr << "[MapManager] ERROR: Could not load any map!" << std::endl;
-        }
-    }
+    m_mapData.clear();
+    m_rawGids.clear();
+    m_objectData = MapObjectData{};
+    m_multiCoinStates.clear();
+    m_brickDebris.clear();
+    m_coinPopAnims.clear();
+    // Bản đồ được tải bởi GameWorld thông qua LevelManager (loadCurrentLevel()).
 }
 
 bool MapManager::loadMapCSV(const std::string& filepath) {
@@ -294,10 +294,112 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
         return false;
     }
 
+    // ── Parse object groups (enemy spawns, player spawn) ────────────────
+    parseObjectGroups(mapEl);
+
     std::cout << "[MapManager] TMX loaded: " << tmxPath
               << "  (" << (m_mapData.empty() ? 0 : m_mapData[0].size())
               << "x" << m_mapData.size() << ")" << std::endl;
     return true;
+}
+
+// =============================================================================
+//  PUBLIC LOAD API
+// =============================================================================
+
+void MapManager::loadMap(const std::string& tmxPath) {
+    // Clear previous state
+    m_mapData.clear();
+    m_rawGids.clear();
+    m_objectData = MapObjectData{};
+    m_multiCoinStates.clear();
+    m_brickDebris.clear();
+    m_coinPopAnims.clear();
+    m_gidTypeMap.clear();
+    m_typeToGid.clear();
+    m_textureLoaded = false;
+
+    if (!loadMapTMX(tmxPath)) {
+        std::cerr << "[MapManager] TMX load failed for: " << tmxPath << std::endl;
+    }
+}
+
+const MapObjectData& MapManager::getMapObjectData() const {
+    return m_objectData;
+}
+
+// =============================================================================
+//  OBJECT GROUP PARSER
+// =============================================================================
+
+void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
+    m_objectData = MapObjectData{}; // clear previous data
+
+    for (auto* groupEl = mapElement->FirstChildElement("objectgroup"); groupEl;
+         groupEl = groupEl->NextSiblingElement("objectgroup")) {
+
+        for (auto* objEl = groupEl->FirstChildElement("object"); objEl;
+             objEl = objEl->NextSiblingElement("object")) {
+
+            // Tiled stores the type in either "name" or "type" attribute
+            const char* typeName = objEl->Attribute("name");
+            const char* typeAttr = objEl->Attribute("type");
+            std::string typeStr;
+            if (typeName && typeName[0] != '\0')
+                typeStr = typeName;
+            else if (typeAttr && typeAttr[0] != '\0')
+                typeStr = typeAttr;
+            else
+                continue; // skip objects without a type/name
+
+            float x = 0.f, y = 0.f;
+            objEl->QueryFloatAttribute("x", &x);
+            objEl->QueryFloatAttribute("y", &y);
+
+            // Check if it's a player spawn point
+            if (typeStr == "PlayerSpawn") {
+                m_objectData.playerSpawn = { x, y, true };
+                std::cout << "[MapManager] PlayerSpawn at (" << x << ", " << y << ")" << std::endl;
+                continue;
+            }
+
+            // Chỉ item được spawn là Star — xử lý riêng cho gọn.
+            if (typeStr == "Star") {
+                EntitySpawnData item;
+                item.type = typeStr;
+                item.x = x;
+                item.y = y;
+                m_objectData.itemSpawns.push_back(item);
+                continue;
+            }
+
+            // Otherwise treat as enemy spawn
+            EntitySpawnData spawn;
+            spawn.type = typeStr;
+            spawn.x = x;
+            spawn.y = y;
+
+            // Parse optional custom properties on the object
+            if (auto* propsEl = objEl->FirstChildElement("properties")) {
+                for (auto* prop = propsEl->FirstChildElement("property"); prop;
+                     prop = prop->NextSiblingElement("property")) {
+                    const char* pname = prop->Attribute("name");
+                    const char* pval  = prop->Attribute("value");
+                    if (!pname || !pval) continue;
+                    if (std::string(pname) == "direction") spawn.direction = pval;
+                    if (std::string(pname) == "moveSpeed") {
+                        try { spawn.moveSpeed = std::stof(pval); }
+                        catch (...) { /* ignore parse errors */ }
+                    }
+                }
+            }
+
+            m_objectData.enemySpawns.push_back(spawn);
+        }
+    }
+
+    std::cout << "[MapManager] Parsed " << m_objectData.enemySpawns.size()
+              << " enemy spawn(s) from object layers." << std::endl;
 }
 
 // =============================================================================

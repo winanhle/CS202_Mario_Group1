@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <SFML/Graphics/Rect.hpp>
+#include "../core/LevelManager.h"
 
 // Forward declarations for all modules
 class IMapManager;
@@ -139,4 +141,24 @@ private:
      * 2P:  cả 2 player đều chết → trừ 1 shared live → respawn cả 2 nếu còn live.
      */
     void checkAndHandleDeath();
+
+    // ─── Level progression ──────────────────────────────────────────────────
+    LevelManager m_levelManager;
+
+    /**
+     * @brief Tải lại stage hiện tại từ đầu: map + enemy + item + player spawn,
+     *        đồng thời reset camera theo kích thước map mới.
+     */
+    void loadCurrentLevel();
+
+    /**
+     * @brief Kiểm tra player chạm cột FLAGPOLE → advance lên stage tiếp theo.
+     *        Nếu đã ở stage cuối thì quay vòng lại stage 1.
+     */
+    void checkFlagpoleCollision();
+
+    /**
+     * @brief Kiểm tra bất kỳ ô FLAGPOLE nào nằm trong hitbox.
+     */
+    bool hitboxTouchesFlagpole(const sf::FloatRect& box) const;
 };

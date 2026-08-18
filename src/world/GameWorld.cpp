@@ -20,6 +20,9 @@ GameWorld::GameWorld()
 
 void GameWorld::initialize()
 {
+    // Khám phá tất cả stageN.tmx trong assets/map → thứ tự chơi.
+    m_levelManager.discoverLevels("assets/map/");
+
     if (m_mapManager)
         m_mapManager->initialize();
 
@@ -41,11 +44,100 @@ void GameWorld::initialize()
     if (m_saveManager)
         m_saveManager->initialize();
 
-    if (m_cameraManager && m_mapManager)
-        m_cameraManager->initialize(m_mapManager->getMapPixelSize());
-
     injectDependencies();
+
+    // Tải stage hiện tại: map + enemy + item + player spawn + camera.
+    loadCurrentLevel();
+
     m_isInitialized = true;
+}
+
+// ==================== LEVEL PROGRESSION ====================
+
+void GameWorld::loadCurrentLevel()
+{
+    if (!m_mapManager)
+        return;
+
+    const std::string levelPath = m_levelManager.getCurrentLevelPath();
+    if (levelPath.empty())
+        return;
+
+    m_mapManager->loadMap(levelPath);
+
+    const MapObjectData& mapData = m_mapManager->getMapObjectData();
+
+    if (m_enemyManager)
+        m_enemyManager->spawnFromMapData(mapData.enemySpawns);
+
+    if (m_itemManager)
+    {
+        for (const auto& item : mapData.itemSpawns)
+            m_itemManager->spawnStar(item.x, item.y);
+    }
+
+    if (mapData.playerSpawn.found)
+    {
+        const float sx = mapData.playerSpawn.x;
+        const float sy = mapData.playerSpawn.y;
+        if (m_playerManager)
+        {
+            m_playerManager->setSpawnPoint(sx, sy);
+            m_playerManager->respawn();
+        }
+        if (m_playerManager2)
+        {
+            m_playerManager2->setSpawnPoint(sx, sy);
+            m_playerManager2->respawn();
+        }
+    }
+
+    if (m_cameraManager)
+        m_cameraManager->initialize(m_mapManager->getMapPixelSize());
+}
+
+bool GameWorld::hitboxTouchesFlagpole(const sf::FloatRect& box) const
+{
+    if (!m_mapManager)
+        return false;
+
+    const int tileSize = m_mapManager->getTileSize();
+    const int x0 = static_cast<int>(box.position.x) / tileSize;
+    const int x1 = static_cast<int>(box.position.x + box.size.x - 1.f) / tileSize;
+    const int y0 = static_cast<int>(box.position.y) / tileSize;
+    const int y1 = static_cast<int>(box.position.y + box.size.y - 1.f) / tileSize;
+
+    for (int gy = y0; gy <= y1; ++gy)
+    {
+        for (int gx = x0; gx <= x1; ++gx)
+        {
+            const float cx = static_cast<float>(gx) * tileSize + tileSize / 2.f;
+            const float cy = static_cast<float>(gy) * tileSize + tileSize / 2.f;
+            if (m_mapManager->getTileType(cx, cy) == TileType::FLAGPOLE)
+                return true;
+        }
+    }
+    return false;
+}
+
+void GameWorld::checkFlagpoleCollision()
+{
+    bool reached = false;
+
+    if (m_playerManager && m_playerManager->isAlive())
+        reached = hitboxTouchesFlagpole(m_playerManager->getHitbox());
+
+    if (!reached && m_playerManager2 && m_playerManager2->isAlive())
+        reached = hitboxTouchesFlagpole(m_playerManager2->getHitbox());
+
+    if (!reached)
+        return;
+
+    // Stage cuối → quay vòng về stage 1 để game tiếp tục chơi được.
+    if (!m_levelManager.advanceToNextLevel())
+        m_levelManager.reset();
+
+    loadCurrentLevel();
 }
 
 // ==================== UPDATE ====================
@@ -64,6 +156,9 @@ void GameWorld::update(float deltaTime)
 
     if (m_playerManager2)
         m_playerManager2->update(deltaTime);
+
+    // 1.5. Chạm FLAGPOLE → sang stage kế tiếp (map mới tải lại từ đầu)
+    checkFlagpoleCollision();
 
     // 2. Enemy check va chạm với player position MỚI
     if (m_enemyManager)
@@ -126,12 +221,8 @@ void GameWorld::checkAndHandleDeath()
         return;
     }
 
-    // Còn lives → respawn cả 2 player
-    if (m_playerManager)
-        m_playerManager->respawn();
-
-    if (m_playerManager2)
-        m_playerManager2->respawn();
+    // Còn lives → reload nguyên cả stage từ đầu (reset map, enemy, item, player)
+    loadCurrentLevel();
 }
 
 // ==================== RENDER ====================

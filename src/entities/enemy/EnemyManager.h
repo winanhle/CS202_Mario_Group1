@@ -3,7 +3,10 @@
 #include "../../interfaces/IEnemyManager.h"
 #include "../../interfaces/IMapManager.h"
 #include "Enemy.h"
+#include "../map/MapData.h"
 #include <SFML/Graphics/Rect.hpp>
+#include <array>
+#include <memory>
 #include <vector>
 
 class IPlayerManager;
@@ -42,4 +45,6 @@ public:
     void setMapManager(IMapManager* map) override { m_mapManager = map; }
 
     bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox) override;
+
+    void spawnFromMapData(const std::vector<EntitySpawnData>& spawns) override;
 };

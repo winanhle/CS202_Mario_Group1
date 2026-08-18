@@ -108,8 +108,30 @@ public:
      */
     virtual void restoreState(int score, int lives, float posX, float posY) = 0;
 
+    /**
+     * @brief Đặt vị trí spawn (và vị trí hiện tại) của player từ map.
+     * @param x World X pixel
+     * @param y World Y pixel
+     * Respawn sau khi chết sẽ về đúng điểm này.
+     */
+    virtual void setSpawnPoint(float x, float y) { (void)x; (void)y; }
+
     // ─── API CHO ENEMY/ITEM MANAGER ───
     virtual sf::FloatRect getHitbox() const = 0;
+
+    /**
+     * @brief Trả về vận tốc dọc (px/s) của player.
+     * Dùng để xác định hướng tiếp cận khi va chạm enemy
+     * (> 0 = đang rơi xuống → có thể stomp dù xuyên sâu trong frame).
+     */
+    virtual float getVelocityY() const { return 0.f; }
+
+    /**
+     * @brief Trả về true nếu player còn i-frames (miễn nhiễm sát thương).
+     * EnemyManager dùng để KHÔNG đánh dấu "đang chồng lên" khi chưa thật sự
+     * tính sát thương — hết i-frames mà vẫn đè lên enemy thì vẫn bị trừ.
+     */
+    virtual bool isInvincible() const { return false; }
 
     // ─── BEHAVIOR ───
     virtual void setMapManager(IMapManager* map) = 0;

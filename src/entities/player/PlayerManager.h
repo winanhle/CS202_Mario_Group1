@@ -118,6 +118,7 @@ public:
     float getPositionX() const override;
     float getPositionY() const override;
     void restoreState(int score, int lives, float posX, float posY) override;
+    void setSpawnPoint(float x, float y) override;
 
     void jump();
     void stopJump();
@@ -135,6 +136,8 @@ public:
     void collectPowerUp(int type) override;
 
     sf::FloatRect getHitbox()   const override;
+    float getVelocityY()        const override { return m_velocityY; }
+    bool  isInvincible()        const override { return m_isInvincible; }
     void takeDamage()           override;
     void bounce()               override;
     void collectCoin(int amount) override;

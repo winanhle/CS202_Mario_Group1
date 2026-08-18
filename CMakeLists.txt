@@ -31,6 +31,7 @@ set(COMMON_SOURCES
 set(SHARED_SOURCES
     ${COMMON_SOURCES}
     src/core/Game.cpp
+    src/core/LevelManager.cpp
     src/core/StateManager.cpp
     src/states/MenuState.cpp
     src/states/PlayState.cpp

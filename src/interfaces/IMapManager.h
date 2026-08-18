@@ -1,6 +1,8 @@
 #pragma once
 
 #include <SFML/System/Vector2.hpp>
+#include <string>
+#include "../entities/map/MapData.h"
 
 class IItemManager; // forward declaration
 
@@ -29,6 +31,12 @@ public:
     virtual sf::Vector2u getMapPixelSize() const = 0;
 
     /**
+     * @brief Query the logical tile type at a world pixel coordinate.
+     * Out-of-bounds pixels are treated as GROUND.
+     */
+    virtual TileType getTileType(float x, float y) const = 0;
+
+    /**
      * @brief Called by PlayerManager when the player bumps a tile from below
      *        (upward velocity collides with the bottom face of a tile).
      * @param tileGridX  Grid column of the hit tile
@@ -42,4 +50,18 @@ public:
      * Called by GameWorld::injectDependencies().
      */
     virtual void setItemManager(IItemManager* itemManager) = 0;
+
+    /**
+     * @brief Load a map from a TMX file path.
+     * Replaces any previously loaded map data.
+     * @param tmxPath Path to the .tmx file
+     */
+    virtual void loadMap(const std::string& tmxPath) = 0;
+
+    /**
+     * @brief Get parsed object layer data (enemy spawns, player spawn)
+     * from the last loaded map.
+     * @return Reference to the parsed MapObjectData
+     */
+    virtual const MapObjectData& getMapObjectData() const = 0;
 };

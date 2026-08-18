@@ -16,6 +16,21 @@
    <property name="type" value="DEATH_ZONE"/>
   </properties>
  </tile>
+ <tile id="3">
+  <properties>
+   <property name="type" value="Goomba"/>
+  </properties>
+ </tile>
+ <tile id="4">
+  <properties>
+   <property name="type" value="KoopaTroopa"/>
+  </properties>
+ </tile>
+ <tile id="5">
+  <properties>
+   <property name="type" value="BuzzyBeetle"/>
+  </properties>
+ </tile>
  <tile id="620">
   <properties>
    <property name="type" value="FLAGPOLE"/>

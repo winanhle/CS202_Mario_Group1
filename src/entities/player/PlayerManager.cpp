@@ -39,8 +39,9 @@ void PlayerManager::initialize(ISettingsManager* settings)
         throw std::runtime_error("No form set before initialize()");
     }
     m_playerSize = m_currentForm->getHitboxSize();
-    m_playerSprite.setTextureRect(m_currentForm->getWalkFrame1());
-    m_playerSprite.setOrigin({m_playerSize.x / 2.f, m_playerSize.y / 2.f});
+    const sf::IntRect firstRect = m_currentForm->getWalkFrame1();
+    m_playerSprite.setTextureRect(firstRect);
+    m_playerSprite.setOrigin({(float)firstRect.size.x / 2.f, (float)firstRect.size.y / 2.f});
     m_isInitialized = true;
 
     if (m_fireballManager)
@@ -247,6 +248,12 @@ void PlayerManager::setForm(std::unique_ptr<IPlayerForm> newForm)
     m_positionY -= (newHeight - oldHeight);
     m_playerSize = newForm->getHitboxSize();
     m_currentForm = std::move(newForm);
+
+    // Áp dụng ngay frame + origin của form mới, tránh sprite bị lệch
+    // (dùng rect cũ) trong 1 frame ngay sau khi đổi dạng.
+    sf::IntRect rect = m_currentForm->getWalkFrame1();
+    m_playerSprite.setTextureRect(rect);
+    m_playerSprite.setOrigin({(float)rect.size.x / 2.f, (float)rect.size.y / 2.f});
 }
 
 void PlayerManager::collectPowerUp(int type)
@@ -276,6 +283,16 @@ void PlayerManager::restoreState(int score, int lives, float posX, float posY)
     m_positionX = posX;
     m_positionY = posY;
     m_isAlive = true;
+}
+
+void PlayerManager::setSpawnPoint(float x, float y)
+{
+    m_spawnX = x;
+    m_spawnY = y;
+    m_positionX = x;
+    m_positionY = y;
+    m_velocityX = 0.f;
+    m_velocityY = 0.f;
 }
 float PlayerManager::getPositionX() const
 {
