@@ -36,6 +36,8 @@ public:
     void updateScore(int score) override;
     void updateLives(int lives) override;
     void updateItemCount(int count) override;
+    void updateWorld(int level) override;
+    void resetTimer() override;
     bool isTimeUp() const override;
 
 private:
@@ -64,6 +66,7 @@ private:
     int m_renderedLives;
     int m_renderedItemCount;
     int m_renderedTime;
+    int m_renderedWorld;
 
     // SMB-style countdown timer (seconds), ticks down in update()
     float m_timeLeft;

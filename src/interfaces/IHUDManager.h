@@ -68,4 +68,16 @@ public:
      * @return True when time is up (game over condition)
      */
     virtual bool isTimeUp() const = 0;
+
+    /**
+     * @brief Update HUD with current world/level number
+     * @param level Current level number (1-based)
+     */
+    virtual void updateWorld(int level) { (void)level; }
+
+    /**
+     * @brief Reset the countdown timer back to its starting value.
+     *        Called when a new level is loaded.
+     */
+    virtual void resetTimer() {}
 };

@@ -94,6 +94,9 @@ void GameWorld::loadCurrentLevel()
 
     if (m_cameraManager)
         m_cameraManager->initialize(m_mapManager->getMapPixelSize());
+
+    if (m_hudManager)
+        m_hudManager->resetTimer();
 }
 
 bool GameWorld::hitboxTouchesFlagpole(const sf::FloatRect& box) const
@@ -181,6 +184,8 @@ void GameWorld::update(float deltaTime)
 
         if (m_itemManager)
             m_hudManager->updateItemCount(m_itemManager->getItemCount());
+        
+        m_hudManager->updateWorld(m_levelManager.getCurrentLevelNumber());
         m_hudManager->update(deltaTime);
     }
 

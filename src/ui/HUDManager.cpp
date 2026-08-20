@@ -7,6 +7,7 @@ HUDManager::HUDManager()
     , m_renderedLives(-1)
     , m_renderedItemCount(-1)
     , m_renderedTime(-1)
+    , m_renderedWorld(-1)
     , m_timeLeft(TIME_START)
     , m_blinkTimer(0.0f)
     , m_showTimerText(true)
@@ -121,6 +122,7 @@ void HUDManager::updateTimer(float deltaTime)
     // Blink the timer when it gets low
     if (m_timeLeft <= TIME_LOW)
     {
+        m_timeValue.setFillColor(sf::Color::Red);
         m_blinkTimer += deltaTime;
         if (m_blinkTimer >= BLINK_INTERVAL)
         {
@@ -130,6 +132,7 @@ void HUDManager::updateTimer(float deltaTime)
     }
     else
     {
+        m_timeValue.setFillColor(sf::Color::White);
         m_showTimerText = true;
     }
 }
@@ -220,4 +223,22 @@ void HUDManager::updateItemCount(int count)
 bool HUDManager::isTimeUp() const
 {
     return m_timeLeft <= 0.0f;
+}
+
+void HUDManager::updateWorld(int level)
+{
+    if (level != m_renderedWorld)
+    {
+        m_renderedWorld = level;
+        m_worldValue.setString("1-" + std::to_string(level));
+    }
+}
+
+void HUDManager::resetTimer()
+{
+    m_timeLeft = TIME_START;
+    m_renderedTime = -1; // Force rebuild next update
+    m_blinkTimer = 0.0f;
+    m_showTimerText = true;
+    m_timeValue.setFillColor(sf::Color::White);
 }

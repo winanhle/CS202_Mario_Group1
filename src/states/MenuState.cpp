@@ -15,6 +15,8 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
     , m_settingsMenu(*m_settings, /*pauseContext=*/false)
     , m_inSettings(false)
 {
+    m_bg.load();
+    
     // Load the Mario font
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
 
@@ -137,13 +139,17 @@ void MenuState::update(float deltaTime)
         m_blinkTimer = 0.0f;
         m_showPrompt = !m_showPrompt;
     }
+    
+    m_bg.update(deltaTime);
 }
 
 void MenuState::render(sf::RenderWindow& window) const
 {
-    sf::RectangleShape background({ 800.0f, 600.0f });
-    background.setFillColor(sf::Color(50, 50, 180));  // deeper blue
-    window.draw(background);
+    // Ensure standard 800x600 view for UI rendering
+    sf::View defaultView({ 400.0f, 300.0f }, { 800.0f, 600.0f });
+    window.setView(defaultView);
+
+    m_bg.render(window);
 
     if (m_inSettings)
     {

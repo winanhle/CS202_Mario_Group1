@@ -51,6 +51,8 @@ set(SHARED_SOURCES
     src/ui/SaveManager.cpp
     src/ui/SettingsManager.cpp
     src/ui/SettingsMenu.cpp
+    src/ui/MenuBackground.cpp
+    src/ui/UINavigator.cpp
     src/tinyxml2.cpp
 )
 

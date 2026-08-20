@@ -2,6 +2,7 @@
 
 #include "../core/GameState.h"
 #include "../core/GameConfig.h"
+#include "../ui/UINavigator.h"
 #include <SFML/Graphics.hpp>
 
 /**
@@ -29,7 +30,7 @@ private:
     void refreshUI();
 
     GameConfig m_config;       // nhận từ CharacterSelectState, hoàn chỉnh ở đây
-    int        m_selectedIndex; // 0 = 1 Player, 1 = 2 Players
+    UINavigator m_nav{2};       // 0 = 1 Player, 1 = 2 Players
 
     sf::Font m_font;
     bool     m_fontLoaded;
@@ -53,4 +54,5 @@ private:
 
     std::shared_ptr<ISettingsManager> m_settings;
     bool m_loadSave;
+    mutable sf::Vector2u m_windowSize{800u, 600u};
 };

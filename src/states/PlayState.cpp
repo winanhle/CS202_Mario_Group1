@@ -159,7 +159,7 @@ void PlayState::update(float deltaTime)
                 save->deleteSave();
 
             int finalScore = m_gameWorld->getTotalScore();
-            auto gameOverState = std::make_unique<GameOverState>(m_settings);
+            auto gameOverState = std::make_unique<GameOverState>(m_settings, m_config);
             gameOverState->setFinalScore(finalScore);
             manager->changeState(std::move(gameOverState));
         }

@@ -14,7 +14,6 @@ static const sf::Color MS_OUT_IDLE  = sf::Color(40,  90,  40);
 
 ModeSelectState::ModeSelectState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, bool loadSave)
     : m_config(config)
-    , m_selectedIndex(0)
     , m_fontLoaded(false)
     , m_settings(std::move(settings))
     , m_loadSave(loadSave)
@@ -90,13 +89,18 @@ ModeSelectState::ModeSelectState(const GameConfig& config, std::shared_ptr<ISett
     if (m_fontLoaded)
     {
         m_hintText.setFont(m_font);
-        m_hintText.setString("A/D or Left/Right to select   Enter to start   Esc to back");
+        m_hintText.setString("A/D or Left/Right/Mouse to select   Enter/Click to start   Esc to back");
         m_hintText.setCharacterSize(14);
         m_hintText.setFillColor(sf::Color(180, 180, 180));
         sf::FloatRect hb = m_hintText.getLocalBounds();
         m_hintText.setOrigin({hb.position.x + hb.size.x / 2.f, hb.position.y});
         m_hintText.setPosition({WIN_W / 2.f, 530.f});
     }
+
+    m_nav.setAxis(UINavigator::Axis::Horizontal);
+    m_nav.getHitbox = [this](int i) { return m_card[i].getGlobalBounds(); };
+    m_nav.onActivate = [this](int) { confirm(); };
+    m_nav.onSelectionChanged = [this](int, int) { refreshUI(); };
 
     refreshUI();
 }
@@ -105,7 +109,7 @@ void ModeSelectState::refreshUI()
 {
     for (int i = 0; i < 2; ++i)
     {
-        bool sel = (i == m_selectedIndex);
+        bool sel = (i == m_nav.getSelectedIndex());
         m_card[i].setFillColor(sel ? MS_CARD_SEL : MS_CARD_IDLE);
         m_card[i].setOutlineColor(sel ? MS_OUT_SEL : MS_OUT_IDLE);
         m_modeName[i].setFillColor(sel ? sf::Color::Yellow : sf::Color::White);
@@ -114,40 +118,26 @@ void ModeSelectState::refreshUI()
 
 void ModeSelectState::handleInput(const sf::Event& event)
 {
-    if (const auto* key = event.getIf<sf::Event::KeyPressed>())
+    if (const auto* resizeEvent = event.getIf<sf::Event::Resized>())
     {
-        switch (key->code)
+        m_windowSize = resizeEvent->size;
+    }
+    else if (const auto* key = event.getIf<sf::Event::KeyPressed>())
+    {
+        if (key->code == sf::Keyboard::Key::Escape)
         {
-        case sf::Keyboard::Key::Left:
-        case sf::Keyboard::Key::A:
-            m_selectedIndex = 0;
-            refreshUI();
-            break;
-
-        case sf::Keyboard::Key::Right:
-        case sf::Keyboard::Key::D:
-            m_selectedIndex = 1;
-            refreshUI();
-            break;
-
-        case sf::Keyboard::Key::Enter:
-            confirm();
-            break;
-
-        case sf::Keyboard::Key::Escape:
             if (auto* mgr = getStateManager())
                 mgr->changeState(std::make_unique<CharacterSelectState>(m_settings, m_loadSave));
-            break;
-
-        default:
-            break;
+            return;
         }
     }
+
+    m_nav.handleInput(event, m_windowSize);
 }
 
 void ModeSelectState::confirm()
 {
-    m_config.mode = (m_selectedIndex == 0)
+    m_config.mode = (m_nav.getSelectedIndex() == 0)
         ? GameMode::SinglePlayer
         : GameMode::TwoPlayer;
 
@@ -167,6 +157,12 @@ void ModeSelectState::update(float deltaTime)
 
 void ModeSelectState::render(sf::RenderWindow& window) const
 {
+    m_windowSize = window.getSize();
+
+    // Ensure render uses standard 800x600 view
+    sf::View defaultView({ WIN_W / 2.f, WIN_H / 2.f }, { WIN_W, WIN_H });
+    window.setView(defaultView);
+
     sf::RectangleShape bg({WIN_W, WIN_H});
     bg.setFillColor(MS_BG_TOP);
     window.draw(bg);
@@ -185,7 +181,7 @@ void ModeSelectState::render(sf::RenderWindow& window) const
         window.draw(m_modeName[i]);
         window.draw(m_modeDesc[i]);
 
-        if (i == m_selectedIndex && m_blinkOn && m_fontLoaded)
+        if (i == m_nav.getSelectedIndex() && m_blinkOn && m_fontLoaded)
         {
             sf::Text arrow(m_font);
             arrow.setString("▼");

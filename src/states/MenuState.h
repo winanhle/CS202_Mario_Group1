@@ -2,6 +2,7 @@
 
 #include "../core/GameState.h"
 #include "../ui/SettingsMenu.h"
+#include "../ui/MenuBackground.h"
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <string>
@@ -48,4 +49,6 @@ private:
     std::shared_ptr<ISettingsManager> m_settings;
     SettingsMenu m_settingsMenu;
     bool m_inSettings;
+    
+    MenuBackground m_bg;
 };
