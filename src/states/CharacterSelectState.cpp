@@ -24,13 +24,13 @@ CharacterSelectState::CharacterSelectState(std::shared_ptr<ISettingsManager> set
     if (m_marioTexture.loadFromFile("assets/texture/hero/mario.png"))
     {
         m_preview[0].setTexture(m_marioTexture);
-        m_preview[0].setTextureRect(sf::IntRect({1, 1}, {16, 24}));
+        m_preview[0].setTextureRect(sf::IntRect({1, 6}, {16, 18}));
         m_preview[0].setScale({3.f, 3.f});
     }
     if (m_luigiTexture.loadFromFile("assets/texture/hero/luigi.png"))
     {
         m_preview[1].setTexture(m_luigiTexture);
-        m_preview[1].setTextureRect(sf::IntRect({1, 1}, {16, 24}));
+        m_preview[1].setTextureRect(sf::IntRect({1, 2}, {16, 23}));
         m_preview[1].setScale({3.f, 3.f});
     }
 
@@ -55,9 +55,10 @@ CharacterSelectState::CharacterSelectState(std::shared_ptr<ISettingsManager> set
         m_card[i].setPosition({cx, CARD_Y});
         m_card[i].setOutlineThickness(3.f);
 
-        // Sprite preview (căn giữa thẻ)
-        m_preview[i].setPosition({cx + CARD_W / 2.f - 16.f * 3.f / 2.f,
-                                   CARD_Y + 30.f});
+        // Sprite preview (căn giữa thẻ theo chiều ngang, đặt chân ở cùng vị trí cố định)
+        const auto rect = m_preview[i].getTextureRect();
+        m_preview[i].setOrigin({ rect.size.x / 2.f, static_cast<float>(rect.size.y) });
+        m_preview[i].setPosition({ cx + CARD_W / 2.f, CARD_Y + 120.f });
 
         if (m_fontLoaded)
         {
@@ -92,7 +93,7 @@ CharacterSelectState::CharacterSelectState(std::shared_ptr<ISettingsManager> set
         m_titleText.setPosition({WIN_W / 2.f, 100.f});
 
         m_hintText.setFont(m_font);
-        m_hintText.setString("A/D or Left/Right/Mouse to select   Enter/Click to confirm   Esc to back");
+        m_hintText.setString("A/D or Left/Right to select   Enter to confirm   Esc to back");
         m_hintText.setCharacterSize(14);
         m_hintText.setFillColor(sf::Color(180, 180, 180));
         sf::FloatRect hb = m_hintText.getLocalBounds();
@@ -166,10 +167,6 @@ void CharacterSelectState::update(float deltaTime)
 void CharacterSelectState::render(sf::RenderWindow& window) const
 {
     m_windowSize = window.getSize();
-
-    // Ensure render uses standard 800x600 view
-    sf::View defaultView({ WIN_W / 2.f, WIN_H / 2.f }, { WIN_W, WIN_H });
-    window.setView(defaultView);
 
     // Nền gradient giả (2 hình chữ nhật)
     sf::RectangleShape bg({WIN_W, WIN_H});

@@ -64,4 +64,11 @@ public:
      * @return Reference to the parsed MapObjectData
      */
     virtual const MapObjectData& getMapObjectData() const = 0;
-};
+
+    /**
+     * @brief Kích hoạt animation cờ trượt xuống cột khi người chơi chạm cột cờ.
+     */
+    virtual void triggerFlagSlide(int poleGridX) = 0;
+    virtual bool isFlagSliding() const = 0;
+    virtual bool hasFlagSlideFinished() const = 0;
+};

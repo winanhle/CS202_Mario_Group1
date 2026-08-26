@@ -123,31 +123,93 @@ bool GameWorld::hitboxTouchesFlagpole(const sf::FloatRect& box) const
     return false;
 }
 
+float GameWorld::getFlagpoleTileX(const sf::FloatRect& box) const
+{
+    if (!m_mapManager) return box.position.x;
+    const int tileSize = m_mapManager->getTileSize();
+    const int x0 = static_cast<int>(box.position.x) / tileSize;
+    const int x1 = static_cast<int>(box.position.x + box.size.x - 1.f) / tileSize;
+    const int y0 = static_cast<int>(box.position.y) / tileSize;
+    const int y1 = static_cast<int>(box.position.y + box.size.y - 1.f) / tileSize;
+
+    for (int gy = y0; gy <= y1; ++gy)
+    {
+        for (int gx = x0; gx <= x1; ++gx)
+        {
+            const float cx = static_cast<float>(gx) * tileSize + tileSize / 2.f;
+            const float cy = static_cast<float>(gy) * tileSize + tileSize / 2.f;
+            if (m_mapManager->getTileType(cx, cy) == TileType::FLAGPOLE)
+                return static_cast<float>(gx * tileSize);
+        }
+    }
+    return box.position.x;
+}
+
 void GameWorld::checkFlagpoleCollision()
 {
-    bool reached = false;
+    if (m_isFlagpoleSequenceActive)
+    {
+        bool finished = true;
+        if (m_playerManager && m_playerManager->isAlive() && !m_playerManager->hasFinishedFlagpole())
+            finished = false;
+        if (m_playerManager2 && m_playerManager2->isAlive() && !m_playerManager2->hasFinishedFlagpole())
+            finished = false;
 
-    if (m_playerManager && m_playerManager->isAlive())
-        reached = hitboxTouchesFlagpole(m_playerManager->getHitbox());
+        if (finished)
+        {
+            m_isFlagpoleSequenceActive = false;
+            if (m_levelManager.isLastLevel())
+            {
+                m_isGameWon = true;
+            }
+            else
+            {
+                m_isStageClear = true;
+            }
+        }
+        return;
+    }
 
-    if (!reached && m_playerManager2 && m_playerManager2->isAlive())
-        reached = hitboxTouchesFlagpole(m_playerManager2->getHitbox());
+    bool touchedP1 = false;
+    bool touchedP2 = false;
+    float poleX = 0.f;
 
-    if (!reached)
+    if (m_playerManager && m_playerManager->isAlive() && hitboxTouchesFlagpole(m_playerManager->getHitbox()))
+    {
+        touchedP1 = true;
+        poleX = getFlagpoleTileX(m_playerManager->getHitbox());
+    }
+
+    if (m_playerManager2 && m_playerManager2->isAlive() && hitboxTouchesFlagpole(m_playerManager2->getHitbox()))
+    {
+        touchedP2 = true;
+        if (!touchedP1)
+            poleX = getFlagpoleTileX(m_playerManager2->getHitbox());
+    }
+
+    if (!touchedP1 && !touchedP2)
         return;
 
-    // Stage cuối → quay vòng về stage 1 để game tiếp tục chơi được.
-    if (!m_levelManager.advanceToNextLevel())
-        m_levelManager.reset();
+    m_isFlagpoleSequenceActive = true;
 
-    loadCurrentLevel();
+    if (m_mapManager)
+    {
+        const int tileSize = m_mapManager->getTileSize();
+        m_mapManager->triggerFlagSlide(static_cast<int>(poleX) / (tileSize > 0 ? tileSize : 16));
+    }
+
+    if (touchedP1 && m_playerManager && m_playerManager->isAlive())
+        m_playerManager->startFlagpoleSlide(poleX);
+
+    if (touchedP2 && m_playerManager2 && m_playerManager2->isAlive())
+        m_playerManager2->startFlagpoleSlide(poleX);
 }
 
 // ==================== UPDATE ====================
 
 void GameWorld::update(float deltaTime)
 {
-    if (!m_isInitialized || m_isGameOver)
+    if (!m_isInitialized || m_isGameOver || m_isGameWon || m_isStageClear)
         return;
 
     if (m_mapManager)
@@ -160,16 +222,27 @@ void GameWorld::update(float deltaTime)
     if (m_playerManager2)
         m_playerManager2->update(deltaTime);
 
-    // 1.5. Chạm FLAGPOLE → sang stage kế tiếp (map mới tải lại từ đầu)
+    // 1.5. Chạm FLAGPOLE → sang stage kế tiếp (hoặc chiến thắng)
     checkFlagpoleCollision();
 
-    // 2. Enemy check va chạm với player position MỚI
-    if (m_enemyManager)
+    // 2. Enemy check va chạm với player position MỚI (bỏ qua khi đang trong cutscene cờ)
+    if (!m_isFlagpoleSequenceActive && m_enemyManager)
         m_enemyManager->update(deltaTime);
 
-    // 3. Item check va chạm với player position MỚI
-    if (m_itemManager)
+    // 3. Item check va chạm với player position MỚI (bỏ qua khi đang trong cutscene cờ)
+    if (!m_isFlagpoleSequenceActive && m_itemManager)
         m_itemManager->update(deltaTime);
+
+    // 3.5. Kiểm tra timer time-up → kill player(s) một lần (bỏ qua khi đang trong cutscene cờ)
+    if (!m_isFlagpoleSequenceActive && m_hudManager && m_hudManager->isTimeUp())
+    {
+        // Guard against die() being called every frame while isTimeUp() stays true.
+        // checkAndHandleDeath() below will raise m_isGameOver after the first call.
+        if (m_playerManager && m_playerManager->isAlive())
+            m_playerManager->die();
+        if (m_playerManager2 && m_playerManager2->isAlive())
+            m_playerManager2->die();
+    }
 
     // 4. Kiểm tra & xử lý death / respawn / game over
     checkAndHandleDeath();
@@ -278,13 +351,40 @@ void GameWorld::handleInput(const sf::Event& event)
         m_hudManager->handleInput(event);
 }
 
-// ==================== GAME OVER ====================
+// ==================== GAME OVER / WIN ====================
 
 bool GameWorld::isGameOver() const
 {
-    if (m_hudManager && m_hudManager->isTimeUp())
-        return true;
     return m_isGameOver;
+}
+
+bool GameWorld::isGameWon() const
+{
+    return m_isGameWon;
+}
+
+bool GameWorld::isStageClear() const
+{
+    return m_isStageClear;
+}
+
+void GameWorld::advanceStage()
+{
+    m_isStageClear = false;
+    m_isFlagpoleSequenceActive = false;
+    if (!m_levelManager.advanceToNextLevel())
+        m_levelManager.reset();
+    loadCurrentLevel();
+}
+
+int GameWorld::getCurrentStageNumber() const
+{
+    return m_levelManager.getCurrentLevelNumber();
+}
+
+int GameWorld::getNextStageNumber() const
+{
+    return m_levelManager.getCurrentLevelNumber() + 1;
 }
 
 int GameWorld::getTotalScore() const
@@ -298,6 +398,12 @@ int GameWorld::getTotalScore() const
 int GameWorld::getSharedLives() const
 {
     return m_sharedLives;
+}
+
+void GameWorld::deleteSaveData()
+{
+    if (m_saveManager)
+        m_saveManager->deleteSave();
 }
 
 // ==================== INJECT DEPENDENCIES ====================

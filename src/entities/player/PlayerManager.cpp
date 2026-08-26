@@ -66,6 +66,15 @@ void PlayerManager::setKeyBinding(const KeyBinding& keys)
 void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
 {
     KeyBinding keys;
+    keys.jump1st  = sf::Keyboard::Key::Unknown;
+    keys.jump2nd  = sf::Keyboard::Key::Unknown;
+    keys.jump3rd  = sf::Keyboard::Key::Unknown;
+    keys.left1st  = sf::Keyboard::Key::Unknown;
+    keys.left2nd  = sf::Keyboard::Key::Unknown;
+    keys.right1st = sf::Keyboard::Key::Unknown;
+    keys.right2nd = sf::Keyboard::Key::Unknown;
+    keys.shoot    = sf::Keyboard::Key::Unknown;
+    keys.run      = sf::Keyboard::Key::Unknown;
 
     if (m_playerIndex == 1)
     {
@@ -74,6 +83,7 @@ void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
         keys.left1st  = settings ? settings->getKey(GameAction::P1MoveLeft)  : sf::Keyboard::Key::A;
         keys.right1st = settings ? settings->getKey(GameAction::P1MoveRight) : sf::Keyboard::Key::D;
         keys.shoot    = settings ? settings->getKey(GameAction::P1Shoot)     : sf::Keyboard::Key::F;
+        keys.run      = sf::Keyboard::Key::LShift;
 
         // Default jump keys: both Space (primary) and W (secondary) work by default in both 1P and 2P modes.
         // If the player customizes P1 Jump in Settings (e.g. to J, K, etc.), the W fallback is disabled.
@@ -124,6 +134,7 @@ void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
         keys.left1st  = settings ? settings->getKey(GameAction::P2MoveLeft)  : sf::Keyboard::Key::Left;
         keys.right1st = settings ? settings->getKey(GameAction::P2MoveRight) : sf::Keyboard::Key::Right;
         keys.shoot    = settings ? settings->getKey(GameAction::P2Shoot)     : sf::Keyboard::Key::Period;
+        keys.run      = sf::Keyboard::Key::RShift;
     }
 
     m_inputHandler = std::make_unique<PlayerInputHandler>(keys);
@@ -135,7 +146,10 @@ void PlayerManager::updateAnimation(float deltaTime)
     const float FRAME_TIME = 0.15f;
 
     sf::IntRect currentRect;
-    if (!m_isGrounded) {
+    if (m_isFlagpoleSliding) {
+        // While sliding down and on touchdown: use clean standard in-game sprite
+        currentRect = m_currentForm->getWalkFrame1();
+    } else if (!m_isGrounded) {
         currentRect = m_currentForm->getJumpFrame();
     } else if (std::abs(m_velocityX) > 0.f && m_isSkidding) {
         // SKID: đang phanh gấp → đứng hình frame (chưa có sprite skid riêng,
@@ -166,6 +180,27 @@ void PlayerManager::updateAnimation(float deltaTime)
 void PlayerManager::update(float deltaTime)
 {
     if (!m_isAlive) return;
+
+    if (m_isFlagpoleSliding) {
+        if (!m_isGrounded) {
+            m_velocityY = 60.f; // Smooth, slow downward glide from contact height
+            m_positionY += m_velocityY * deltaTime;
+            tileCollisionY(deltaTime);
+        } else {
+            m_velocityY = 0.f;
+            m_flagpoleFinishTimer += deltaTime;
+            if (m_flagpoleFinishTimer >= 0.8f) {
+                m_isFlagpoleSliding = false;
+                m_hasFinishedFlagpole = true;
+            }
+        }
+        updateAnimation(deltaTime);
+        m_playerSprite.setPosition({
+            m_positionX + m_playerSize.x / 2.f,
+            m_positionY + m_playerSize.y / 2.f
+        });
+        return;
+    }
 
     // Tick down invincibility i-frames
     if (m_isInvincible) {
@@ -222,7 +257,7 @@ void PlayerManager::update(float deltaTime)
 }
 
 void PlayerManager::handleInput(const sf::Event& event) {
-    if (!m_isAlive || !m_inputHandler) return;
+    if (!m_isAlive || !m_inputHandler || m_isFlagpoleSliding) return;
 
     Command* command = m_inputHandler->handleEvent(event);
     if (command) {
@@ -574,6 +609,26 @@ void PlayerManager::resetToStart()
     m_velocityY = 0.f;
     m_inputDirection = 0;
     m_isGrounded = false;
+    m_isFlagpoleSliding = false;
+    m_hasFinishedFlagpole = false;
+    m_flagpoleFinishTimer = 0.f;
+}
+
+void PlayerManager::startFlagpoleSlide(float poleX)
+{
+    if (m_isFlagpoleSliding || m_hasFinishedFlagpole)
+        return;
+
+    m_isFlagpoleSliding = true;
+    m_hasFinishedFlagpole = false;
+    m_isGrounded = false; // Start sliding down from current air position
+    m_flagpoleFinishTimer = 0.f;
+    m_positionX = poleX - 4.f; // Align character nicely with the flagpole column
+    // m_positionY is preserved at current contact height!
+    m_velocityX = 0.f;
+    m_velocityY = 60.f; // Slow, smooth drop
+    m_facingDirection = 1;
+    m_inputDirection = 0;
 }
 
 void PlayerManager::respawn()

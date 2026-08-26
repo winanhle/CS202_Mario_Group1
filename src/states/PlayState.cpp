@@ -1,6 +1,8 @@
 #include "PlayState.h"
 #include "PauseState.h"
 #include "GameOverState.h"
+#include "WinState.h"
+#include "IntermissionState.h"
 #include "../core/StateManager.h"
 #include "../core/GameConfig.h"
 #include "../world/GameWorld.h"
@@ -149,14 +151,45 @@ void PlayState::update(float deltaTime)
 {
     m_gameWorld->update(deltaTime);
 
-    if (m_gameWorld->isGameOver())
+    if (m_gameWorld->isGameWon())
+    {
+        auto* manager = getStateManager();
+        if (manager)
+        {
+            // Game completed successfully: clear save file
+            m_gameWorld->deleteSaveData();
+
+            int finalScore = m_gameWorld->getTotalScore();
+            int livesLeft  = m_gameWorld->getSharedLives();
+            auto winState  = std::make_unique<WinState>(m_settings, m_config, finalScore, livesLeft);
+            manager->changeState(std::move(winState));
+        }
+    }
+    else if (m_gameWorld->isStageClear())
+    {
+        auto* manager = getStateManager();
+        if (manager)
+        {
+            int cur = m_gameWorld->getCurrentStageNumber();
+            int next = m_gameWorld->getNextStageNumber();
+            int lives = m_gameWorld->getSharedLives();
+            auto intermission = std::make_unique<IntermissionState>(
+                m_config, cur, next, lives,
+                [this]() {
+                    if (m_gameWorld)
+                        m_gameWorld->advanceStage();
+                }
+            );
+            manager->pushState(std::move(intermission));
+        }
+    }
+    else if (m_gameWorld->isGameOver())
     {
         auto* manager = getStateManager();
         if (manager)
         {
             // Delete save file — the player lost, no game to continue
-            if (auto* save = m_gameWorld->getSaveManager())
-                save->deleteSave();
+            m_gameWorld->deleteSaveData();
 
             int finalScore = m_gameWorld->getTotalScore();
             auto gameOverState = std::make_unique<GameOverState>(m_settings, m_config);

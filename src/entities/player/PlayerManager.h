@@ -172,4 +172,13 @@ public:
 
     /** Trả về true nếu StarState đang còn hiệu lực. */
     bool isStarActive() const override;
+
+    void startFlagpoleSlide(float poleX) override;
+    bool isFlagpoleSliding() const override { return m_isFlagpoleSliding; }
+    bool hasFinishedFlagpole() const override { return m_hasFinishedFlagpole; }
+
+private:
+    bool  m_isFlagpoleSliding = false;
+    bool  m_hasFinishedFlagpole = false;
+    float m_flagpoleFinishTimer = 0.f;
 };

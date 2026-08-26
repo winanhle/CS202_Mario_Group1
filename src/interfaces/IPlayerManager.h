@@ -177,4 +177,12 @@ public:
      * Được EnemyManager kiểm tra để quyết định collision behavior.
      */
     virtual bool isStarActive() const = 0;
+
+    /**
+     * @brief Bắt đầu animation trượt cột cờ (Flagpole slide).
+     */
+    virtual void startFlagpoleSlide(float poleX) = 0;
+    virtual bool isFlagpoleSliding() const = 0;
+    virtual bool hasFinishedFlagpole() const = 0;
 };
+

@@ -42,6 +42,18 @@ struct CoinPopAnim {
     float        life;      // remaining lifetime in seconds
 };
 
+/**
+ * @struct FlagSlideAnim
+ * @brief Sliding flag animation on the goal flagpole.
+ */
+struct FlagSlideAnim {
+    sf::Vector2f pos{0.f, 0.f};
+    float        targetY  = 0.f;
+    float        speed    = 90.f;
+    bool         active   = false;
+    bool         finished = false;
+};
+
 // ─── State Structs ────────────────────────────────────────────────────────────
 
 /**
@@ -74,6 +86,7 @@ private:
     // ─── Live animations ──────────────────────────────────────────────────────
     std::vector<BrickDebris> m_brickDebris;
     std::vector<CoinPopAnim> m_coinPopAnims;
+    FlagSlideAnim            m_flagAnim;
 
     // ─── Tileset sprite-sheet rendering ──────────────────────────────────────
     sf::Texture                  m_tilesetTexture;  // PNG loaded from the TSX <image> node
@@ -152,4 +165,8 @@ public:
     // ─── IMapManager new API ─────────────────────────────────────────────────
     void onHitFromBelow(int tileGridX, int tileGridY, int formType) override;
     void setItemManager(IItemManager* itemManager) override { m_itemManager = itemManager; }
+
+    void triggerFlagSlide(int poleGridX) override;
+    bool isFlagSliding() const override { return m_flagAnim.active; }
+    bool hasFlagSlideFinished() const override { return m_flagAnim.finished; }
 };

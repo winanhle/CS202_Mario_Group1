@@ -71,6 +71,24 @@ public:
     bool isGameOver() const;
 
     /**
+     * @brief Returns true when the final level is cleared (flagpole reached).
+     */
+    bool isGameWon() const;
+
+    /**
+     * @brief Returns true when a non-final stage is cleared (ready for intermission).
+     */
+    bool isStageClear() const;
+
+    /**
+     * @brief Advances to the next stage and reloads map / entities.
+     */
+    void advanceStage();
+
+    int getCurrentStageNumber() const;
+    int getNextStageNumber() const;
+
+    /**
      * @brief Returns combined score of all active players.
      */
     int getTotalScore() const;
@@ -79,6 +97,11 @@ public:
      * @brief Returns current shared lives count.
      */
     int getSharedLives() const;
+
+    /**
+     * @brief Deletes any saved progress on game end / completion.
+     */
+    void deleteSaveData();
 
     // ─── sau initialize, inject dependency ───
     void injectDependencies();
@@ -132,6 +155,9 @@ private:
     static constexpr int INITIAL_LIVES = 3;
     int  m_sharedLives  = INITIAL_LIVES;
     bool m_isGameOver   = false;
+    bool m_isGameWon    = false;
+    bool m_isStageClear = false;
+    bool m_isFlagpoleSequenceActive = false;
     bool m_isInitialized = false;
 
     /**
@@ -161,4 +187,9 @@ private:
      * @brief Kiểm tra bất kỳ ô FLAGPOLE nào nằm trong hitbox.
      */
     bool hitboxTouchesFlagpole(const sf::FloatRect& box) const;
+
+    /**
+     * @brief Tìm tọa độ X của cột cờ mà hitbox đang chạm.
+     */
+    float getFlagpoleTileX(const sf::FloatRect& box) const;
 };

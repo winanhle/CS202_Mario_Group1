@@ -6,6 +6,16 @@
 
 namespace fs = std::filesystem;
 
+// ── Flagpole & Flag Slide Constants ──────────────────────────────────────────
+static constexpr int   GID_FLAGPOLE_TOP_BALL = 621;
+static constexpr int   GID_FLAGPOLE_FLAG     = 831;
+static constexpr int   GID_FLAGPOLE_ATTACH   = 832;
+static constexpr int   GID_FLAGPOLE_SHAFT    = 1043;
+static constexpr int   GID_FLAGPOLE_BASE     = 2667;
+static constexpr float FLAG_SLIDE_SPEED      = 90.f;
+static constexpr int   FLAGPOLE_FALLBACK_TOP = 5;
+static constexpr int   FLAGPOLE_FALLBACK_BOT = 12;
+
 MapManager::MapManager() {}
 
 void MapManager::initialize() {
@@ -243,6 +253,7 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
     // layer sau ghi đè layer trước ở các ô có tile (GID > 0).
     m_mapData.clear();
     m_rawGids.clear();
+    m_flagAnim = {};
     m_mapData.assign(mapHeight, std::vector<TileType>(mapWidth, TileType::EMPTY));
     m_rawGids.assign(mapHeight, std::vector<int>(mapWidth, 0));
 
@@ -427,7 +438,7 @@ void MapManager::update(float deltaTime) {
         ++it;
     }
 
-    // ── Brick debris particles ────────────────────────────────────────────────
+    // ── Brick debris ────────────────────────────────────────────────────────
     for (auto& d : m_brickDebris) {
         d.vel.y += DEBRIS_GRAVITY * deltaTime;
         d.pos   += d.vel * deltaTime;
@@ -448,6 +459,15 @@ void MapManager::update(float deltaTime) {
         std::remove_if(m_coinPopAnims.begin(), m_coinPopAnims.end(),
             [](const CoinPopAnim& c){ return c.life <= 0.f; }),
         m_coinPopAnims.end());
+
+    // ── Flag slide animation ──────────────────────────────────────────────────
+    if (m_flagAnim.active) {
+        m_flagAnim.pos.y += m_flagAnim.speed * deltaTime;
+        if (m_flagAnim.pos.y >= m_flagAnim.targetY) {
+            m_flagAnim.pos.y = m_flagAnim.targetY;
+            m_flagAnim.finished = true;
+        }
+    }
 }
 
 // =============================================================================
@@ -516,6 +536,29 @@ void MapManager::render(sf::RenderWindow& window) const {
             }
             window.draw(tileShape);
         }
+    }
+
+    // ── Flag slide animation ──────────────────────────────────────────────────
+    if (m_flagAnim.active && m_tileSprite && m_tilesetColumns > 0) {
+        // Flag triangle
+        int localId = GID_FLAGPOLE_FLAG - m_tilesetFirstGid;
+        int tileCol = localId % m_tilesetColumns;
+        int tileRow = localId / m_tilesetColumns;
+        m_tileSprite->setTextureRect(sf::IntRect(
+            {tileCol * m_tileSize, tileRow * m_tileSize},
+            {m_tileSize, m_tileSize}));
+        m_tileSprite->setPosition(m_flagAnim.pos);
+        window.draw(*m_tileSprite);
+
+        // Pole attachment piece
+        int localIdAttach = GID_FLAGPOLE_ATTACH - m_tilesetFirstGid;
+        int tileColAttach = localIdAttach % m_tilesetColumns;
+        int tileRowAttach = localIdAttach / m_tilesetColumns;
+        m_tileSprite->setTextureRect(sf::IntRect(
+            {tileColAttach * m_tileSize, tileRowAttach * m_tileSize},
+            {m_tileSize, m_tileSize}));
+        m_tileSprite->setPosition({m_flagAnim.pos.x + (float)m_tileSize, m_flagAnim.pos.y});
+        window.draw(*m_tileSprite);
     }
 
     // ── Brick debris ──────────────────────────────────────────────────────────
@@ -687,4 +730,43 @@ void MapManager::spawnBrickDebris(int gx, int gy) {
         d.size    = { half, half };
         m_brickDebris.push_back(d);
     }
+}
+
+void MapManager::triggerFlagSlide(int poleGridX) {
+    if (m_flagAnim.active) return;
+
+    int topY = -1;
+    int bottomY = -1;
+
+    for (int gy = 0; gy < (int)m_rawGids.size(); ++gy) {
+        if (poleGridX >= 0 && poleGridX < (int)m_rawGids[gy].size()) {
+            int gid = m_rawGids[gy][poleGridX];
+            if (gid == GID_FLAGPOLE_TOP_BALL) {
+                topY = gy + 1; // row below top ball
+            } else if (gid == GID_FLAGPOLE_BASE || (topY != -1 && m_mapData[gy][poleGridX] == TileType::GROUND)) {
+                bottomY = gy - 1; // row above base/ground block
+                break;
+            }
+        }
+    }
+
+    if (topY == -1) topY = 5;
+    if (bottomY == -1) bottomY = 12;
+
+    int flagCol = poleGridX - 1;
+    if (topY >= 0 && topY < (int)m_rawGids.size() && flagCol >= 0 && flagCol < (int)m_rawGids[0].size()) {
+        int skyGid = (topY > 0) ? m_rawGids[topY - 1][flagCol] : 1;
+        if (skyGid == 0) skyGid = 1;
+        m_rawGids[topY][flagCol] = skyGid; // Fill with sky tile so no black background is left!
+        m_mapData[topY][flagCol] = TileType::EMPTY;
+        if (m_rawGids[topY][poleGridX] == GID_FLAGPOLE_ATTACH) {
+            m_rawGids[topY][poleGridX] = GID_FLAGPOLE_SHAFT; // Restore bare pole shaft
+        }
+    }
+
+    m_flagAnim.pos      = { (float)flagCol * (float)m_tileSize, (float)topY * (float)m_tileSize };
+    m_flagAnim.targetY  = (float)bottomY * (float)m_tileSize;
+    m_flagAnim.speed    = FLAG_SLIDE_SPEED;
+    m_flagAnim.active   = true;
+    m_flagAnim.finished = false;
 }

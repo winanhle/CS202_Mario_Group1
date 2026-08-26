@@ -37,6 +37,8 @@ set(SHARED_SOURCES
     src/states/PlayState.cpp
     src/states/PauseState.cpp
     src/states/GameOverState.cpp
+    src/states/WinState.cpp
+    src/states/IntermissionState.cpp
     src/states/CharacterSelectState.cpp
     src/states/ModeSelectState.cpp
     src/world/GameWorld.cpp
