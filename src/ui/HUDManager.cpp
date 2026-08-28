@@ -547,14 +547,14 @@ void HUDManager::showToast(const std::string& message, float duration)
     m_toasts.push_back(t);
 }
 
-void HUDManager::spawnScorePopup(int points, float worldX, float worldY)
+void HUDManager::spawnScorePopup(int points, float worldX, float worldY, bool isOneUp)
 {
     ScorePopup p;
     p.position = { worldX, worldY };
     p.lifetime = SCORE_POPUP_LIFETIME;
     p.maxLifetime = SCORE_POPUP_LIFETIME;
     p.velocityY = SCORE_POPUP_DRIFT_SPEED;
-    if (points >= ONE_UP_THRESHOLD)
+    if (isOneUp)
     {
         p.textString = "1-UP";
         p.isOneUp = true;

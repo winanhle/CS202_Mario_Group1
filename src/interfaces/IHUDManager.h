@@ -105,7 +105,7 @@ public:
      * @param worldX World X position
      * @param worldY World Y position
      */
-    virtual void spawnScorePopup(int points, float worldX, float worldY) { (void)points; (void)worldX; (void)worldY; }
+    virtual void spawnScorePopup(int points, float worldX, float worldY, bool isOneUp = false) { (void)points; (void)worldX; (void)worldY; (void)isOneUp; }
 
     /**
      * @brief Render floating score popups.

@@ -107,6 +107,10 @@ void PlayState::setup(const GameConfig& config)
             }
         }
     }
+
+    m_levelStartScore = m_gameWorld->getTotalScore();
+    m_levelStartLives = m_gameWorld->getSharedLives();
+    m_levelStartCoins = m_gameWorld->getTotalCoins();
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -148,14 +152,14 @@ void PlayState::handleInput(const sf::Event& event)
             auto* manager = getStateManager();
             if (manager)
             {
-                // Sync the latest player state into the save manager so the
-                // pause menu can save it if the player picks "Save & Quit"
+                // pause menu can save it if the player picks "Save & Quit".
+                // We use level start values to prevent farming lives/coins mid-level.
                 if (auto* save = m_gameWorld->getSaveManager())
                 {
-                    save->setSaveData(m_gameWorld->getTotalScore(),
-                                      m_gameWorld->getSharedLives(),
+                    save->setSaveData(m_levelStartScore,
+                                      m_levelStartLives,
                                       m_gameWorld->getCurrentStageNumber(),
-                                      m_gameWorld->getTotalCoins());
+                                      m_levelStartCoins);
                     save->setGameConfig(static_cast<int>(m_config.player1Character),
                                         static_cast<int>(m_config.player2Character),
                                         static_cast<int>(m_config.mode));
@@ -199,7 +203,25 @@ void PlayState::update(float deltaTime)
                 m_config, cur, next, lives,
                 [this]() {
                     if (m_gameWorld)
+                    {
                         m_gameWorld->advanceStage();
+                        
+                        m_levelStartScore = m_gameWorld->getTotalScore();
+                        m_levelStartLives = m_gameWorld->getSharedLives();
+                        m_levelStartCoins = m_gameWorld->getTotalCoins();
+
+                        if (m_saveManager)
+                        {
+                            m_saveManager->setSaveData(m_levelStartScore,
+                                                       m_levelStartLives,
+                                                       m_gameWorld->getCurrentStageNumber(),
+                                                       m_levelStartCoins);
+                            m_saveManager->setGameConfig(static_cast<int>(m_config.player1Character),
+                                                         static_cast<int>(m_config.player2Character),
+                                                         static_cast<int>(m_config.mode));
+                            m_saveManager->saveGame();
+                        }
+                    }
                 }
             );
             manager->pushState(std::move(intermission));

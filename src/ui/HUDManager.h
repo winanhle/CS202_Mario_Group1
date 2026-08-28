@@ -45,7 +45,7 @@ public:
 
     void setCharacter(CharacterType characterType) override;
     void showToast(const std::string& message, float duration = 2.0f) override;
-    void spawnScorePopup(int points, float worldX, float worldY) override;
+    void spawnScorePopup(int points, float worldX, float worldY, bool isOneUp = false) override;
     void renderPopups(sf::RenderWindow& window, const sf::View* cameraView = nullptr) const override;
     void startTimerBonus(std::function<void(int bonus)> onScoreTick, std::function<void()> onComplete = nullptr, float worldX = 0.f, float worldY = 0.f) override;
     bool isTimerBonusActive() const override;

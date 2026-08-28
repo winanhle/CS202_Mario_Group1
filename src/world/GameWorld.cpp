@@ -248,14 +248,34 @@ void GameWorld::checkFlagpoleCollision()
         m_mapManager->triggerFlagSlide(static_cast<int>(poleX) / (tileSize > 0 ? tileSize : 16));
     }
 
+    auto calculateFlagPoints = [this](float pX, const sf::FloatRect& hb) -> int {
+        // Standard flagpole dimensions in our map
+        const float POLE_BOTTOM = 208.f;
+        const float POLE_HEIGHT = 144.f;
+
+        // Use Mario's center Y instead of feet, so Big Mario doesn't get penalized
+        float playerCenterY = hb.position.y + (hb.size.y / 2.f);
+        float actualPixelsHigh = POLE_BOTTOM - playerCenterY;
+        
+        float ratio = actualPixelsHigh / POLE_HEIGHT;
+
+        // Classic SMB thresholds mapped as ratios of 153
+        if (ratio >= 152.f / 153.f) return 5000;
+        if (ratio >= 128.f / 153.f) return 4000;
+        if (ratio >= 82.f / 153.f)  return 2000;
+        if (ratio >= 58.f / 153.f)  return 800;
+        if (ratio >= 18.f / 153.f)  return 400;
+        return 100;
+    };
+
     if (touchedP1 && m_playerManager && m_playerManager->isAlive())
     {
         m_playerManager->startFlagpoleSlide(poleX);
-        const int flagPoints = 5000;
+        auto hb = m_playerManager->getHitbox();
+        const int flagPoints = calculateFlagPoints(poleX, hb);
         m_playerManager->addScore(flagPoints);
         if (m_hudManager)
         {
-            auto hb = m_playerManager->getHitbox();
             m_hudManager->spawnScorePopup(flagPoints, hb.position.x + hb.size.x / 2.f, hb.position.y - 6.f);
         }
     }
@@ -263,11 +283,11 @@ void GameWorld::checkFlagpoleCollision()
     if (touchedP2 && m_playerManager2 && m_playerManager2->isAlive())
     {
         m_playerManager2->startFlagpoleSlide(poleX);
-        const int flagPoints = 5000;
+        auto hb = m_playerManager2->getHitbox();
+        const int flagPoints = calculateFlagPoints(poleX, hb);
         m_playerManager2->addScore(flagPoints);
         if (m_hudManager)
         {
-            auto hb = m_playerManager2->getHitbox();
             m_hudManager->spawnScorePopup(flagPoints, hb.position.x + hb.size.x / 2.f, hb.position.y - 6.f);
         }
     }
@@ -327,7 +347,7 @@ void GameWorld::update(float deltaTime)
                 ++m_sharedLives;
                 float px = m_playerManager->getPositionX();
                 float py = m_playerManager->getPositionY();
-                m_hudManager->spawnScorePopup(10000, px + 8.0f, py - 32.0f);
+                m_hudManager->spawnScorePopup(0, px + 8.0f, py - 32.0f, true);
             }
             if (oneUps > 0)
                 m_hudManager->showToast("1-UP!", 1.5f);
@@ -340,7 +360,7 @@ void GameWorld::update(float deltaTime)
                 ++m_sharedLives;
                 float px = m_playerManager2->getPositionX();
                 float py = m_playerManager2->getPositionY();
-                m_hudManager->spawnScorePopup(10000, px + 8.0f, py - 32.0f);
+                m_hudManager->spawnScorePopup(0, px + 8.0f, py - 32.0f, true);
             }
             if (oneUps > 0)
                 m_hudManager->showToast("1-UP!", 1.5f);
