@@ -136,33 +136,12 @@ std::string SaveManager::getSaveFilePath() const
     return SAVE_FILE;
 }
 
-std::string SaveManager::getHighScoresFilePath()
+std::string SaveManager::getHighScoresFilePath() const
 {
     return SCORES_FILE;
 }
 
-bool SaveManager::saveFileExists()
-{
-    std::ifstream file(SAVE_FILE);
-    return file.good();
-}
-
-std::vector<ScoreEntry> SaveManager::loadHighScores()
-{
-    return getHighScores();
-}
-
-void SaveManager::saveHighScores(const std::vector<ScoreEntry>& entries)
-{
-    setHighScores(entries);
-}
-
-bool SaveManager::isHighScore(int score) const
-{
-    return checkIsHighScore(score);
-}
-
-std::vector<ScoreEntry> SaveManager::getHighScores()
+std::vector<ScoreEntry> SaveManager::loadHighScores() const
 {
     std::vector<ScoreEntry> list;
     std::ifstream file(getHighScoresFilePath());
@@ -212,7 +191,7 @@ std::vector<ScoreEntry> SaveManager::getHighScores()
     return list;
 }
 
-void SaveManager::setHighScores(const std::vector<ScoreEntry>& entries)
+void SaveManager::saveHighScores(const std::vector<ScoreEntry>& entries)
 {
     std::vector<ScoreEntry> sorted = entries;
     std::sort(sorted.begin(), sorted.end(), [](const ScoreEntry& a, const ScoreEntry& b) {
@@ -238,10 +217,10 @@ void SaveManager::setHighScores(const std::vector<ScoreEntry>& entries)
     }
 }
 
-bool SaveManager::checkIsHighScore(int score)
+bool SaveManager::isHighScore(int score) const
 {
     if (score <= 0) return false;
-    auto list = getHighScores();
+    auto list = loadHighScores();
     if (list.size() < 5) return true;
     return score > list.back().score;
 }
@@ -251,7 +230,7 @@ void SaveManager::addHighScore(const std::string& initials, int score)
     std::string safeInitials = initials.substr(0, 5);
     while (safeInitials.length() < 5)
         safeInitials += ' ';
-    auto list = getHighScores();
+    auto list = loadHighScores();
     list.push_back({ safeInitials, score });
-    setHighScores(list);
+    saveHighScores(list);
 }

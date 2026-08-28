@@ -65,6 +65,7 @@ protected:
     float m_velocityX, m_velocityY;
     int   m_score = 0;
     int   m_coins = 0;
+    int   m_pendingOneUps = 0;
     bool  m_isAlive = true;
     bool  m_isGrounded;
     bool  m_isJumping;
@@ -145,6 +146,7 @@ public:
     void takeDamage()           override;
     void bounce()               override;
     void collectCoin(int amount) override;
+    int  consumePendingOneUps() override;
     void setMapManager(IMapManager* map) override;
 
     /**

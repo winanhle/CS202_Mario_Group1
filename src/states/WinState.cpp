@@ -2,7 +2,7 @@
 #include "PlayState.h"
 #include "MenuState.h"
 #include "InitialsEntryState.h"
-#include "../ui/SaveManager.h"
+#include "../interfaces/ISaveManager.h"
 #include "../core/StateManager.h"
 #include "../interfaces/ISettingsManager.h"
 #include <cmath>
@@ -19,10 +19,12 @@ static constexpr sf::Color CARD_SEL_OUTLINE = sf::Color(150, 190, 255);
 static constexpr int LIVES_BONUS_MULTIPLIER = 1000;
 
 WinState::WinState(std::shared_ptr<ISettingsManager> settings,
+                   std::shared_ptr<ISaveManager> saveManager,
                    const GameConfig& config,
                    int baseScore,
                    int livesRemaining)
     : m_settings(std::move(settings))
+    , m_saveManager(std::move(saveManager))
     , m_config(config)
     , m_baseScore(baseScore)
     , m_livesRemaining(livesRemaining)
@@ -237,7 +239,7 @@ void WinState::playAgain()
     auto* manager = getStateManager();
     if (manager)
     {
-        manager->changeState(std::make_unique<PlayState>(m_config, m_settings, false));
+        manager->changeState(std::make_unique<PlayState>(m_config, m_settings, m_saveManager, false));
     }
 }
 
@@ -246,13 +248,13 @@ void WinState::returnToMenu()
     auto* manager = getStateManager();
     if (manager)
     {
-        if (SaveManager::checkIsHighScore(m_totalScore))
+        if (m_saveManager && m_saveManager->isHighScore(m_totalScore))
         {
-            manager->changeState(std::make_unique<InitialsEntryState>(m_totalScore, m_settings, m_config));
+            manager->changeState(std::make_unique<InitialsEntryState>(m_totalScore, m_settings, m_saveManager, m_config));
         }
         else
         {
-            manager->changeState(std::make_unique<MenuState>(m_settings));
+            manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
         }
     }
 }

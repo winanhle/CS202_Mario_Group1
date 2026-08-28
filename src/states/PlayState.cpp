@@ -64,7 +64,9 @@ void PlayState::setup(const GameConfig& config)
     auto hud = std::make_shared<HUDManager>();
     hud->setCharacter(config.player1Character);
     m_gameWorld->setHUDManager(hud);
-    m_gameWorld->setSaveManager(std::make_shared<SaveManager>());
+    if (!m_saveManager)
+        m_saveManager = std::make_shared<SaveManager>();
+    m_gameWorld->setSaveManager(m_saveManager);
 
     // Inject shared settings (key bindings for the player) before init
     m_gameWorld->setSettings(m_settings);
@@ -110,8 +112,9 @@ void PlayState::setup(const GameConfig& config)
 // ──────────────────────────────────────────────────────────────────
 // Constructor nhận config từ ModeSelectState
 // ──────────────────────────────────────────────────────────────────
-PlayState::PlayState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, bool loadSave)
+PlayState::PlayState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, std::shared_ptr<ISaveManager> saveManager, bool loadSave)
     : m_settings(std::move(settings))
+    , m_saveManager(std::move(saveManager))
     , m_loadSave(loadSave)
 {
     setup(config);
@@ -122,6 +125,7 @@ PlayState::PlayState(const GameConfig& config, std::shared_ptr<ISettingsManager>
 // ──────────────────────────────────────────────────────────────────
 PlayState::PlayState()
     : m_settings(nullptr)
+    , m_saveManager(nullptr)
     , m_loadSave(false)
 {
     GameConfig defaultConfig;
@@ -156,7 +160,7 @@ void PlayState::handleInput(const sf::Event& event)
                                         static_cast<int>(m_config.player2Character),
                                         static_cast<int>(m_config.mode));
                 }
-                manager->pushState(std::make_unique<PauseState>(m_settings, m_gameWorld->getSaveManager(), m_gameWorld->getPlayerManager(), m_gameWorld->getPlayerManager2()));
+                manager->pushState(std::make_unique<PauseState>(m_settings, m_saveManager, m_gameWorld->getPlayerManager(), m_gameWorld->getPlayerManager2()));
             }
             return; // don't forward the pause key to the game world
         }
@@ -179,7 +183,7 @@ void PlayState::update(float deltaTime)
 
             int finalScore = m_gameWorld->getTotalScore();
             int livesLeft  = m_gameWorld->getSharedLives();
-            auto winState  = std::make_unique<WinState>(m_settings, m_config, finalScore, livesLeft);
+            auto winState  = std::make_unique<WinState>(m_settings, m_saveManager, m_config, finalScore, livesLeft);
             manager->changeState(std::move(winState));
         }
     }
@@ -210,7 +214,7 @@ void PlayState::update(float deltaTime)
             m_gameWorld->deleteSaveData();
 
             int finalScore = m_gameWorld->getTotalScore();
-            auto gameOverState = std::make_unique<GameOverState>(m_settings, m_config);
+            auto gameOverState = std::make_unique<GameOverState>(m_settings, m_saveManager, m_config);
             gameOverState->setFinalScore(finalScore);
             manager->changeState(std::move(gameOverState));
         }

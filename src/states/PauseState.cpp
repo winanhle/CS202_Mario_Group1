@@ -6,9 +6,11 @@
 #include <SFML/Graphics.hpp>
 
 PauseState::PauseState(std::shared_ptr<ISettingsManager> settings,
-                       ISaveManager* saveManager, IPlayerManager* player1, IPlayerManager* player2)
+                       std::shared_ptr<ISaveManager> saveManager,
+                       IPlayerManager* player1,
+                       IPlayerManager* player2)
     : m_settings(std::move(settings))
-    , m_saveManager(saveManager)
+    , m_saveManager(std::move(saveManager))
     , m_player1(player1)
     , m_player2(player2)
     , m_menu(*m_settings, /*pauseContext=*/true)
@@ -47,7 +49,7 @@ void PauseState::handleInput(const sf::Event& event)
         {
             // Pop the pause state, then replace PlayState with the menu
             manager->popState();
-            manager->changeState(std::make_unique<MenuState>(m_settings));
+            manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
         }
         break;
     }
@@ -70,7 +72,7 @@ void PauseState::saveAndQuitToMenu()
     if (manager)
     {
         manager->popState();
-        manager->changeState(std::make_unique<MenuState>(m_settings));
+        manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
     }
 }
 

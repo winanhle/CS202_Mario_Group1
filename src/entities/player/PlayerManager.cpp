@@ -684,4 +684,14 @@ void PlayerManager::addScore(int points) {
 void PlayerManager::collectCoin(int amount) {
     m_coins += amount;
     m_score += amount * 200;
+    while (m_coins >= 100) {
+        m_coins -= 100;
+        m_pendingOneUps++;
+    }
+}
+
+int PlayerManager::consumePendingOneUps() {
+    int count = m_pendingOneUps;
+    m_pendingOneUps = 0;
+    return count;
 }

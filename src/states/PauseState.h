@@ -16,16 +16,15 @@ class IPlayerManager;
  *   - PAUSED context -> root menu (Resume / Settings / Save & Quit / Quit to Menu)
  *   - Settings sub-screen for volume and key bindings
  * 
- * Receives a non-owning pointer to the game's SaveManager so "Save & Quit"
- * can persist the current player state before returning to the main menu,
- * and a non-owning pointer to the player so key rebinds made in the menu
- * are applied when the game resumes.
+ * Receives the shared ISaveManager so "Save & Quit" can persist the current
+ * player state before returning to the main menu, and non-owning player pointers
+ * so key rebinds made in the menu are applied when the game resumes.
  */
 class PauseState : public GameState
 {
 public:
     explicit PauseState(std::shared_ptr<ISettingsManager> settings,
-                        ISaveManager* saveManager,
+                        std::shared_ptr<ISaveManager> saveManager,
                         IPlayerManager* player1,
                         IPlayerManager* player2 = nullptr);
     ~PauseState() override = default;
@@ -38,7 +37,7 @@ private:
     void saveAndQuitToMenu();
 
     std::shared_ptr<ISettingsManager> m_settings;
-    ISaveManager* m_saveManager; // non-owning; owned by GameWorld
+    std::shared_ptr<ISaveManager> m_saveManager;
     IPlayerManager* m_player1;   // non-owning; owned by GameWorld
     IPlayerManager* m_player2;   // non-owning; owned by GameWorld
     SettingsMenu m_menu;

@@ -9,6 +9,7 @@
 #include <array>
 
 class ISettingsManager;
+class ISaveManager;
 
 /**
  * @class GameOverState
@@ -24,6 +25,7 @@ class GameOverState : public GameState
 {
 public:
     explicit GameOverState(std::shared_ptr<ISettingsManager> settings,
+                           std::shared_ptr<ISaveManager> saveManager,
                            const GameConfig& config = GameConfig{});
     ~GameOverState() override = default;
 
@@ -40,6 +42,7 @@ private:
     void returnToMenu();
 
     std::shared_ptr<ISettingsManager> m_settings;
+    std::shared_ptr<ISaveManager> m_saveManager;
     GameConfig m_config;
 
     sf::Font m_font;

@@ -2,12 +2,12 @@
 
 #include "../core/GameState.h"
 #include "../core/GameConfig.h"
-#include "../ui/SaveManager.h"
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <vector>
 
 class ISettingsManager;
+class ISaveManager;
 
 /**
  * @class LeaderboardState
@@ -17,6 +17,7 @@ class LeaderboardState : public GameState
 {
 public:
     LeaderboardState(std::shared_ptr<ISettingsManager> settings,
+                     std::shared_ptr<ISaveManager> saveManager = nullptr,
                      const GameConfig& config = GameConfig{});
     ~LeaderboardState() override = default;
 
@@ -28,6 +29,7 @@ private:
     void returnToMenu();
 
     std::shared_ptr<ISettingsManager> m_settings;
+    std::shared_ptr<ISaveManager> m_saveManager;
     GameConfig m_config;
 
     sf::Font m_font;

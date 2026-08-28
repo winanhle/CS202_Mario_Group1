@@ -5,6 +5,7 @@
 #include <SFML/Graphics.hpp>
 
 class ISettingsManager;
+class ISaveManager;
 
 /**
  * @class Game
@@ -55,4 +56,6 @@ private:
 
     // Shared settings instance, injected into every state that needs it
     std::shared_ptr<ISettingsManager> m_settings;
+    // Shared save manager instance, injected into every state that needs it
+    std::shared_ptr<ISaveManager> m_saveManager;
 };

@@ -318,6 +318,34 @@ void GameWorld::update(float deltaTime)
     // 5. HUD update
     if (m_hudManager)
     {
+        // Check for 100-coin 1-UP rollovers from either player
+        if (m_playerManager)
+        {
+            int oneUps = m_playerManager->consumePendingOneUps();
+            for (int i = 0; i < oneUps; ++i)
+            {
+                ++m_sharedLives;
+                float px = m_playerManager->getPositionX();
+                float py = m_playerManager->getPositionY();
+                m_hudManager->spawnScorePopup(10000, px + 8.0f, py - 32.0f);
+            }
+            if (oneUps > 0)
+                m_hudManager->showToast("1-UP!", 1.5f);
+        }
+        if (m_playerManager2)
+        {
+            int oneUps = m_playerManager2->consumePendingOneUps();
+            for (int i = 0; i < oneUps; ++i)
+            {
+                ++m_sharedLives;
+                float px = m_playerManager2->getPositionX();
+                float py = m_playerManager2->getPositionY();
+                m_hudManager->spawnScorePopup(10000, px + 8.0f, py - 32.0f);
+            }
+            if (oneUps > 0)
+                m_hudManager->showToast("1-UP!", 1.5f);
+        }
+
         int currentScore = getTotalScore();
         if (!m_isFlagpoleSequenceActive && !m_isTimerTallyActive && m_lastTotalScore >= 0 && currentScore > m_lastTotalScore)
         {

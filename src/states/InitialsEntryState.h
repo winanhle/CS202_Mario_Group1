@@ -8,6 +8,7 @@
 #include <array>
 
 class ISettingsManager;
+class ISaveManager;
 
 /**
  * @class InitialsEntryState
@@ -18,6 +19,7 @@ class InitialsEntryState : public GameState
 public:
     InitialsEntryState(int finalScore,
                        std::shared_ptr<ISettingsManager> settings,
+                       std::shared_ptr<ISaveManager> saveManager,
                        const GameConfig& config = GameConfig{});
     ~InitialsEntryState() override = default;
 
@@ -37,6 +39,7 @@ private:
 
     int m_score = 0;
     std::shared_ptr<ISettingsManager> m_settings;
+    std::shared_ptr<ISaveManager> m_saveManager;
     GameConfig m_config;
 
     sf::Font m_font;

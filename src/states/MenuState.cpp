@@ -3,17 +3,18 @@
 #include "LeaderboardState.h"
 #include "../core/StateManager.h"
 #include "../core/GameConfig.h"
-#include "../ui/SaveManager.h"
+#include "../interfaces/ISaveManager.h"
 #include "PlayState.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
-MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
+MenuState::MenuState(std::shared_ptr<ISettingsManager> settings, std::shared_ptr<ISaveManager> saveManager)
     : m_fontLoaded(false)
     , m_hasSave(false)
     , m_blinkTimer(0.0f)
     , m_showPrompt(true)
     , m_settings(std::move(settings))
+    , m_saveManager(std::move(saveManager))
     , m_settingsMenu(*m_settings, /*pauseContext=*/false)
     , m_inSettings(false)
 {
@@ -27,7 +28,7 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
     }
 
     // Show the Continue option only when a save file exists
-    m_hasSave = SaveManager::saveFileExists();
+    m_hasSave = m_saveManager ? m_saveManager->hasSaveFile() : false;
 
     if (m_fontLoaded)
     {
@@ -135,7 +136,7 @@ void MenuState::handleInput(const sf::Event& event)
         {
             if (auto* manager = getStateManager())
             {
-                manager->changeState(std::make_unique<LeaderboardState>(m_settings));
+                manager->changeState(std::make_unique<LeaderboardState>(m_settings, m_saveManager));
             }
         }
         else if (keyEvent->code == sf::Keyboard::Key::Escape)
@@ -201,19 +202,18 @@ void MenuState::startGame(bool loadSave)
     {
         if (loadSave)
         {
-            SaveManager tempSave;
-            if (tempSave.loadGame())
+            if (m_saveManager && m_saveManager->loadGame())
             {
                 GameConfig config;
-                config.player1Character = static_cast<CharacterType>(tempSave.getSavedP1Char());
-                config.player2Character = static_cast<CharacterType>(tempSave.getSavedP2Char());
-                config.mode = static_cast<GameMode>(tempSave.getSavedMode());
-                manager->changeState(std::make_unique<PlayState>(config, m_settings, loadSave));
+                config.player1Character = static_cast<CharacterType>(m_saveManager->getSavedP1Char());
+                config.player2Character = static_cast<CharacterType>(m_saveManager->getSavedP2Char());
+                config.mode = static_cast<GameMode>(m_saveManager->getSavedMode());
+                manager->changeState(std::make_unique<PlayState>(config, m_settings, m_saveManager, loadSave));
             }
         }
         else
         {
-            manager->changeState(std::make_unique<CharacterSelectState>(m_settings, loadSave));
+            manager->changeState(std::make_unique<CharacterSelectState>(m_settings, m_saveManager, loadSave));
         }
     }
 }

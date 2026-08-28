@@ -100,8 +100,9 @@ public:
     virtual int getSavedMode() const = 0;
 
     // --- HIGH SCORES ---
-    virtual std::vector<ScoreEntry> loadHighScores() = 0;
+    virtual std::vector<ScoreEntry> loadHighScores() const = 0;
     virtual void saveHighScores(const std::vector<ScoreEntry>& entries) = 0;
     virtual bool isHighScore(int score) const = 0;
+    virtual void addHighScore(const std::string& initials, int score) = 0;
 };
 

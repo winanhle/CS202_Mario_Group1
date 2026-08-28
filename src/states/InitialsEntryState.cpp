@@ -1,7 +1,7 @@
 #include "InitialsEntryState.h"
 #include "LeaderboardState.h"
 #include "../core/StateManager.h"
-#include "../ui/SaveManager.h"
+#include "../interfaces/ISaveManager.h"
 #include <algorithm>
 #include <iostream>
 
@@ -15,9 +15,11 @@ static constexpr sf::Color OUTLINE_INACTIVE_COLOR{ 80, 80, 80 };
 
 InitialsEntryState::InitialsEntryState(int finalScore,
                                        std::shared_ptr<ISettingsManager> settings,
+                                       std::shared_ptr<ISaveManager> saveManager,
                                        const GameConfig& config)
     : m_score(finalScore)
     , m_settings(std::move(settings))
+    , m_saveManager(std::move(saveManager))
     , m_config(config)
     , m_slots{
         SlotVisual{ sf::RectangleShape(), sf::Text(m_font) },
@@ -172,11 +174,14 @@ void InitialsEntryState::submitScore()
             initials += c;
     }
 
-    SaveManager::addHighScore(initials, m_score);
+    if (m_saveManager)
+    {
+        m_saveManager->addHighScore(initials, m_score);
+    }
 
     if (auto* manager = getStateManager())
     {
-        manager->changeState(std::make_unique<LeaderboardState>(m_settings, m_config));
+        manager->changeState(std::make_unique<LeaderboardState>(m_settings, m_saveManager, m_config));
     }
 }
 

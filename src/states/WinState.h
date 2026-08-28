@@ -9,6 +9,7 @@
 #include <array>
 
 class ISettingsManager;
+class ISaveManager;
 
 /**
  * @class WinState
@@ -23,6 +24,7 @@ class WinState : public GameState
 {
 public:
     explicit WinState(std::shared_ptr<ISettingsManager> settings,
+                      std::shared_ptr<ISaveManager> saveManager,
                       const GameConfig& config,
                       int baseScore,
                       int livesRemaining);
@@ -39,6 +41,7 @@ private:
     void returnToMenu();
 
     std::shared_ptr<ISettingsManager> m_settings;
+    std::shared_ptr<ISaveManager> m_saveManager;
     GameConfig m_config;
 
     int m_baseScore = 0;

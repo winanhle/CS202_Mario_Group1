@@ -38,20 +38,14 @@ public:
     int getSavedMode() const override;
 
     // High score management
-    std::vector<ScoreEntry> loadHighScores() override;
+    std::vector<ScoreEntry> loadHighScores() const override;
     void saveHighScores(const std::vector<ScoreEntry>& entries) override;
     bool isHighScore(int score) const override;
-
-    // Static helpers for any state without an ISaveManager instance
-    static bool saveFileExists();
-    static std::vector<ScoreEntry> getHighScores();
-    static void setHighScores(const std::vector<ScoreEntry>& entries);
-    static bool checkIsHighScore(int score);
-    static void addHighScore(const std::string& initials, int score);
+    void addHighScore(const std::string& initials, int score) override;
 
 private:
     std::string getSaveFilePath() const;
-    static std::string getHighScoresFilePath();
+    std::string getHighScoresFilePath() const;
 
     static constexpr const char* SAVE_FILE = "mario_save.dat";
     static constexpr const char* SCORES_FILE = "scores.dat";

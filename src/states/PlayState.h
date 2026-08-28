@@ -11,6 +11,7 @@ class RenderWindow;
 
 class GameWorld;
 class ISettingsManager;
+class ISaveManager;
 
 /**
  * @class PlayState
@@ -30,7 +31,10 @@ class PlayState : public GameState
 {
 public:
     /** Khởi tạo với config từ màn hình lựa chọn */
-    explicit PlayState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, bool loadSave = false);
+    explicit PlayState(const GameConfig& config,
+                       std::shared_ptr<ISettingsManager> settings,
+                       std::shared_ptr<ISaveManager> saveManager = nullptr,
+                       bool loadSave = false);
 
     /** Constructor mặc định: 1P, Mario (dùng để quick-test) */
     PlayState();
@@ -43,6 +47,7 @@ public:
 private:
     std::unique_ptr<GameWorld> m_gameWorld;
     std::shared_ptr<ISettingsManager> m_settings;
+    std::shared_ptr<ISaveManager> m_saveManager;
     GameConfig m_config;
     bool m_loadSave;
     void setup(const GameConfig& config);

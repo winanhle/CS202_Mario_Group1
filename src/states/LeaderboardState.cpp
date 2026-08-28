@@ -1,6 +1,7 @@
 #include "LeaderboardState.h"
 #include "MenuState.h"
 #include "../core/StateManager.h"
+#include "../interfaces/ISaveManager.h"
 #include <iomanip>
 #include <sstream>
 #include <iostream>
@@ -12,8 +13,10 @@ static constexpr sf::Color WHITE_COLOR{ 240, 240, 240 };
 static constexpr sf::Color GRAY_COLOR{ 160, 160, 160 };
 
 LeaderboardState::LeaderboardState(std::shared_ptr<ISettingsManager> settings,
+                                   std::shared_ptr<ISaveManager> saveManager,
                                    const GameConfig& config)
     : m_settings(std::move(settings))
+    , m_saveManager(std::move(saveManager))
     , m_config(config)
 {
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
@@ -54,7 +57,7 @@ LeaderboardState::LeaderboardState(std::shared_ptr<ISettingsManager> settings,
         centerOrigin(m_hintText);
         m_hintText.setPosition({ 400.0f, 500.0f });
 
-        auto scores = SaveManager::getHighScores();
+        auto scores = m_saveManager ? m_saveManager->loadHighScores() : std::vector<ScoreEntry>{};
         const float startY = 205.0f;
         const float rowHeight = 52.0f;
 
@@ -136,7 +139,7 @@ void LeaderboardState::returnToMenu()
 {
     if (auto* manager = getStateManager())
     {
-        manager->changeState(std::make_unique<MenuState>(m_settings));
+        manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
     }
 }
 

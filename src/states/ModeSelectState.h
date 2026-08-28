@@ -14,11 +14,15 @@
  * Escape để quay lại CharacterSelectState.
  */
 class ISettingsManager;
+class ISaveManager;
 
 class ModeSelectState : public GameState
 {
 public:
-    explicit ModeSelectState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, bool loadSave);
+    explicit ModeSelectState(const GameConfig& config,
+                             std::shared_ptr<ISettingsManager> settings,
+                             std::shared_ptr<ISaveManager> saveManager,
+                             bool loadSave);
     ~ModeSelectState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -53,6 +57,7 @@ private:
     static constexpr float WIN_H = 600.f;
 
     std::shared_ptr<ISettingsManager> m_settings;
+    std::shared_ptr<ISaveManager> m_saveManager;
     bool m_loadSave;
     mutable sf::Vector2u m_windowSize{800u, 600u};
 };

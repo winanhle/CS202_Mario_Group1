@@ -2,7 +2,7 @@
 #include "MenuState.h"
 #include "PlayState.h"
 #include "InitialsEntryState.h"
-#include "../ui/SaveManager.h"
+#include "../interfaces/ISaveManager.h"
 #include "../core/StateManager.h"
 #include <SFML/Graphics.hpp>
 #include <string>
@@ -16,8 +16,11 @@ namespace
     constexpr sf::Color CARD_SEL_OUTLINE{255, 215, 0};
 }
 
-GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings, const GameConfig& config)
+GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings,
+                             std::shared_ptr<ISaveManager> saveManager,
+                             const GameConfig& config)
     : m_settings(std::move(settings))
+    , m_saveManager(std::move(saveManager))
     , m_config(config)
     , m_fontLoaded(false)
     , m_animTimer(0.0f)
@@ -160,7 +163,7 @@ void GameOverState::retryGame()
     auto* manager = getStateManager();
     if (manager)
     {
-        manager->changeState(std::make_unique<PlayState>(m_config, m_settings, false));
+        manager->changeState(std::make_unique<PlayState>(m_config, m_settings, m_saveManager, false));
     }
 }
 
@@ -169,13 +172,13 @@ void GameOverState::returnToMenu()
     auto* manager = getStateManager();
     if (manager)
     {
-        if (SaveManager::checkIsHighScore(m_finalScore))
+        if (m_saveManager && m_saveManager->isHighScore(m_finalScore))
         {
-            manager->changeState(std::make_unique<InitialsEntryState>(m_finalScore, m_settings, m_config));
+            manager->changeState(std::make_unique<InitialsEntryState>(m_finalScore, m_settings, m_saveManager, m_config));
         }
         else
         {
-            manager->changeState(std::make_unique<MenuState>(m_settings));
+            manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
         }
     }
 }
