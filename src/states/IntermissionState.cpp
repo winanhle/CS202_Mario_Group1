@@ -2,13 +2,6 @@
 #include "../core/StateManager.h"
 #include <iostream>
 
-static void centerOrigin(sf::Text& text)
-{
-    const auto bounds = text.getLocalBounds();
-    text.setOrigin({ bounds.position.x + bounds.size.x / 2.f,
-                     bounds.position.y + bounds.size.y / 2.f });
-}
-
 IntermissionState::IntermissionState(const GameConfig& config,
                                      int currentStage,
                                      int nextStage,

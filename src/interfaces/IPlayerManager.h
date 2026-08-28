@@ -80,6 +80,18 @@ public:
     virtual int getScore() const = 0;
 
     /**
+     * @brief Add score points directly (e.g. from timer bonuses)
+     */
+    virtual void addScore(int points) { (void)points; }
+
+    /**
+     * @brief Get collected coins count
+     * @return Number of coins collected
+     */
+    virtual int getCoins() const { return 0; }
+    virtual void setCoins(int coins) { (void)coins; }
+
+    /**
      * @brief Get remaining lives.
      * @note Ở chế độ 2P, lives được quản lý tập trung bởi GameWorld (shared lives pool).
      *       getLives() trên mỗi player instance không còn có ý nghĩa — dùng GameWorld::getSharedLives() thay thế.

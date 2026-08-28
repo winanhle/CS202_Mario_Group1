@@ -41,7 +41,7 @@ void PlayerManager::initialize(ISettingsManager* settings)
     m_playerSize = m_currentForm->getHitboxSize();
     const sf::IntRect firstRect = m_currentForm->getWalkFrame1();
     m_playerSprite.setTextureRect(firstRect);
-    m_playerSprite.setOrigin({(float)firstRect.size.x / 2.f, (float)firstRect.size.y / 2.f});
+    m_playerSprite.setOrigin({static_cast<float>(firstRect.size.x) / 2.f, static_cast<float>(firstRect.size.y) / 2.f});
     m_isInitialized = true;
 
     if (m_fireballManager)
@@ -677,6 +677,11 @@ void PlayerManager::bounce() {
     m_isGrounded = false;
 }
 
+void PlayerManager::addScore(int points) {
+    m_score += points;
+}
+
 void PlayerManager::collectCoin(int amount) {
-    m_score += amount;
+    m_coins += amount;
+    m_score += amount * 200;
 }

@@ -1,6 +1,8 @@
 #include "WinState.h"
 #include "PlayState.h"
 #include "MenuState.h"
+#include "InitialsEntryState.h"
+#include "../ui/SaveManager.h"
 #include "../core/StateManager.h"
 #include "../interfaces/ISettingsManager.h"
 #include <cmath>
@@ -15,13 +17,6 @@ static constexpr sf::Color CARD_IDLE_OUTLINE= sf::Color(60, 80, 130);
 static constexpr sf::Color CARD_SEL_OUTLINE = sf::Color(150, 190, 255);
 
 static constexpr int LIVES_BONUS_MULTIPLIER = 1000;
-
-static void centerOrigin(sf::Text& text)
-{
-    const auto bounds = text.getLocalBounds();
-    text.setOrigin({ bounds.position.x + bounds.size.x / 2.f,
-                     bounds.position.y + bounds.size.y / 2.f });
-}
 
 WinState::WinState(std::shared_ptr<ISettingsManager> settings,
                    const GameConfig& config,
@@ -251,7 +246,14 @@ void WinState::returnToMenu()
     auto* manager = getStateManager();
     if (manager)
     {
-        manager->changeState(std::make_unique<MenuState>(m_settings));
+        if (SaveManager::checkIsHighScore(m_totalScore))
+        {
+            manager->changeState(std::make_unique<InitialsEntryState>(m_totalScore, m_settings, m_config));
+        }
+        else
+        {
+            manager->changeState(std::make_unique<MenuState>(m_settings));
+        }
     }
 }
 

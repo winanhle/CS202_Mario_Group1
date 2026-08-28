@@ -85,6 +85,11 @@ public:
      */
     void advanceStage();
 
+    /**
+     * @brief Set specific stage number and reloads level (1-based)
+     */
+    void setStage(int stageNumber);
+
     int getCurrentStageNumber() const;
     int getNextStageNumber() const;
 
@@ -94,9 +99,15 @@ public:
     int getTotalScore() const;
 
     /**
+     * @brief Returns combined coin count of all active players.
+     */
+    int getTotalCoins() const;
+
+    /**
      * @brief Returns current shared lives count.
      */
     int getSharedLives() const;
+    void setSharedLives(int lives);
 
     /**
      * @brief Deletes any saved progress on game end / completion.
@@ -158,7 +169,10 @@ private:
     bool m_isGameWon    = false;
     bool m_isStageClear = false;
     bool m_isFlagpoleSequenceActive = false;
+    bool m_isTimerTallyActive = false;
+    int  m_timerPopupCounter = 0;
     bool m_isInitialized = false;
+    int  m_lastTotalScore = -1;
 
     /**
      * @brief Kiểm tra điều kiện "round death" và xử lý respawn / game over.

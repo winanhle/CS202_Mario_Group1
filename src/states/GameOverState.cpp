@@ -1,17 +1,19 @@
 #include "GameOverState.h"
 #include "MenuState.h"
 #include "PlayState.h"
+#include "InitialsEntryState.h"
+#include "../ui/SaveManager.h"
 #include "../core/StateManager.h"
 #include <SFML/Graphics.hpp>
 #include <string>
 
 namespace
 {
-    const sf::Color BG_COLOR(18, 18, 24);
-    const sf::Color CARD_IDLE_FILL(35, 35, 45, 200);
-    const sf::Color CARD_SEL_FILL(160, 30, 30, 230);
-    const sf::Color CARD_IDLE_OUTLINE(70, 70, 85);
-    const sf::Color CARD_SEL_OUTLINE(255, 215, 0);
+    constexpr sf::Color BG_COLOR{18, 18, 24};
+    constexpr sf::Color CARD_IDLE_FILL{35, 35, 45, 200};
+    constexpr sf::Color CARD_SEL_FILL{160, 30, 30, 230};
+    constexpr sf::Color CARD_IDLE_OUTLINE{70, 70, 85};
+    constexpr sf::Color CARD_SEL_OUTLINE{255, 215, 0};
 }
 
 GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings, const GameConfig& config)
@@ -33,9 +35,7 @@ GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings, const G
         m_titleText.setOutlineColor(sf::Color::Black);
         m_titleText.setOutlineThickness(3.0f);
 
-        sf::FloatRect tb = m_titleText.getLocalBounds();
-        m_titleText.setOrigin({ tb.position.x + tb.size.x / 2.0f,
-                                tb.position.y + tb.size.y / 2.0f });
+        centerOrigin(m_titleText);
         m_titleText.setPosition({ WIN_W / 2.0f, 130.0f });
 
         // 2. Score
@@ -46,9 +46,7 @@ GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings, const G
         m_scoreText.setOutlineColor(sf::Color::Black);
         m_scoreText.setOutlineThickness(1.5f);
 
-        sf::FloatRect sb = m_scoreText.getLocalBounds();
-        m_scoreText.setOrigin({ sb.position.x + sb.size.x / 2.0f,
-                                sb.position.y + sb.size.y / 2.0f });
+        centerOrigin(m_scoreText);
         m_scoreText.setPosition({ WIN_W / 2.0f, 220.0f });
 
         // 3. Option buttons
@@ -79,9 +77,7 @@ GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings, const G
             optText.setOutlineColor(sf::Color::Black);
             optText.setOutlineThickness(1.5f);
 
-            sf::FloatRect ob = optText.getLocalBounds();
-            optText.setOrigin({ ob.position.x + ob.size.x / 2.0f,
-                                ob.position.y + ob.size.y / 2.0f });
+            centerOrigin(optText);
             optText.setPosition({ WIN_W / 2.0f, y });
         }
 
@@ -91,9 +87,7 @@ GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings, const G
         m_hintText.setCharacterSize(14);
         m_hintText.setFillColor(sf::Color(160, 160, 170));
 
-        sf::FloatRect hb = m_hintText.getLocalBounds();
-        m_hintText.setOrigin({ hb.position.x + hb.size.x / 2.0f,
-                               hb.position.y + hb.size.y / 2.0f });
+        centerOrigin(m_hintText);
         m_hintText.setPosition({ WIN_W / 2.0f, 530.0f });
     }
 
@@ -110,9 +104,7 @@ void GameOverState::setFinalScore(int score)
     if (m_fontLoaded)
     {
         m_scoreText.setString("FINAL SCORE: " + std::to_string(m_finalScore));
-        sf::FloatRect bounds = m_scoreText.getLocalBounds();
-        m_scoreText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
-                                bounds.position.y + bounds.size.y / 2.0f });
+        centerOrigin(m_scoreText);
         m_scoreText.setPosition({ WIN_W / 2.0f, 220.0f });
     }
 }
@@ -136,9 +128,7 @@ void GameOverState::refreshUI()
             optText.setString(selected ? "> " + baseLabels[i] + " <" : baseLabels[i]);
             optText.setFillColor(selected ? sf::Color(255, 240, 100) : sf::Color(210, 210, 220));
 
-            sf::FloatRect ob = optText.getLocalBounds();
-            optText.setOrigin({ ob.position.x + ob.size.x / 2.0f,
-                                ob.position.y + ob.size.y / 2.0f });
+            centerOrigin(optText);
         }
     }
 }
@@ -179,7 +169,14 @@ void GameOverState::returnToMenu()
     auto* manager = getStateManager();
     if (manager)
     {
-        manager->changeState(std::make_unique<MenuState>(m_settings));
+        if (SaveManager::checkIsHighScore(m_finalScore))
+        {
+            manager->changeState(std::make_unique<InitialsEntryState>(m_finalScore, m_settings, m_config));
+        }
+        else
+        {
+            manager->changeState(std::make_unique<MenuState>(m_settings));
+        }
     }
 }
 
@@ -208,8 +205,6 @@ void GameOverState::update(float deltaTime)
 
 void GameOverState::render(sf::RenderWindow& window) const
 {
-    m_windowSize = window.getSize();
-
     // Ensure render uses standard 800x600 view
     sf::View defaultView({ WIN_W / 2.0f, WIN_H / 2.0f }, { WIN_W, WIN_H });
     window.setView(defaultView);

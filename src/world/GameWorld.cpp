@@ -92,11 +92,16 @@ void GameWorld::loadCurrentLevel()
         }
     }
 
+    m_isTimerTallyActive = false;
+
     if (m_cameraManager)
         m_cameraManager->initialize(m_mapManager->getMapPixelSize());
 
     if (m_hudManager)
+    {
         m_hudManager->resetTimer();
+        m_hudManager->showToast("WORLD 1-" + std::to_string(getCurrentStageNumber()), 2.5f);
+    }
 }
 
 bool GameWorld::hitboxTouchesFlagpole(const sf::FloatRect& box) const
@@ -155,16 +160,61 @@ void GameWorld::checkFlagpoleCollision()
         if (m_playerManager2 && m_playerManager2->isAlive() && !m_playerManager2->hasFinishedFlagpole())
             finished = false;
 
-        if (finished)
+        if (finished && !m_isTimerTallyActive)
         {
-            m_isFlagpoleSequenceActive = false;
-            if (m_levelManager.isLastLevel())
+            m_isTimerTallyActive = true;
+
+            auto onDone = [this]() {
+                m_isFlagpoleSequenceActive = false;
+                m_isTimerTallyActive = false;
+                if (m_hudManager)
+                {
+                    m_hudManager->showToast("STAGE CLEAR!", 2.0f);
+                }
+                if (m_levelManager.isLastLevel())
+                {
+                    m_isGameWon = true;
+                }
+                else
+                {
+                    m_isStageClear = true;
+                }
+            };
+
+            if (m_hudManager && m_hudManager->getTimeLeft() > 0.0f)
             {
-                m_isGameWon = true;
+                float px = 0.f, py = 0.f;
+                if (m_playerManager && m_playerManager->isAlive())
+                {
+                    auto hb = m_playerManager->getHitbox();
+                    px = hb.position.x + hb.size.x / 2.f;
+                    py = hb.position.y - 6.f;
+                }
+                else if (m_playerManager2 && m_playerManager2->isAlive())
+                {
+                    auto hb = m_playerManager2->getHitbox();
+                    px = hb.position.x + hb.size.x / 2.f;
+                    py = hb.position.y - 6.f;
+                }
+                else if (m_playerManager)
+                {
+                    auto hb = m_playerManager->getHitbox();
+                    px = hb.position.x + hb.size.x / 2.f;
+                    py = hb.position.y - 6.f;
+                }
+
+                m_hudManager->startTimerBonus([this](int bonus) {
+                    if (m_playerManager && m_playerManager->isAlive())
+                        m_playerManager->addScore(bonus);
+                    else if (m_playerManager2 && m_playerManager2->isAlive())
+                        m_playerManager2->addScore(bonus);
+                    else if (m_playerManager)
+                        m_playerManager->addScore(bonus);
+                }, onDone, px, py);
             }
             else
             {
-                m_isStageClear = true;
+                onDone();
             }
         }
         return;
@@ -199,10 +249,28 @@ void GameWorld::checkFlagpoleCollision()
     }
 
     if (touchedP1 && m_playerManager && m_playerManager->isAlive())
+    {
         m_playerManager->startFlagpoleSlide(poleX);
+        const int flagPoints = 5000;
+        m_playerManager->addScore(flagPoints);
+        if (m_hudManager)
+        {
+            auto hb = m_playerManager->getHitbox();
+            m_hudManager->spawnScorePopup(flagPoints, hb.position.x + hb.size.x / 2.f, hb.position.y - 6.f);
+        }
+    }
 
     if (touchedP2 && m_playerManager2 && m_playerManager2->isAlive())
+    {
         m_playerManager2->startFlagpoleSlide(poleX);
+        const int flagPoints = 5000;
+        m_playerManager2->addScore(flagPoints);
+        if (m_hudManager)
+        {
+            auto hb = m_playerManager2->getHitbox();
+            m_hudManager->spawnScorePopup(flagPoints, hb.position.x + hb.size.x / 2.f, hb.position.y - 6.f);
+        }
+    }
 }
 
 // ==================== UPDATE ====================
@@ -250,13 +318,31 @@ void GameWorld::update(float deltaTime)
     // 5. HUD update
     if (m_hudManager)
     {
+        int currentScore = getTotalScore();
+        if (!m_isFlagpoleSequenceActive && !m_isTimerTallyActive && m_lastTotalScore >= 0 && currentScore > m_lastTotalScore)
+        {
+            int diff = currentScore - m_lastTotalScore;
+            if (m_playerManager && m_playerManager->isAlive())
+            {
+                float px = m_playerManager->getPositionX();
+                float py = m_playerManager->getPositionY();
+                m_hudManager->spawnScorePopup(diff, px + 8.0f, py - 12.0f);
+            }
+            else if (m_playerManager2 && m_playerManager2->isAlive())
+            {
+                float px = m_playerManager2->getPositionX();
+                float py = m_playerManager2->getPositionY();
+                m_hudManager->spawnScorePopup(diff, px + 8.0f, py - 12.0f);
+            }
+        }
+        m_lastTotalScore = currentScore;
+
         // Score: tổng của cả 2 player
-        m_hudManager->updateScore(getTotalScore());
+        m_hudManager->updateScore(currentScore);
+        // Coins: tổng số coin của player
+        m_hudManager->updateItemCount(getTotalCoins());
         // Lives: shared pool
         m_hudManager->updateLives(m_sharedLives);
-
-        if (m_itemManager)
-            m_hudManager->updateItemCount(m_itemManager->getItemCount());
         
         m_hudManager->updateWorld(m_levelManager.getCurrentLevelNumber());
         m_hudManager->update(deltaTime);
@@ -331,8 +417,16 @@ void GameWorld::render(sf::RenderWindow& window) const
     // HUD dùng default view (không bị ảnh hưởng camera)
     window.setView(window.getDefaultView());
 
+    sf::View camView;
+    bool hasCam = (m_cameraManager != nullptr);
+    if (hasCam)
+        camView = m_cameraManager->getView();
+
     if (m_hudManager)
+    {
+        m_hudManager->renderPopups(window, hasCam ? &camView : nullptr);
         m_hudManager->render(window);
+    }
 }
 
 // ==================== HANDLE INPUT ====================
@@ -377,6 +471,16 @@ void GameWorld::advanceStage()
     loadCurrentLevel();
 }
 
+void GameWorld::setStage(int stageNumber)
+{
+    m_isStageClear = false;
+    m_isFlagpoleSequenceActive = false;
+    if (stageNumber < 1)
+        stageNumber = 1;
+    m_levelManager.setCurrentLevel(stageNumber - 1);
+    loadCurrentLevel();
+}
+
 int GameWorld::getCurrentStageNumber() const
 {
     return m_levelManager.getCurrentLevelNumber();
@@ -395,9 +499,24 @@ int GameWorld::getTotalScore() const
     return total;
 }
 
+int GameWorld::getTotalCoins() const
+{
+    int total = 0;
+    if (m_playerManager)  total += m_playerManager->getCoins();
+    if (m_playerManager2) total += m_playerManager2->getCoins();
+    return total;
+}
+
 int GameWorld::getSharedLives() const
 {
     return m_sharedLives;
+}
+
+void GameWorld::setSharedLives(int lives)
+{
+    m_sharedLives = lives;
+    if (m_hudManager)
+        m_hudManager->updateLives(m_sharedLives);
 }
 
 void GameWorld::deleteSaveData()

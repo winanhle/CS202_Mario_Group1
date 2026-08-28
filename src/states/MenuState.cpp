@@ -1,10 +1,12 @@
 #include "MenuState.h"
 #include "CharacterSelectState.h"
+#include "LeaderboardState.h"
 #include "../core/StateManager.h"
 #include "../core/GameConfig.h"
 #include "../ui/SaveManager.h"
 #include "PlayState.h"
 #include <SFML/Graphics.hpp>
+#include <iostream>
 
 MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
     : m_fontLoaded(false)
@@ -19,6 +21,10 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
     
     // Load the Mario font
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
+    if (!m_fontLoaded)
+    {
+        std::cerr << "[MenuState] ERROR: Failed to open font assets/fonts/SuperMario256.ttf\n";
+    }
 
     // Show the Continue option only when a save file exists
     m_hasSave = SaveManager::saveFileExists();
@@ -32,9 +38,7 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
         m_titleText.setOutlineColor(sf::Color::Black);
         m_titleText.setOutlineThickness(2.0f);
 
-        sf::FloatRect bounds = m_titleText.getLocalBounds();
-        m_titleText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
-                                bounds.position.y + bounds.size.y / 2.0f });
+        centerOrigin(m_titleText);
         m_titleText.setPosition({ 400.0f, 180.0f });
 
         m_promptText.setFont(m_font);
@@ -44,9 +48,16 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
         m_promptText.setOutlineColor(sf::Color::Black);
         m_promptText.setOutlineThickness(1.0f);
 
-        bounds = m_promptText.getLocalBounds();
-        m_promptText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
-                                 bounds.position.y + bounds.size.y / 2.0f });
+        centerOrigin(m_promptText);
+
+        m_highScoreText.setFont(m_font);
+        m_highScoreText.setString("Press H for High Scores");
+        m_highScoreText.setCharacterSize(24);
+        m_highScoreText.setFillColor(sf::Color(255, 215, 0));
+        m_highScoreText.setOutlineColor(sf::Color::Black);
+        m_highScoreText.setOutlineThickness(1.0f);
+
+        centerOrigin(m_highScoreText);
 
         if (m_hasSave)
         {
@@ -57,17 +68,16 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
             m_continueText.setOutlineColor(sf::Color::Black);
             m_continueText.setOutlineThickness(1.0f);
 
-            bounds = m_continueText.getLocalBounds();
-            m_continueText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
-                                       bounds.position.y + bounds.size.y / 2.0f });
-            m_continueText.setPosition({ 400.0f, 370.0f });
+            centerOrigin(m_continueText);
+            m_continueText.setPosition({ 400.0f, 350.0f });
 
-            // Move the SPACE prompt below the Continue option
-            m_promptText.setPosition({ 400.0f, 430.0f });
+            m_promptText.setPosition({ 400.0f, 405.0f });
+            m_highScoreText.setPosition({ 400.0f, 460.0f });
         }
         else
         {
-            m_promptText.setPosition({ 400.0f, 400.0f });
+            m_promptText.setPosition({ 400.0f, 380.0f });
+            m_highScoreText.setPosition({ 400.0f, 435.0f });
         }
     }
     else
@@ -81,14 +91,19 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings)
         m_promptText.setString("Press SPACE to start");
         m_promptText.setCharacterSize(24);
         m_promptText.setFillColor(sf::Color::Yellow);
-        m_promptText.setPosition({ 250.0f, 400.0f });
+        m_promptText.setPosition({ 250.0f, 380.0f });
+
+        m_highScoreText.setString("Press H for High Scores");
+        m_highScoreText.setCharacterSize(20);
+        m_highScoreText.setFillColor(sf::Color(255, 215, 0));
+        m_highScoreText.setPosition({ 250.0f, 435.0f });
 
         if (m_hasSave)
         {
             m_continueText.setString("Press C to continue");
             m_continueText.setCharacterSize(24);
             m_continueText.setFillColor(sf::Color::White);
-            m_continueText.setPosition({ 250.0f, 370.0f });
+            m_continueText.setPosition({ 250.0f, 350.0f });
         }
     }
 }
@@ -115,6 +130,13 @@ void MenuState::handleInput(const sf::Event& event)
         else if (keyEvent->code == sf::Keyboard::Key::C && m_hasSave)
         {
             startGame(true);
+        }
+        else if (keyEvent->code == sf::Keyboard::Key::H)
+        {
+            if (auto* manager = getStateManager())
+            {
+                manager->changeState(std::make_unique<LeaderboardState>(m_settings));
+            }
         }
         else if (keyEvent->code == sf::Keyboard::Key::Escape)
         {
@@ -168,6 +190,8 @@ void MenuState::render(sf::RenderWindow& window) const
     {
         window.draw(m_promptText);
     }
+
+    window.draw(m_highScoreText);
 }
 
 void MenuState::startGame(bool loadSave)

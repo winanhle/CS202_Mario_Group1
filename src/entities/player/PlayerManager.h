@@ -63,8 +63,9 @@ protected:
     float m_positionX, m_positionY;
     float m_spawnX, m_spawnY;   // vị trí spawn ban đầu (dùng cho respawn)
     float m_velocityX, m_velocityY;
-    int   m_score;
-    bool  m_isAlive;
+    int   m_score = 0;
+    int   m_coins = 0;
+    bool  m_isAlive = true;
     bool  m_isGrounded;
     bool  m_isJumping;
     int   m_facingDirection = 1; // 1 = phải, -1 = trái — hướng nhìn, giữ nguyên khi đứng yên
@@ -115,6 +116,9 @@ public:
 
     bool  isAlive()     const override;
     int   getScore()    const override;
+    void  addScore(int points) override;
+    int   getCoins()    const override { return m_coins; }
+    void  setCoins(int coins) override { m_coins = coins; }
     float getPositionX() const override;
     float getPositionY() const override;
     void restoreState(int score, int lives, float posX, float posY) override;

@@ -41,6 +41,8 @@ set(SHARED_SOURCES
     src/states/IntermissionState.cpp
     src/states/CharacterSelectState.cpp
     src/states/ModeSelectState.cpp
+    src/states/InitialsEntryState.cpp
+    src/states/LeaderboardState.cpp
     src/world/GameWorld.cpp
     src/entities/map/MapManager.cpp
     src/entities/map/block/BlockBehavior.cpp
@@ -71,3 +73,4 @@ foreach(TARGET MarioGame)
                 $<TARGET_FILE_DIR:${TARGET}>/assets
     )
 endforeach()
+add_compile_options(-Wall -Wextra -Wunused)

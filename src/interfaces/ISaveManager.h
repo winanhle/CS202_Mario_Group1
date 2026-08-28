@@ -1,5 +1,18 @@
 #pragma once
 
+#include <string>
+#include <vector>
+
+/**
+ * @struct ScoreEntry
+ * @brief Represents a single high score leaderboard entry
+ */
+struct ScoreEntry
+{
+    std::string initials = "AAAAA";
+    int score = 0;
+};
+
 /**
  * @interface ISaveManager
  * @brief Interface for save/load management module
@@ -49,10 +62,10 @@ public:
      * @brief Stage the data to be persisted by the next saveGame() call
      * @param score Player score
      * @param lives Player lives
-     * @param posX Player X position
-     * @param posY Player Y position
+     * @param level Current level number (1-based)
+     * @param coins Collected coins count (defaults to 0)
      */
-    virtual void setSaveData(int score, int lives, float posX, float posY) = 0;
+    virtual void setSaveData(int score, int lives, int level, int coins = 0) = 0;
 
     /**
      * @brief Get the saved score (valid after loadGame())
@@ -65,18 +78,30 @@ public:
     virtual int getSavedLives() const = 0;
 
     /**
-     * @brief Get the saved X position (valid after loadGame())
+     * @brief Get the saved level number (valid after loadGame())
      */
-    virtual float getSavedPosX() const = 0;
+    virtual int getSavedLevel() const = 0;
 
     /**
-     * @brief Get the saved Y position (valid after loadGame())
+     * @brief Get the saved coins count (valid after loadGame())
      */
-    virtual float getSavedPosY() const = 0;
+    virtual int getSavedCoins() const { return 0; }
+
+    /**
+     * @brief Deprecated coordinate accessors for backward compatibility
+     */
+    virtual float getSavedPosX() const { return 0.0f; }
+    virtual float getSavedPosY() const { return 0.0f; }
 
     // --- GAME CONFIG ---
     virtual void setGameConfig(int p1Char, int p2Char, int mode) = 0;
     virtual int getSavedP1Char() const = 0;
     virtual int getSavedP2Char() const = 0;
     virtual int getSavedMode() const = 0;
+
+    // --- HIGH SCORES ---
+    virtual std::vector<ScoreEntry> loadHighScores() = 0;
+    virtual void saveHighScores(const std::vector<ScoreEntry>& entries) = 0;
+    virtual bool isHighScore(int score) const = 0;
 };
+

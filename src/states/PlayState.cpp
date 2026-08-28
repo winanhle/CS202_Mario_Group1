@@ -61,7 +61,9 @@ void PlayState::setup(const GameConfig& config)
     // ── Enemies / Items / HUD / Save ─────────────────────────────
     m_gameWorld->setEnemyManager(std::make_shared<EnemyManager>());
     m_gameWorld->setItemManager(std::make_shared<ItemManager>());
-    m_gameWorld->setHUDManager(std::make_shared<HUDManager>());
+    auto hud = std::make_shared<HUDManager>();
+    hud->setCharacter(config.player1Character);
+    m_gameWorld->setHUDManager(hud);
     m_gameWorld->setSaveManager(std::make_shared<SaveManager>());
 
     // Inject shared settings (key bindings for the player) before init
@@ -78,10 +80,27 @@ void PlayState::setup(const GameConfig& config)
         {
             if (save->loadGame())
             {
+                int savedLevel = save->getSavedLevel();
+                m_gameWorld->setStage(savedLevel);
+                m_gameWorld->setSharedLives(save->getSavedLives());
                 if (auto* player = m_gameWorld->getPlayerManager())
                 {
                     player->restoreState(save->getSavedScore(), save->getSavedLives(),
-                                         save->getSavedPosX(), save->getSavedPosY());
+                                         player->getPositionX(), player->getPositionY());
+                    player->setCoins(save->getSavedCoins());
+                }
+                if (auto* player2 = m_gameWorld->getPlayerManager2())
+                {
+                    player2->restoreState(0, save->getSavedLives(),
+                                          player2->getPositionX(), player2->getPositionY());
+                    player2->setCoins(0);
+                }
+                if (auto* hud = m_gameWorld->getHUDManager())
+                {
+                    hud->updateScore(save->getSavedScore());
+                    hud->updateItemCount(save->getSavedCoins());
+                    hud->updateLives(save->getSavedLives());
+                    hud->updateWorld(savedLevel);
                 }
             }
         }
@@ -129,14 +148,13 @@ void PlayState::handleInput(const sf::Event& event)
                 // pause menu can save it if the player picks "Save & Quit"
                 if (auto* save = m_gameWorld->getSaveManager())
                 {
-                    if (auto* player = m_gameWorld->getPlayerManager())
-                    {
-                        save->setSaveData(player->getScore(), m_gameWorld->getSharedLives(),
-                                          player->getPositionX(), player->getPositionY());
-                        save->setGameConfig(static_cast<int>(m_config.player1Character),
-                                            static_cast<int>(m_config.player2Character),
-                                            static_cast<int>(m_config.mode));
-                    }
+                    save->setSaveData(m_gameWorld->getTotalScore(),
+                                      m_gameWorld->getSharedLives(),
+                                      m_gameWorld->getCurrentStageNumber(),
+                                      m_gameWorld->getTotalCoins());
+                    save->setGameConfig(static_cast<int>(m_config.player1Character),
+                                        static_cast<int>(m_config.player2Character),
+                                        static_cast<int>(m_config.mode));
                 }
                 manager->pushState(std::make_unique<PauseState>(m_settings, m_gameWorld->getSaveManager(), m_gameWorld->getPlayerManager(), m_gameWorld->getPlayerManager2()));
             }

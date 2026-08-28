@@ -1,5 +1,6 @@
 #include "CharacterSelectState.h"
 #include "ModeSelectState.h"
+#include "MenuState.h"
 #include "../core/StateManager.h"
 #include <SFML/Graphics.hpp>
 #include <array>
@@ -131,7 +132,7 @@ void CharacterSelectState::handleInput(const sf::Event& event)
         if (key->code == sf::Keyboard::Key::Escape)
         {
             if (auto* mgr = getStateManager())
-                mgr->popState();
+                mgr->changeState(std::make_unique<MenuState>(m_settings));
             return;
         }
     }

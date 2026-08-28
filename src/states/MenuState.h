@@ -32,23 +32,24 @@ private:
     void startGame(bool loadSave = false);
 
     sf::Font m_font;
-    bool m_fontLoaded;
+    bool m_fontLoaded = false;
     sf::Text m_titleText{m_font};
     sf::Text m_promptText{m_font};
     sf::Text m_continueText{m_font};
-    bool m_hasSave;
+    sf::Text m_highScoreText{m_font};
+    bool m_hasSave = false;
 
     // Blinks the "Press SPACE to start" prompt
-    float m_blinkTimer;
+    float m_blinkTimer = 0.0f;
     static constexpr float BLINK_INTERVAL = 0.5f;
-    bool m_showPrompt;
+    bool m_showPrompt = true;
 
     // Settings menu (opened with ESC)
     // m_settings must be declared before m_settingsMenu so it is
     // initialized first (m_settingsMenu is constructed with *m_settings)
     std::shared_ptr<ISettingsManager> m_settings;
     SettingsMenu m_settingsMenu;
-    bool m_inSettings;
+    bool m_inSettings = false;
     
     MenuBackground m_bg;
 };
