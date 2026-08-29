@@ -75,5 +75,15 @@ public:
      */
     virtual void spawnFireFlower(float worldX, float worldY) = 0;
     virtual void spawnStar(float worldX, float worldY) = 0;
+
+    /**
+     * @brief Spawn a static coin collectible at the given world position.
+     *        Used when a "Coin" (or "STATIC_COIN") object is placed in the Tiled map.
+     *        The coin stays in place until the player walks into it.
+     * @param worldX  Pixel X of the object's position
+     * @param worldY  Pixel Y of the object's position
+     */
+    virtual void spawnStaticCoin(float worldX, float worldY) = 0;
+
     virtual void setMapManager(IMapManager* map) = 0;
 };

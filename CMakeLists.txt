@@ -46,6 +46,10 @@ set(SHARED_SOURCES
     src/entities/enemy/EnemyManager.cpp
     src/entities/item/Item.cpp
     src/entities/item/ItemManager.cpp
+    src/entities/lift/Lift.cpp
+    src/entities/lift/LiftManager.cpp
+    src/entities/firebar/FireBar.cpp
+    src/entities/firebar/FireBarManager.cpp
     src/entities/camera/CameraManager.cpp
     src/ui/HUDManager.cpp
     src/ui/SaveManager.cpp

@@ -21,7 +21,8 @@ enum class TileType {
     FLAGPOLE = 9,
     COIN = 10,
     SOLID_BRICK = 11,
-    BACKGROUND = 12  // trang trí (bụi cỏ, đám mây) — xử lý giống hệt EMPTY
+    BACKGROUND = 12,  // trang trí (bụi cỏ, đám mây) — xử lý giống hệt EMPTY
+    FIRE_BAR = 13
 };
 
 /**
@@ -50,14 +51,48 @@ struct PlayerSpawnData {
 };
 
 /**
+ * @struct LiftSpawnData
+ * @brief Describes one Lift platform spawn point parsed from a TMX <objectgroup>.
+ *
+ * Lift objects in Tiled use name/type = "Lift" with these custom properties:
+ *   motionType = "updown" | "leftright"
+ *   holes      = 4 | 6
+ *   range      = float  (pixels of oscillation half-amplitude, default 80)
+ *   speed      = float  (pixels per second of oscillation, default 60)
+ */
+struct LiftSpawnData {
+    std::string motionType = "updown"; // "updown" or "leftright"
+    int         holes      = 4;        // 4 or 6 tile-holes wide
+    float       x          = 0.f;
+    float       y          = 0.f;
+    float       range      = 80.f;     // half-amplitude of oscillation in pixels
+    float       speed      = 60.f;     // pixels per second (converted to angular vel)
+};
+
+/**
+ * @struct FireBarSpawnData
+ * @brief Describes one FireBar rotating obstacle spawn point.
+ */
+struct FireBarSpawnData {
+    float x = 0.f;            // Center X in world pixels
+    float y = 0.f;            // Center Y in world pixels
+    int fireCount = 6;        // Number of fireballs (default 6)
+    float speed = 2.0f;       // Angular velocity (rad/s)
+    bool clockwise = true;    // Rotation direction (true = clockwise, false = counter-clockwise)
+    float initialAngle = 0.f; // Starting angle in radians
+};
+
+/**
  * @struct MapObjectData
  * @brief Aggregated entity data parsed from TMX <objectgroup> layers.
  *
  * OOP: DIP — consumers depend on this data contract, not on MapManager internals.
  */
 struct MapObjectData {
-    std::vector<EntitySpawnData> enemySpawns;
-    PlayerSpawnData playerSpawn;
+    std::vector<EntitySpawnData>  enemySpawns;
+    PlayerSpawnData               playerSpawn;
     // Chỉ có Star được spawn dưới dạng item object (type/name "Star" trong Tiled).
-    std::vector<EntitySpawnData> itemSpawns;
+    std::vector<EntitySpawnData>  itemSpawns;
+    std::vector<LiftSpawnData>    liftSpawns;
+    std::vector<FireBarSpawnData> fireBarSpawns;
 };

@@ -2,8 +2,9 @@
 
 #include <SFML/Graphics/Rect.hpp>
 #include "IMapManager.h"
-class IEnemyManager;
 
+class IEnemyManager;
+class ILiftManager;
 class ISettingsManager;
 
 namespace sf {
@@ -135,6 +136,7 @@ public:
 
     // ─── BEHAVIOR ───
     virtual void setMapManager(IMapManager* map) = 0;
+    virtual void setLiftManager(ILiftManager* lifts) { (void)lifts; }
     virtual void takeDamage() = 0;
     virtual void bounce() = 0;
     virtual void collectCoin(int amount) = 0;
@@ -177,4 +179,17 @@ public:
      * Được EnemyManager kiểm tra để quyết định collision behavior.
      */
     virtual bool isStarActive() const = 0;
+
+    /**
+     * @brief Called by LiftManager each frame while this player is riding a lift.
+     *
+     * Offsets the player's world position by (dx, dy) without running tile
+     * collision checks.  Also zeroes vertical velocity (prevents gravity from
+     * fighting an upward-moving lift) and marks the player as grounded so
+     * jump is available while standing on the platform.
+     *
+     * @param dx  Horizontal displacement this frame (pixels).
+     * @param dy  Vertical displacement this frame (pixels; negative = upward).
+     */
+    virtual void applyLiftOffset(float dx, float dy) { (void)dx; (void)dy; }
 };

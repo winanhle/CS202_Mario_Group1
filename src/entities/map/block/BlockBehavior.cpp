@@ -83,6 +83,11 @@ void CoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType)
     (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng
 }
 
+void FireBarBlockBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+{
+    (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng (solid block)
+}
+
 // =============================================================================
 //  Factory (Strategy lookup) — OCP: thêm block mới = thêm class + entry ở đây.
 // =============================================================================
@@ -102,6 +107,7 @@ const IBlockBehavior& getBlockBehavior(TileType type)
     static const DeathZoneBehavior      death;
     static const FlagpoleBehavior       flag;
     static const CoinBehavior           coin;
+    static const FireBarBlockBehavior   fireBar;
 
     static const std::unordered_map<TileType, const IBlockBehavior*> table{
         {TileType::EMPTY,              &empty},
@@ -117,6 +123,7 @@ const IBlockBehavior& getBlockBehavior(TileType type)
         {TileType::DEATH_ZONE,         &death},
         {TileType::FLAGPOLE,           &flag},
         {TileType::COIN,               &coin},
+        {TileType::FIRE_BAR,           &fireBar},
     };
 
     auto it = table.find(type);

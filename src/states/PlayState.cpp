@@ -12,6 +12,8 @@
 #include "../entities/player/PlayerManager.h"
 #include "../entities/enemy/EnemyManager.h"
 #include "../entities/item/ItemManager.h"
+#include "../entities/lift/LiftManager.h"
+#include "../entities/firebar/FireBarManager.h"
 #include "../ui/HUDManager.h"
 #include "../ui/SaveManager.h"
 #include <SFML/Graphics.hpp>
@@ -56,9 +58,11 @@ void PlayState::setup(const GameConfig& config)
         m_gameWorld->setPlayerManager2(p2);
     }
 
-    // ── Enemies / Items / HUD / Save ─────────────────────────────
+    // ── Enemies / Items / Lifts / FireBars / HUD / Save ───────────
     m_gameWorld->setEnemyManager(std::make_shared<EnemyManager>());
     m_gameWorld->setItemManager(std::make_shared<ItemManager>());
+    m_gameWorld->setLiftManager(std::make_shared<LiftManager>());
+    m_gameWorld->setFireBarManager(std::make_shared<FireBarManager>());
     m_gameWorld->setHUDManager(std::make_shared<HUDManager>());
     m_gameWorld->setSaveManager(std::make_shared<SaveManager>());
 

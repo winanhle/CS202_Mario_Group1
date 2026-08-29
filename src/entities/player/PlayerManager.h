@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include "../../interfaces/IPlayerManager.h"
 #include "../../interfaces/IMapManager.h"
+#include "../../interfaces/ILiftManager.h"
 #include "input/PlayerInputHandler.h"
 #include "forms/IPlayerForm.h"
 #include "forms/NormalForm.h"
@@ -39,7 +40,8 @@ protected:
     int m_defense;
 
     // ─── dependency ───
-    IMapManager* m_mapManager = nullptr;
+    IMapManager*  m_mapManager  = nullptr;
+    ILiftManager* m_liftManager = nullptr;
     bool m_isInvincible = false;
     float m_invincibilityTimer = 0.f;
     bool m_isInitialized       = false;
@@ -142,6 +144,7 @@ public:
     void bounce()               override;
     void collectCoin(int amount) override;
     void setMapManager(IMapManager* map) override;
+    void setLiftManager(ILiftManager* lifts) override { m_liftManager = lifts; }
 
     /**
      * @brief Instantly kill the player (DEATH_ZONE contact), no form downgrade.
@@ -172,4 +175,10 @@ public:
 
     /** Trả về true nếu StarState đang còn hiệu lực. */
     bool isStarActive() const override;
+
+    /**
+     * @brief Offset position by (dx, dy) — called by LiftManager when player rides a lift.
+     * Zeroes vertical velocity and marks the player grounded while riding.
+     */
+    void applyLiftOffset(float dx, float dy) override;
 };

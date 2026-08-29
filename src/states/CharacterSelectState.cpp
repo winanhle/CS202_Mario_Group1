@@ -24,13 +24,13 @@ CharacterSelectState::CharacterSelectState(std::shared_ptr<ISettingsManager> set
     if (m_marioTexture.loadFromFile("assets/texture/hero/mario.png"))
     {
         m_preview[0].setTexture(m_marioTexture);
-        m_preview[0].setTextureRect(sf::IntRect({1, 1}, {16, 24}));
+        m_preview[0].setTextureRect(sf::IntRect({154, 30}, {16, 28}));
         m_preview[0].setScale({3.f, 3.f});
     }
     if (m_luigiTexture.loadFromFile("assets/texture/hero/luigi.png"))
     {
         m_preview[1].setTexture(m_luigiTexture);
-        m_preview[1].setTextureRect(sf::IntRect({1, 1}, {16, 24}));
+        m_preview[1].setTextureRect(sf::IntRect({154, 29}, {16, 29}));
         m_preview[1].setScale({3.f, 3.f});
     }
 
