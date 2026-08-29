@@ -67,7 +67,10 @@ void GameWorld::loadCurrentLevel()
     if (!m_mapManager)
         return;
 
-    const std::string levelPath = m_levelManager.getCurrentLevelPath();
+    std::string levelPath = m_levelManager.getCurrentLevelPath();
+    if (!m_customMapPath.empty())
+        levelPath = m_customMapPath;
+
     if (levelPath.empty())
         return;
 
@@ -100,16 +103,16 @@ void GameWorld::loadCurrentLevel()
         const float sx = mapData.playerSpawn.x;
         const float sy = mapData.playerSpawn.y;
         if (m_playerManager)
-        {
             m_playerManager->setSpawnPoint(sx, sy);
-            m_playerManager->respawn();
-        }
         if (m_playerManager2)
-        {
             m_playerManager2->setSpawnPoint(sx, sy);
-            m_playerManager2->respawn();
-        }
     }
+    
+    // ALWAYS respawn players so their positions are reset (even if map lacks a PlayerSpawn object)
+    if (m_playerManager)
+        m_playerManager->respawn();
+    if (m_playerManager2)
+        m_playerManager2->respawn();
 
     m_isTimerTallyActive = false;
 
@@ -548,6 +551,10 @@ void GameWorld::advanceStage()
 {
     m_isStageClear = false;
     m_isFlagpoleSequenceActive = false;
+
+    // Clear custom map so that normal level progression resumes
+    m_customMapPath = "";
+
     if (!m_levelManager.advanceToNextLevel())
         m_levelManager.reset();
     loadCurrentLevel();
@@ -605,6 +612,62 @@ void GameWorld::deleteSaveData()
 {
     if (m_saveManager)
         m_saveManager->deleteSave();
+}
+
+GameMemento GameWorld::createMemento(const GameConfig& config,
+                                     std::optional<int> scoreOverride,
+                                     std::optional<int> livesOverride,
+                                     std::optional<int> coinsOverride) const
+{
+    GameMemento memento;
+    memento.score = scoreOverride.value_or(getTotalScore());
+    memento.lives = livesOverride.value_or(getSharedLives());
+    memento.stage = getCurrentStageNumber();
+    memento.coins = coinsOverride.value_or(getTotalCoins());
+    memento.config = config;
+    memento.config.customMapPath = m_customMapPath;
+    return memento;
+}
+
+void GameWorld::setInitialStage(int stageNumber)
+{
+    if (stageNumber < 1) stageNumber = 1;
+    m_levelManager.setCurrentLevel(stageNumber - 1);
+}
+
+void GameWorld::restoreFromMemento(const GameMemento& memento)
+{
+    m_customMapPath = memento.config.customMapPath;
+    if (m_levelManager.getCurrentLevelNumber() != memento.stage)
+    {
+        setStage(memento.stage);
+    }
+    setSharedLives(memento.lives);
+
+    if (m_playerManager)
+    {
+        m_playerManager->restoreState(memento.score, memento.lives,
+                                      m_playerManager->getPositionX(),
+                                      m_playerManager->getPositionY());
+        m_playerManager->setCoins(memento.coins);
+    }
+    if (m_playerManager2)
+    {
+        m_playerManager2->restoreState(0, memento.lives,
+                                       m_playerManager2->getPositionX(),
+                                       m_playerManager2->getPositionY());
+        m_playerManager2->setCoins(0);
+    }
+
+    m_lastTotalScore = memento.score;
+
+    if (m_hudManager)
+    {
+        m_hudManager->updateScore(memento.score);
+        m_hudManager->updateItemCount(memento.coins);
+        m_hudManager->updateLives(memento.lives);
+        m_hudManager->updateWorld(memento.stage);
+    }
 }
 
 // ==================== INJECT DEPENDENCIES ====================

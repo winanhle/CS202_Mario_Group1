@@ -202,13 +202,16 @@ void MenuState::startGame(bool loadSave)
     {
         if (loadSave)
         {
-            if (m_saveManager && m_saveManager->loadGame())
+            if (m_saveManager)
             {
-                GameConfig config;
-                config.player1Character = static_cast<CharacterType>(m_saveManager->getSavedP1Char());
-                config.player2Character = static_cast<CharacterType>(m_saveManager->getSavedP2Char());
-                config.mode = static_cast<GameMode>(m_saveManager->getSavedMode());
-                manager->changeState(std::make_unique<PlayState>(config, m_settings, m_saveManager, loadSave));
+                if (auto memento = m_saveManager->loadGame())
+                {
+                    manager->changeState(std::make_unique<PlayState>(memento->config, m_settings, m_saveManager, loadSave));
+                }
+                else
+                {
+                    std::cerr << "[MenuState] ERROR: Failed to load save game snapshot." << std::endl;
+                }
             }
         }
         else

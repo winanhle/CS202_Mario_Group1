@@ -8,11 +8,13 @@
 PauseState::PauseState(std::shared_ptr<ISettingsManager> settings,
                        std::shared_ptr<ISaveManager> saveManager,
                        IPlayerManager* player1,
-                       IPlayerManager* player2)
+                       IPlayerManager* player2,
+                       std::optional<GameMemento> saveSnapshot)
     : m_settings(std::move(settings))
     , m_saveManager(std::move(saveManager))
     , m_player1(player1)
     , m_player2(player2)
+    , m_saveSnapshot(std::move(saveSnapshot))
     , m_menu(*m_settings, /*pauseContext=*/true)
 {
 }
@@ -62,10 +64,20 @@ void PauseState::handleInput(const sf::Event& event)
 
 void PauseState::saveAndQuitToMenu()
 {
-    // Persist the player state (already synced by PlayState before pausing)
+    // Persist the game state Memento snapshot if available
     if (m_saveManager)
     {
-        m_saveManager->saveGame();
+        if (m_saveSnapshot.has_value())
+        {
+            if (!m_saveManager->saveGame(m_saveSnapshot.value()))
+            {
+                std::cerr << "[PauseState] ERROR: Failed to save game on exit!" << std::endl;
+            }
+        }
+        else
+        {
+            std::cerr << "[PauseState] WARNING: Save & Quit called with no active save snapshot." << std::endl;
+        }
     }
 
     auto* manager = getStateManager();

@@ -1,5 +1,6 @@
 #include "ModeSelectState.h"
 #include "PlayState.h"
+#include "LevelSelectState.h"
 #include "CharacterSelectState.h"
 #include "../core/StateManager.h"
 #include <SFML/Graphics.hpp>
@@ -146,7 +147,7 @@ void ModeSelectState::confirm()
         : GameMode::TwoPlayer;
 
     if (auto* mgr = getStateManager())
-        mgr->changeState(std::make_unique<PlayState>(m_config, m_settings, m_saveManager, m_loadSave));
+        mgr->changeState(std::make_unique<LevelSelectState>(m_config, m_settings, m_saveManager, m_loadSave));
 }
 
 void ModeSelectState::update(float deltaTime)

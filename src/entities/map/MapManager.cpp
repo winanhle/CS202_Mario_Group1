@@ -197,7 +197,9 @@ bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
         // Ghi nhận nó để setTile(EMPTY) load đúng texture EMPTY, thay vì GID 0
         // (GID 0 = "không có tile" → renderer sẽ bỏ qua, không vẽ texture nào).
         if (found) {
-            m_typeToGid[resolved] = gid;
+            if (m_typeToGid.find(resolved) == m_typeToGid.end()) {
+                m_typeToGid[resolved] = gid;
+            }
         }
     }
 

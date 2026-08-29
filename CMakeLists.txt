@@ -35,6 +35,7 @@ set(SHARED_SOURCES
     src/core/StateManager.cpp
     src/states/MenuState.cpp
     src/states/PlayState.cpp
+    src/states/LevelSelectState.cpp
     src/states/PauseState.cpp
     src/states/GameOverState.cpp
     src/states/WinState.cpp

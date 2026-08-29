@@ -20,22 +20,10 @@ public:
     ~SaveManager() override = default;
 
     void initialize() override;
-    bool saveGame() override;
-    bool loadGame() override;
+    bool saveGame(const GameMemento& memento) override;
+    std::optional<GameMemento> loadGame() override;
     bool hasSaveFile() const override;
     void deleteSave() override;
-
-    // Additional helpers for setting/reading saved data
-    void setSaveData(int score, int lives, int level, int coins = 0) override;
-    int getSavedScore() const override;
-    int getSavedLives() const override;
-    int getSavedLevel() const override;
-    int getSavedCoins() const override;
-
-    void setGameConfig(int p1Char, int p2Char, int mode) override;
-    int getSavedP1Char() const override;
-    int getSavedP2Char() const override;
-    int getSavedMode() const override;
 
     // High score management
     std::vector<ScoreEntry> loadHighScores() const override;
@@ -51,14 +39,4 @@ private:
     static constexpr const char* SCORES_FILE = "scores.dat";
 
     bool m_hasSave = false;
-
-    // Saved game state
-    int m_savedScore = 0;
-    int m_savedLives = 3;
-    int m_savedLevel = 1;
-    int m_savedCoins = 0;
-
-    int m_savedP1Char = 0;
-    int m_savedP2Char = 1;
-    int m_savedMode = 0;
 };

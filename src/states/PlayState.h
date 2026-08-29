@@ -2,6 +2,7 @@
 
 #include "../core/GameState.h"
 #include "../core/GameConfig.h"
+#include "../core/GameMemento.h"
 #include <memory>
 
 namespace sf {
@@ -49,11 +50,12 @@ private:
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager> m_saveManager;
     GameConfig m_config;
-    bool m_loadSave;
+    bool m_loadSave = false;
     
     int m_levelStartScore = 0;
     int m_levelStartLives = 3;
     int m_levelStartCoins = 0;
 
     void setup(const GameConfig& config);
+    GameMemento captureLevelStartMemento() const;
 };

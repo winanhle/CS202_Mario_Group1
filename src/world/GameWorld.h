@@ -3,6 +3,7 @@
 #include <memory>
 #include <SFML/Graphics/Rect.hpp>
 #include "../core/LevelManager.h"
+#include "../core/GameMemento.h"
 
 // Forward declarations for all modules
 class IMapManager;
@@ -116,6 +117,27 @@ public:
      */
     void deleteSaveData();
 
+    /**
+     * @brief Creates a Memento snapshot of the game world state (Originator in Memento pattern).
+     * @param config The current game configuration (characters and mode).
+     * @param scoreOverride Optional score override (e.g. stage-start score). If nullopt, uses current total score.
+     * @param livesOverride Optional lives override (e.g. stage-start lives). If nullopt, uses current lives.
+     * @param coinsOverride Optional coins override (e.g. stage-start coins). If nullopt, uses current coins.
+     */
+    GameMemento createMemento(const GameConfig& config,
+                              std::optional<int> scoreOverride = std::nullopt,
+                              std::optional<int> livesOverride = std::nullopt,
+                              std::optional<int> coinsOverride = std::nullopt) const;
+
+    /**
+     * @brief Restores the game world state from a Memento snapshot (Originator in Memento pattern).
+     * @param memento Snapshot containing saved level, lives, score, coins, etc.
+     */
+    void restoreFromMemento(const GameMemento& memento);
+
+    void setInitialStage(int stageNumber);
+    void setCustomMapPath(const std::string& path) { m_customMapPath = path; }
+
     // ─── sau initialize, inject dependency ───
     void injectDependencies();
 
@@ -192,6 +214,7 @@ private:
 
     // ─── Level progression ──────────────────────────────────────────────────
     LevelManager m_levelManager;
+    std::string  m_customMapPath = "";
 
     /**
      * @brief Tải lại stage hiện tại từ đầu: map + enemy + item + player spawn,

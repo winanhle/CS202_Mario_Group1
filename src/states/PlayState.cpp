@@ -74,47 +74,48 @@ void PlayState::setup(const GameConfig& config)
 
     // Inject shared settings (key bindings for the player) before init
     m_gameWorld->setSettings(m_settings);
+    
+    // Inject custom map path if specified
+    m_gameWorld->setCustomMapPath(config.customMapPath);
 
-    // Initialize the game world
+    // When starting from a save (Continue in the main menu), preload snapshot
+    std::optional<GameMemento> loadedMemento;
+    if (m_loadSave && m_saveManager)
+    {
+        loadedMemento = m_saveManager->loadGame();
+        if (loadedMemento)
+        {
+            m_config = loadedMemento->config;
+            m_gameWorld->setCustomMapPath(m_config.customMapPath);
+            m_gameWorld->setInitialStage(loadedMemento->stage);
+        }
+        else
+        {
+            std::cerr << "[PlayState] ERROR: Failed to load save game state from SaveManager." << std::endl;
+        }
+    }
+
+    // Initialize the game world (loads current level once)
     m_gameWorld->initialize();
 
-    // When starting from a save (Continue in the main menu), apply the
-    // saved player state after the world is fully initialized
-    if (m_loadSave)
+    if (loadedMemento)
     {
-        if (auto* save = m_gameWorld->getSaveManager())
-        {
-            if (save->loadGame())
-            {
-                int savedLevel = save->getSavedLevel();
-                m_gameWorld->setStage(savedLevel);
-                m_gameWorld->setSharedLives(save->getSavedLives());
-                if (auto* player = m_gameWorld->getPlayerManager())
-                {
-                    player->restoreState(save->getSavedScore(), save->getSavedLives(),
-                                         player->getPositionX(), player->getPositionY());
-                    player->setCoins(save->getSavedCoins());
-                }
-                if (auto* player2 = m_gameWorld->getPlayerManager2())
-                {
-                    player2->restoreState(0, save->getSavedLives(),
-                                          player2->getPositionX(), player2->getPositionY());
-                    player2->setCoins(0);
-                }
-                if (auto* hud = m_gameWorld->getHUDManager())
-                {
-                    hud->updateScore(save->getSavedScore());
-                    hud->updateItemCount(save->getSavedCoins());
-                    hud->updateLives(save->getSavedLives());
-                    hud->updateWorld(savedLevel);
-                }
-            }
-        }
+        m_gameWorld->restoreFromMemento(*loadedMemento);
     }
 
     m_levelStartScore = m_gameWorld->getTotalScore();
     m_levelStartLives = m_gameWorld->getSharedLives();
     m_levelStartCoins = m_gameWorld->getTotalCoins();
+}
+
+GameMemento PlayState::captureLevelStartMemento() const
+{
+    if (m_gameWorld)
+    {
+        return m_gameWorld->createMemento(
+            m_config, m_levelStartScore, m_levelStartLives, m_levelStartCoins);
+    }
+    return GameMemento{ m_levelStartScore, m_levelStartLives, 1, m_levelStartCoins, m_config };
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -156,19 +157,16 @@ void PlayState::handleInput(const sf::Event& event)
             auto* manager = getStateManager();
             if (manager)
             {
-                // pause menu can save it if the player picks "Save & Quit".
+                // Create a level-start Memento snapshot via Originator (GameWorld)
+                // so the pause menu can persist it if the player picks "Save & Quit".
                 // We use level start values to prevent farming lives/coins mid-level.
-                if (auto* save = m_gameWorld->getSaveManager())
-                {
-                    save->setSaveData(m_levelStartScore,
-                                      m_levelStartLives,
-                                      m_gameWorld->getCurrentStageNumber(),
-                                      m_levelStartCoins);
-                    save->setGameConfig(static_cast<int>(m_config.player1Character),
-                                        static_cast<int>(m_config.player2Character),
-                                        static_cast<int>(m_config.mode));
-                }
-                manager->pushState(std::make_unique<PauseState>(m_settings, m_saveManager, m_gameWorld->getPlayerManager(), m_gameWorld->getPlayerManager2()));
+                GameMemento memento = captureLevelStartMemento();
+
+                manager->pushState(std::make_unique<PauseState>(
+                    m_settings, m_saveManager,
+                    m_gameWorld->getPlayerManager(),
+                    m_gameWorld->getPlayerManager2(),
+                    memento));
             }
             return; // don't forward the pause key to the game world
         }
@@ -209,6 +207,7 @@ void PlayState::update(float deltaTime)
                     if (m_gameWorld)
                     {
                         m_gameWorld->advanceStage();
+                        m_config.customMapPath = ""; // Clear custom testing map path for future stages and saves
                         
                         m_levelStartScore = m_gameWorld->getTotalScore();
                         m_levelStartLives = m_gameWorld->getSharedLives();
@@ -216,14 +215,8 @@ void PlayState::update(float deltaTime)
 
                         if (m_saveManager)
                         {
-                            m_saveManager->setSaveData(m_levelStartScore,
-                                                       m_levelStartLives,
-                                                       m_gameWorld->getCurrentStageNumber(),
-                                                       m_levelStartCoins);
-                            m_saveManager->setGameConfig(static_cast<int>(m_config.player1Character),
-                                                         static_cast<int>(m_config.player2Character),
-                                                         static_cast<int>(m_config.mode));
-                            m_saveManager->saveGame();
+                            GameMemento memento = captureLevelStartMemento();
+                            m_saveManager->saveGame(memento);
                         }
                     }
                 }
