@@ -74,7 +74,9 @@ void ItemManager::update(float deltaTime)
 
         // Update animation / movement
         item->update(deltaTime);
-        item->applyGravity(deltaTime);
+        // Skip gravity for static coins
+        if (!item->isStatic())
+            item->applyGravity(deltaTime);
 
         if (!m_mapManager)
         {
@@ -154,7 +156,9 @@ void ItemManager::update(float deltaTime)
             item->setVelocityY(0.f);
 
             // Let the item react to landing (e.g. Star bounces back up)
-            item->onLanded();
+            // Skip onLanded for static coins
+            if (!item->isStatic())
+                item->onLanded();
         }
 
         // Check player-item collision
@@ -228,5 +232,18 @@ void ItemManager::spawnStar(float worldX, float worldY)
 {
     m_items.push_back(
         std::make_unique<Star>(worldX, worldY, m_starTexture)
+    );
+}
+
+void ItemManager::spawnStaticCoin(float worldX, float worldY)
+{
+    std::array<sf::Texture*, 4> coinFrames{
+        &m_coinTextures[0],
+        &m_coinTextures[1],
+        &m_coinTextures[2],
+        &m_coinTextures[3]
+    };
+    m_items.push_back(
+        std::make_unique<Coin>(worldX, worldY, coinFrames, true /* isStatic */)
     );
 }

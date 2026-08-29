@@ -479,99 +479,113 @@ sf::FloatRect PlayerManager::getHitbox() const {
 // ==================== TILE COLLISION ====================
 
 void PlayerManager::tileCollisionX(float deltaTime) {
-    if (!m_mapManager) return;
-    float tileSize = static_cast<float>(m_mapManager->getTileSize());
     float newX = m_positionX + m_velocityX * deltaTime;
 
-    float left   = newX;
-    float right  = newX + m_playerSize.x - 0.01f;
-    float top    = m_positionY;
-    float bottom = m_positionY + m_playerSize.y - 0.01f;
+    if (m_mapManager) {
+        float tileSize = static_cast<float>(m_mapManager->getTileSize());
+        float left   = newX;
+        float right  = newX + m_playerSize.x - 0.01f;
+        float top    = m_positionY;
+        float bottom = m_positionY + m_playerSize.y - 0.01f;
 
-    int gridX_min = static_cast<int>(left   / tileSize);
-    int gridX_max = static_cast<int>(right  / tileSize);
-    int gridY_min = static_cast<int>(top    / tileSize);
-    int gridY_max = static_cast<int>(bottom / tileSize);
+        int gridX_min = static_cast<int>(left   / tileSize);
+        int gridX_max = static_cast<int>(right  / tileSize);
+        int gridY_min = static_cast<int>(top    / tileSize);
+        int gridY_max = static_cast<int>(bottom / tileSize);
 
-    bool collided = false;
-    for (int gy = gridY_min; gy <= gridY_max; ++gy) {
-        for (int gx = gridX_min; gx <= gridX_max; ++gx) {
-            float probeX = gx * tileSize + 1.0f;
-            float probeY = gy * tileSize + 1.0f;
+        bool collided = false;
+        for (int gy = gridY_min; gy <= gridY_max; ++gy) {
+            for (int gx = gridX_min; gx <= gridX_max; ++gx) {
+                float probeX = gx * tileSize + 1.0f;
+                float probeY = gy * tileSize + 1.0f;
 
-            // Check DEATH_ZONE on the side
-            MapManager* mm = dynamic_cast<MapManager*>(m_mapManager);
-            if (mm) {
-                TileType sideType = mm->getTileType(probeX, probeY);
-                if (sideType == TileType::DEATH_ZONE) {
-                    die();
-                    m_positionX = newX;
-                    return;
+                // Check DEATH_ZONE on the side
+                MapManager* mm = dynamic_cast<MapManager*>(m_mapManager);
+                if (mm) {
+                    TileType sideType = mm->getTileType(probeX, probeY);
+                    if (sideType == TileType::DEATH_ZONE) {
+                        die();
+                        m_positionX = newX;
+                        return;
+                    }
+                }
+
+                if (m_mapManager->isSolid(probeX, probeY)) {
+                    if (m_velocityX > 0) {
+                        newX = gx * tileSize - m_playerSize.x;
+                    } else if (m_velocityX < 0) {
+                        newX = (gx + 1) * tileSize;
+                    }
+                    m_velocityX = 0;
+                    collided = true;
+                    break;
                 }
             }
-
-            if (m_mapManager->isSolid(probeX, probeY)) {
-                if (m_velocityX > 0) {
-                    newX = gx * tileSize - m_playerSize.x;
-                } else if (m_velocityX < 0) {
-                    newX = (gx + 1) * tileSize;
-                }
-                m_velocityX = 0;
-                collided = true;
-                break;
-            }
+            if (collided) break;
         }
-        if (collided) break;
     }
+
+    // ── Lift platform horizontal side collision ──
+    if (m_liftManager) {
+        m_liftManager->resolveCollisionX(m_positionX, newX, m_positionY, m_playerSize, m_velocityX);
+    }
+
     m_positionX = newX;
 }
 
 void PlayerManager::tileCollisionY(float deltaTime) {
-    if (!m_mapManager) return;
-    float tileSize = static_cast<float>(m_mapManager->getTileSize());
     float newY = m_positionY + m_velocityY * deltaTime;
 
     m_isGrounded = false;
 
-    float left   = m_positionX;
-    float right  = m_positionX + m_playerSize.x - 0.01f;
-    float top    = newY;
-    float bottom = newY + m_playerSize.y - 0.01f;
+    if (m_mapManager) {
+        float tileSize = static_cast<float>(m_mapManager->getTileSize());
+        float left   = m_positionX;
+        float right  = m_positionX + m_playerSize.x - 0.01f;
+        float top    = newY;
+        float bottom = newY + m_playerSize.y - 0.01f;
 
-    int gridX_min = static_cast<int>(left   / tileSize);
-    int gridX_max = static_cast<int>(right  / tileSize);
-    int gridY_min = static_cast<int>(top    / tileSize);
-    int gridY_max = static_cast<int>(bottom / tileSize);
+        int gridX_min = static_cast<int>(left   / tileSize);
+        int gridX_max = static_cast<int>(right  / tileSize);
+        int gridY_min = static_cast<int>(top    / tileSize);
+        int gridY_max = static_cast<int>(bottom / tileSize);
 
-    bool collided = false;
-    for (int gy = gridY_min; gy <= gridY_max; ++gy) {
-        for (int gx = gridX_min; gx <= gridX_max; ++gx) {
-            float probeX = gx * tileSize + 1.0f;
-            float probeY = gy * tileSize + 1.0f;
+        bool collided = false;
+        for (int gy = gridY_min; gy <= gridY_max; ++gy) {
+            for (int gx = gridX_min; gx <= gridX_max; ++gx) {
+                float probeX = gx * tileSize + 1.0f;
+                float probeY = gy * tileSize + 1.0f;
 
-            if (m_velocityY > 0) {
-                // ── Falling → chỉ va chạm khi tile solid bình thường (HIDDEN xuyên qua) ──
-                if (m_mapManager->isSolid(probeX, probeY)) {
-                    newY = gy * tileSize - m_playerSize.y;
-                    m_isGrounded = true;
-                    m_velocityY = 0;
-                    collided = true;
-                    break;
-                }
-            } else if (m_velocityY < 0) {
-                // ── Đi lên → đập underside (HIDDEN_BLOCK chỉ bump được ở đây) ─────────────
-                if (m_mapManager->isSolidFromBelow(probeX, probeY)) {
-                    newY = (gy + 1) * tileSize;
-                    // Fire tile interaction
-                    m_mapManager->onHitFromBelow(gx, gy, static_cast<int>(getFormType()));
-                    m_velocityY = 0;
-                    collided = true;
-                    break;
+                if (m_velocityY > 0) {
+                    // ── Falling → chỉ va chạm khi tile solid bình thường (HIDDEN xuyên qua) ──
+                    if (m_mapManager->isSolid(probeX, probeY)) {
+                        newY = gy * tileSize - m_playerSize.y;
+                        m_isGrounded = true;
+                        m_velocityY = 0;
+                        collided = true;
+                        break;
+                    }
+                } else if (m_velocityY < 0) {
+                    // ── Đi lên → đập underside (HIDDEN_BLOCK chỉ bump được ở đây) ─────────────
+                    if (m_mapManager->isSolidFromBelow(probeX, probeY)) {
+                        newY = (gy + 1) * tileSize;
+                        // Fire tile interaction
+                        m_mapManager->onHitFromBelow(gx, gy, static_cast<int>(getFormType()));
+                        m_velocityY = 0;
+                        collided = true;
+                        break;
+                    }
                 }
             }
+            if (collided) break;
         }
-        if (collided) break;
     }
+
+    // ── Lift platform vertical collision (landing, riding, head bump) ──
+    if (m_liftManager) {
+        m_liftManager->resolveCollisionY(m_positionX, m_positionY, newY, m_playerSize, m_velocityY, m_isGrounded, m_isJumping);
+    }
+
     m_positionY = newY;
 
     // ── DEATH_ZONE scan: any tile overlapping player's body kills instantly ──
@@ -694,4 +708,31 @@ int PlayerManager::consumePendingOneUps() {
     int count = m_pendingOneUps;
     m_pendingOneUps = 0;
     return count;
+}
+
+// ==================== LIFT RIDING ====================
+
+void PlayerManager::applyLiftOffset(float dx, float dy)
+{
+    m_positionX += dx;
+    m_positionY += dy;
+
+    // Only force grounded if player is NOT already jumping.
+    // If the player just pressed jump, let their jump state play out so they
+    // can leave the lift and jump normally.
+    if (!m_isJumping) {
+        // While riding a lift the player must be treated as grounded so that:
+        //   (a) jump() is available
+        //   (b) gravity doesn't fight an upward-moving platform
+        m_isGrounded = true;
+    }
+    // Only zero vertical velocity if player is not jumping,
+    // otherwise preserve the jump velocity so the player can leave the lift.
+    if (!m_isJumping) m_velocityY = 0.f;
+
+    // Keep the sprite position in sync
+    m_playerSprite.setPosition({
+        m_positionX + m_playerSize.x / 2.f,
+        m_positionY + m_playerSize.y / 2.f
+    });
 }

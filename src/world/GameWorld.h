@@ -13,6 +13,8 @@ class IHUDManager;
 class ISaveManager;
 class ICameraManager;
 class ISettingsManager;
+class ILiftManager;
+class IFireBarManager;
 
 namespace sf {
 class RenderWindow;
@@ -133,6 +135,8 @@ public:
     void setHUDManager(std::shared_ptr<IHUDManager> hudManager);
     void setSaveManager(std::shared_ptr<ISaveManager> saveManager);
     void setCameraManager(std::shared_ptr<ICameraManager> cameraManager);
+    void setLiftManager(std::shared_ptr<ILiftManager> liftManager);
+    void setFireBarManager(std::shared_ptr<IFireBarManager> fireBarManager);
 
     /**
      * @brief Set the shared settings manager (injected from Game)
@@ -142,24 +146,28 @@ public:
 
     // ==================== ACCESSORS ====================
 
-    IPlayerManager* getPlayerManager();
-    IPlayerManager* getPlayerManager2();
-    IEnemyManager*  getEnemyManager();
-    IItemManager*   getItemManager();
-    IHUDManager*    getHUDManager();
-    ISaveManager*   getSaveManager();
-    ICameraManager* getCameraManager();
+    IPlayerManager*   getPlayerManager();
+    IPlayerManager*   getPlayerManager2();
+    IEnemyManager*    getEnemyManager();
+    IItemManager*     getItemManager();
+    IHUDManager*      getHUDManager();
+    ISaveManager*     getSaveManager();
+    ICameraManager*   getCameraManager();
+    ILiftManager*     getLiftManager();
+    IFireBarManager*  getFireBarManager();
 
 private:
     // --- Module manager instances ---
-    std::shared_ptr<IMapManager>    m_mapManager;
-    std::shared_ptr<IPlayerManager> m_playerManager;
-    std::shared_ptr<IPlayerManager> m_playerManager2; // null trong 1P mode
-    std::shared_ptr<IEnemyManager>  m_enemyManager;
-    std::shared_ptr<IItemManager>   m_itemManager;
-    std::shared_ptr<IHUDManager>    m_hudManager;
-    std::shared_ptr<ISaveManager>   m_saveManager;
-    std::shared_ptr<ICameraManager> m_cameraManager;
+    std::shared_ptr<IMapManager>      m_mapManager;
+    std::shared_ptr<IPlayerManager>   m_playerManager;
+    std::shared_ptr<IPlayerManager>   m_playerManager2; // null trong 1P mode
+    std::shared_ptr<IEnemyManager>    m_enemyManager;
+    std::shared_ptr<IItemManager>     m_itemManager;
+    std::shared_ptr<IHUDManager>      m_hudManager;
+    std::shared_ptr<ISaveManager>     m_saveManager;
+    std::shared_ptr<ICameraManager>   m_cameraManager;
+    std::shared_ptr<ILiftManager>     m_liftManager;
+    std::shared_ptr<IFireBarManager>  m_fireBarManager;
     std::shared_ptr<ISettingsManager> m_settings;
 
     // --- Shared lives pool (1P & 2P) ---

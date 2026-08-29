@@ -7,6 +7,8 @@
 #include "../interfaces/IHUDManager.h"
 #include "../interfaces/ISaveManager.h"
 #include "../interfaces/ICameraManager.h"
+#include "../interfaces/ILiftManager.h"
+#include "../interfaces/IFireBarManager.h"
 #include "../entities/map/MapManager.h"
 
 GameWorld::GameWorld()
@@ -37,6 +39,12 @@ void GameWorld::initialize()
 
     if (m_itemManager)
         m_itemManager->initialize();
+
+    if (m_liftManager)
+        m_liftManager->initialize();
+
+    if (m_fireBarManager)
+        m_fireBarManager->initialize();
 
     if (m_hudManager)
         m_hudManager->initialize();
@@ -73,8 +81,19 @@ void GameWorld::loadCurrentLevel()
     if (m_itemManager)
     {
         for (const auto& item : mapData.itemSpawns)
-            m_itemManager->spawnStar(item.x, item.y);
+        {
+            if (item.type == "STATIC_COIN")
+                m_itemManager->spawnStaticCoin(item.x, item.y);
+            else
+                m_itemManager->spawnStar(item.x, item.y);
+        }
     }
+
+    if (m_liftManager)
+        m_liftManager->spawnFromMapData(mapData.liftSpawns);
+
+    if (m_fireBarManager)
+        m_fireBarManager->spawnFromMapData(mapData.fireBarSpawns);
 
     if (mapData.playerSpawn.found)
     {
@@ -303,7 +322,11 @@ void GameWorld::update(float deltaTime)
     if (m_mapManager)
         m_mapManager->update(deltaTime);
 
-    // 1. Player(s) di chuyển + tile collision → vị trí FINAL
+    // 1. Advance moving platforms (lifts) so frame positions & deltas are computed
+    if (m_liftManager)
+        m_liftManager->update(deltaTime);
+
+    // 2. Player(s) di chuyển + tile & lift collision → vị trí FINAL & accurate grounded/animation state
     if (m_playerManager)
         m_playerManager->update(deltaTime);
 
@@ -332,7 +355,11 @@ void GameWorld::update(float deltaTime)
             m_playerManager2->die();
     }
 
-    // 4. Kiểm tra & xử lý death / respawn / game over
+    // 4. FireBar obstacles rotate and damage player
+    if (!m_isFlagpoleSequenceActive && m_fireBarManager)
+        m_fireBarManager->update(deltaTime);
+
+    // 5. Kiểm tra & xử lý death / respawn / game over
     checkAndHandleDeath();
 
     // 5. HUD update
@@ -450,11 +477,18 @@ void GameWorld::render(sf::RenderWindow& window) const
     if (m_mapManager)
         m_mapManager->render(window);
 
+    if (m_liftManager)
+        m_liftManager->render(window);
+
+    if (m_fireBarManager)
+        m_fireBarManager->render(window);
+
     if (m_enemyManager)
         m_enemyManager->render(window);
 
     if (m_itemManager)
         m_itemManager->render(window);
+
 
     if (m_playerManager)
         m_playerManager->render(window);
@@ -618,6 +652,27 @@ void GameWorld::injectDependencies()
         else
             m_cameraManager->setFollowTarget(m_playerManager.get());
     }
+
+    // LiftManager ← PlayerManager(s)
+    if (m_liftManager)
+    {
+        m_liftManager->setPlayerManager(m_playerManager.get());
+        m_liftManager->setPlayerManager2(m_playerManager2.get());
+    }
+
+    // PlayerManager(s) ← LiftManager (for platform collision & riding)
+    if (m_playerManager)
+        m_playerManager->setLiftManager(m_liftManager.get());
+
+    if (m_playerManager2)
+        m_playerManager2->setLiftManager(m_liftManager.get());
+
+    // FireBarManager ← PlayerManager(s)
+    if (m_fireBarManager)
+    {
+        m_fireBarManager->setPlayerManager(m_playerManager.get());
+        m_fireBarManager->setPlayerManager2(m_playerManager2.get());
+    }
 }
 
 // ==================== EXTENSION POINTS ====================
@@ -673,6 +728,16 @@ void GameWorld::setCameraManager(std::shared_ptr<ICameraManager> cameraManager)
     m_cameraManager = cameraManager;
 }
 
+void GameWorld::setLiftManager(std::shared_ptr<ILiftManager> liftManager)
+{
+    m_liftManager = std::move(liftManager);
+}
+
+void GameWorld::setFireBarManager(std::shared_ptr<IFireBarManager> fireBarManager)
+{
+    m_fireBarManager = std::move(fireBarManager);
+}
+
 void GameWorld::setSettings(std::shared_ptr<ISettingsManager> settings)
 {
     m_settings = std::move(settings);
@@ -680,11 +745,13 @@ void GameWorld::setSettings(std::shared_ptr<ISettingsManager> settings)
 
 // ==================== ACCESSORS ====================
 
-IMapManager*    GameWorld::getMapManager()    { return m_mapManager.get(); }
-IPlayerManager* GameWorld::getPlayerManager() { return m_playerManager.get(); }
-IPlayerManager* GameWorld::getPlayerManager2(){ return m_playerManager2.get(); }
-IEnemyManager*  GameWorld::getEnemyManager()  { return m_enemyManager.get(); }
-IItemManager*   GameWorld::getItemManager()   { return m_itemManager.get(); }
-IHUDManager*    GameWorld::getHUDManager()    { return m_hudManager.get(); }
-ISaveManager*   GameWorld::getSaveManager()   { return m_saveManager.get(); }
-ICameraManager* GameWorld::getCameraManager() { return m_cameraManager.get(); }
+IMapManager*     GameWorld::getMapManager()     { return m_mapManager.get(); }
+IPlayerManager*  GameWorld::getPlayerManager()  { return m_playerManager.get(); }
+IPlayerManager*  GameWorld::getPlayerManager2() { return m_playerManager2.get(); }
+IEnemyManager*   GameWorld::getEnemyManager()   { return m_enemyManager.get(); }
+IItemManager*    GameWorld::getItemManager()    { return m_itemManager.get(); }
+IHUDManager*     GameWorld::getHUDManager()     { return m_hudManager.get(); }
+ISaveManager*    GameWorld::getSaveManager()    { return m_saveManager.get(); }
+ICameraManager*  GameWorld::getCameraManager()  { return m_cameraManager.get(); }
+ILiftManager*    GameWorld::getLiftManager()    { return m_liftManager.get(); }
+IFireBarManager* GameWorld::getFireBarManager() { return m_fireBarManager.get(); }

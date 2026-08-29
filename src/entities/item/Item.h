@@ -44,7 +44,7 @@ public:
     bool isCollected() const;
     void setCollected(bool collected);
 
-    // Position
+    virtual bool isStatic() const { return false; }
     sf::Vector2f getPosition() const;
     void setPosition(const sf::Vector2f& pos);
     

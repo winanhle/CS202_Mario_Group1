@@ -71,6 +71,7 @@ TileType MapManager::stringToTileType(const std::string& s) {
     if (s == "DEATH_ZONE")       return TileType::DEATH_ZONE;
     if (s == "FLAGPOLE")         return TileType::FLAGPOLE;
     if (s == "SOLID_BRICK")      return TileType::SOLID_BRICK;
+    if (s == "FIRE_BAR" || s == "FIREBAR" || s == "FireBar" || s == "Firebar" || s == "fire_bar" || s == "firebar") return TileType::FIRE_BAR;
     if (s == "BACKGROUND")       return TileType::BACKGROUND; // trang trí, giống EMPTY
     return TileType::EMPTY; // unknown / decorative
 }
@@ -305,12 +306,35 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
         return false;
     }
 
-    // ── Parse object groups (enemy spawns, player spawn) ────────────────
+    // ── Discover FireBar spawn points from tile layers (FIRE_BAR tiles) ──
+    int tileFireBars = 0;
+    for (int r = 0; r < mapHeight; ++r) {
+        for (int c = 0; c < mapWidth; ++c) {
+            if (m_mapData[r][c] == TileType::FIRE_BAR) {
+                FireBarSpawnData fb;
+                fb.x = static_cast<float>(c * m_tileSize) + static_cast<float>(m_tileSize) / 2.f;
+                fb.y = static_cast<float>(r * m_tileSize) + static_cast<float>(m_tileSize) / 2.f;
+                fb.fireCount = 6;
+                fb.speed = 2.0f;
+                fb.clockwise = true;
+                fb.initialAngle = 0.f;
+                m_objectData.fireBarSpawns.push_back(fb);
+                ++tileFireBars;
+            }
+        }
+    }
+    if (tileFireBars > 0) {
+        std::cout << "[MapManager] Discovered " << tileFireBars
+                  << " FIRE_BAR tile(s) in map." << std::endl;
+    }
+
+    // ── Parse object groups (enemy spawns, player spawn, lifts, firebars) ─
     parseObjectGroups(mapEl);
 
     std::cout << "[MapManager] TMX loaded: " << tmxPath
               << "  (" << (m_mapData.empty() ? 0 : m_mapData[0].size())
-              << "x" << m_mapData.size() << ")" << std::endl;
+              << "x" << m_mapData.size() << ") with "
+              << m_objectData.fireBarSpawns.size() << " FireBar(s)" << std::endl;
     return true;
 }
 
@@ -344,23 +368,39 @@ const MapObjectData& MapManager::getMapObjectData() const {
 // =============================================================================
 
 void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
-    m_objectData = MapObjectData{}; // clear previous data
-
     for (auto* groupEl = mapElement->FirstChildElement("objectgroup"); groupEl;
          groupEl = groupEl->NextSiblingElement("objectgroup")) {
 
         for (auto* objEl = groupEl->FirstChildElement("object"); objEl;
              objEl = objEl->NextSiblingElement("object")) {
 
-            // Tiled stores the type in either "name" or "type" attribute
-            const char* typeName = objEl->Attribute("name");
-            const char* typeAttr = objEl->Attribute("type");
+            // Tiled stores the type in "name", "type", or "class" attribute
+            const char* typeName  = objEl->Attribute("name");
+            const char* typeAttr  = objEl->Attribute("type");
+            const char* classAttr = objEl->Attribute("class");
+
             std::string typeStr;
-            if (typeName && typeName[0] != '\0')
-                typeStr = typeName;
-            else if (typeAttr && typeAttr[0] != '\0')
+            if (typeAttr && typeAttr[0] != '\0')
                 typeStr = typeAttr;
-            else
+            else if (classAttr && classAttr[0] != '\0')
+                typeStr = classAttr;
+            else if (typeName && typeName[0] != '\0')
+                typeStr = typeName;
+
+            // Also check <property name="type" value="..."/>
+            if (auto* propsEl = objEl->FirstChildElement("properties")) {
+                for (auto* prop = propsEl->FirstChildElement("property"); prop;
+                     prop = prop->NextSiblingElement("property")) {
+                    const char* pname = prop->Attribute("name");
+                    const char* pval  = prop->Attribute("value");
+                    if (pname && pval && std::string(pname) == "type" && pval[0] != '\0') {
+                        typeStr = pval;
+                        break;
+                    }
+                }
+            }
+
+            if (typeStr.empty())
                 continue; // skip objects without a type/name
 
             float x = 0.f, y = 0.f;
@@ -384,7 +424,92 @@ void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
                 continue;
             }
 
+            // STATIC_COIN / Coin: spawn a static coin collectible
+            if (typeStr == "STATIC_COIN" || typeStr == "Coin") {
+                EntitySpawnData item;
+                item.type = "STATIC_COIN";  // normalise to one canonical type
+                item.x = x;
+                item.y = y;
+                m_objectData.itemSpawns.push_back(item);
+                continue;
+            }
+
+            // ── Lift platform objects ─────────────────────────────────────
+            if (typeStr == "Lift") {
+                LiftSpawnData lift;
+                lift.x = x;
+                lift.y = y;
+
+                // Parse optional custom properties
+                if (auto* propsEl = objEl->FirstChildElement("properties")) {
+                    for (auto* prop = propsEl->FirstChildElement("property"); prop;
+                         prop = prop->NextSiblingElement("property")) {
+                        const char* pname = prop->Attribute("name");
+                        const char* pval  = prop->Attribute("value");
+                        if (!pname || !pval) continue;
+                        std::string name(pname);
+                        if (name == "motionType") lift.motionType = pval;
+                        else if (name == "holes") {
+                            try { lift.holes = std::stoi(pval); } catch (...) {}
+                        }
+                        else if (name == "range") {
+                            try { lift.range = std::stof(pval); } catch (...) {}
+                        }
+                        else if (name == "speed") {
+                            try { lift.speed = std::stof(pval); } catch (...) {}
+                        }
+                    }
+                }
+                m_objectData.liftSpawns.push_back(lift);
+                continue;
+            }
+
+            // ── FireBar objects ───────────────────────────────────────────
+            auto isFireBarType = [](const std::string& str) {
+                return (str == "FireBar" || str == "FIRE_BAR" || str == "FIREBAR" ||
+                        str == "Firebar" || str == "fire_bar" || str == "firebar");
+            };
+
+            if (isFireBarType(typeStr)) {
+                FireBarSpawnData fb;
+                fb.x = x;
+                fb.y = y;
+                // If object has width/height, place at center
+                float width = 0.f, height = 0.f;
+                objEl->QueryFloatAttribute("width", &width);
+                objEl->QueryFloatAttribute("height", &height);
+                if (width > 0.f && height > 0.f) {
+                    fb.x += width / 2.f;
+                    fb.y += height / 2.f;
+                }
+                if (auto* propsEl = objEl->FirstChildElement("properties")) {
+                    for (auto* prop = propsEl->FirstChildElement("property"); prop;
+                         prop = prop->NextSiblingElement("property")) {
+                        const char* pname = prop->Attribute("name");
+                        const char* pval  = prop->Attribute("value");
+                        if (!pname || !pval) continue;
+                        std::string name(pname);
+                        if (name == "fireCount" || name == "length") {
+                            try { fb.fireCount = std::stoi(pval); } catch (...) {}
+                        }
+                        else if (name == "speed") {
+                            try { fb.speed = std::stof(pval); } catch (...) {}
+                        }
+                        else if (name == "clockwise") {
+                            fb.clockwise = (std::string(pval) == "true" || std::string(pval) == "1");
+                        }
+                        else if (name == "initialAngle") {
+                            try { fb.initialAngle = std::stof(pval); } catch (...) {}
+                        }
+                    }
+                }
+                m_objectData.fireBarSpawns.push_back(fb);
+                std::cout << "[MapManager] Object FireBar at (" << fb.x << ", " << fb.y << ")" << std::endl;
+                continue;
+            }
+
             // Otherwise treat as enemy spawn
+
             EntitySpawnData spawn;
             spawn.type = typeStr;
             spawn.x = x;

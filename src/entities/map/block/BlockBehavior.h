@@ -94,6 +94,13 @@ public:
     void onHitFromBelow(MapManager& map, int gx, int gy, int formType) const override;
 };
 
+class FireBarBlockBehavior final : public IBlockBehavior {
+public:
+    // FIRE_BAR block là solid để Mario có thể đứng/chạy lên trên
+    bool isSolid() const override { return true; }
+    void onHitFromBelow(MapManager& map, int gx, int gy, int formType) const override;
+};
+
 // ─── Factory ──────────────────────────────────────────────────────────────────
 // Trả về behavior tương ứng với TileType. Singleton tĩnh — không quản lý ownership.
 const IBlockBehavior& getBlockBehavior(TileType type);
