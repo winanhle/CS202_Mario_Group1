@@ -9,15 +9,6 @@
 #include "../Enemy.h"
 #include "../../../interfaces/IPlayerManager.h"
 
-// A Koopa Troopa in disguise: bigger/slower boss that spits fireballs
-// periodically while walking. The first stomp unmasks it - it retreats into
-// a normal Koopa shell (reuses KoopaShell1/2 art, since it really was a
-// Koopa underneath), then cycles ShellIdle/ShellMoving forever just like
-// KoopaTroopa - it never truly dies.
-//
-// All sprites are preset paths from EnemySprite.h and are loaded lazily,
-// exactly once total (shared across every Boss instance), so the
-// constructor needs no texture arguments at all.
 class Boss : public Enemy
 {
 public:
@@ -29,12 +20,6 @@ public:
         ShellMoving  // kicked shell, sliding and dangerous
     };
 
-    // Called when the boss should spawn a fireball.
-    // Params: (spawnX, spawnY, direction) - direction matches Enemy's
-    // convention (-1 = left, 1 = right). Typically wired to push a
-    // BossFireball into whatever container drives your enemies (see
-    // BossFireball.h - it's an Enemy subclass, so EnemyManager's existing
-    // m_enemies vector can hold it directly with no extra plumbing).
     using FireballSpawnFn = std::function<void(float, float, int)>;
 
     explicit Boss(float x, float y, FireballSpawnFn fireballSpawnFn = nullptr)
@@ -46,11 +31,6 @@ public:
 
     void update(float dt) override
     {
-        // NOTE: EnemyManager::update() already calls applyGravity() and
-        // move() for every enemy after this update(). Do NOT call them again
-        // here, or gravity/movement doubles up and the boss tunnels through
-        // the floor/walls (see BuzzyBeetle/KoopaTroopa for the same fix).
-        // Only set m_moveSpeed and handle animation/timers here.
         switch (m_state)
         {
             case State::Walking:
@@ -72,10 +52,7 @@ public:
                 break;
 
             case State::ShellIdle:
-                m_moveSpeed = 0.f; // stays put, but still falls via EnemyManager's gravity
-                // Static pose (KoopaShell1) - set once when entering this
-                // state (see onStomp()/onPlayerCollision()), nothing to
-                // animate here - it's a distinct pose, not an anim frame.
+                m_moveSpeed = 0.f; 
                 break;
 
             case State::ShellMoving:
@@ -94,7 +71,6 @@ public:
         {
             case State::Walking:
             case State::Attacking:
-                // Normal side-touch damage
                 player->takeDamage();
                 break;
 
@@ -117,8 +93,6 @@ public:
         {
             case State::Walking:
             case State::Attacking:
-                // First stomp unmasks it: it retreats into its shell instead
-                // of dying outright - it was a Koopa Troopa all along.
                 m_state = State::ShellIdle;
                 m_frameIndex = 0;
                 setSpriteTexture(*shellFrames()[0]);
