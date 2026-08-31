@@ -1,54 +1,29 @@
 #include "EnemyManager.h"
-#include "enemies/Goomba.h"
-#include "enemies/BuzzyBeetle.h"
-#include "enemies/KoopaTroopa.h"
-#include "enemies/Boss.h"
-#include "enemies/BossFireball.h"
+#include "EnemyFactory.h"
+#include "enemies/BossFireBall.h"
 #include "../../interfaces/IPlayerManager.h"
 #include <iostream>
 #include <SFML/Graphics.hpp>
 
-EnemyManager::EnemyManager() = default;
+EnemyManager::EnemyManager()
+    : m_enemyFactory(std::make_unique<EnemyFactory>())
+{
+}
+
+EnemyManager::EnemyManager(std::unique_ptr<IEnemyFactory> factory)
+    : m_enemyFactory(std::move(factory))
+{
+    if (!m_enemyFactory) {
+        m_enemyFactory = std::make_unique<EnemyFactory>();
+    }
+}
 
 void EnemyManager::initialize() {
     m_enemies.clear();
+    m_pendingSpawns.clear();
 
-    // ── Load Goomba textures ─────────────────────────────────────────────
-    if (!m_goombaTextures[0].loadFromFile("assets/texture/enemy/Goomba1.PNG")) {
-        throw std::runtime_error("Failed to load Goomba1.PNG");
-    }
-    if (!m_goombaTextures[1].loadFromFile("assets/texture/enemy/Goomba2.PNG")) {
-        throw std::runtime_error("Failed to load Goomba2.PNG");
-    }
-    if (!m_goombaDeadTexture.loadFromFile("assets/texture/enemy/GoombaDead.PNG")) {
-        throw std::runtime_error("Failed to load GoombaDead.PNG");
-    }
-
-    // ── Load BuzzyBeetle textures ─────────────────────────────────────────
-    static constexpr std::array<const char*, 5> buzzyBeetlePaths{
-        "assets/texture/enemy/BuzzyBeetle1.PNG",
-        "assets/texture/enemy/BuzzyBeetle2.PNG",
-        "assets/texture/enemy/BuzzyBeetle3.PNG",
-        "assets/texture/enemy/BuzzyBeetle4.PNG",
-        "assets/texture/enemy/BuzzyBeetle5.PNG"
-    };
-    for (size_t i = 0; i < buzzyBeetlePaths.size(); ++i) {
-        if (!m_buzzyBeetleTextures[i].loadFromFile(buzzyBeetlePaths[i]))
-            throw std::runtime_error(std::string("Failed to load ") + buzzyBeetlePaths[i]);
-    }
-
-    // ── Load KoopaTroopa textures ─────────────────────────────────────────
-    static constexpr std::array<const char*, 6> koopaTroopaPaths{
-        "assets/texture/enemy/Koopa1.PNG",
-        "assets/texture/enemy/Koopa2.PNG",
-        "assets/texture/enemy/Koopa3.PNG",
-        "assets/texture/enemy/Koopa4.PNG",
-        "assets/texture/enemy/KoopaShell1.PNG",
-        "assets/texture/enemy/KoopaShell2.PNG"
-    };
-    for (size_t i = 0; i < koopaTroopaPaths.size(); ++i) {
-        if (!m_koopaTroopaTextures[i].loadFromFile(koopaTroopaPaths[i]))
-            throw std::runtime_error(std::string("Failed to load ") + koopaTroopaPaths[i]);
+    if (m_enemyFactory) {
+        m_enemyFactory->preloadTextures();
     }
 }
 
@@ -235,45 +210,43 @@ bool EnemyManager::takeDamageFromFireball(const sf::FloatRect& fireballHitbox)
 void EnemyManager::spawnFromMapData(const std::vector<EntitySpawnData>& spawns) {
     m_enemies.clear();
 
-    for (const auto& spawnData : spawns) {
-        std::unique_ptr<Enemy> enemy = nullptr;
+    if (!m_enemyFactory) {
+        m_enemyFactory = std::make_unique<EnemyFactory>();
+    }
 
-        if (spawnData.type == "Goomba") {
-            std::array<sf::Texture*, 2> walkFrames{&m_goombaTextures[0], &m_goombaTextures[1]};
-            enemy = std::make_unique<Goomba>(
-                spawnData.x, spawnData.y, walkFrames, m_goombaDeadTexture);
-        }
-        else if (spawnData.type == "KoopaTroopa") {
-            std::array<sf::Texture*, 2> leftFrames{&m_koopaTroopaTextures[0], &m_koopaTroopaTextures[1]};
-            std::array<sf::Texture*, 2> rightFrames{&m_koopaTroopaTextures[2], &m_koopaTroopaTextures[3]};
-            std::array<sf::Texture*, 2> shellFrames{&m_koopaTroopaTextures[4], &m_koopaTroopaTextures[5]};
-            enemy = std::make_unique<KoopaTroopa>(
-                spawnData.x, spawnData.y, leftFrames, rightFrames, shellFrames);
-        }
-        else if (spawnData.type == "BuzzyBeetle") {
-            std::array<sf::Texture*, 2> leftFrames{&m_buzzyBeetleTextures[0], &m_buzzyBeetleTextures[1]};
-            std::array<sf::Texture*, 2> rightFrames{&m_buzzyBeetleTextures[3], &m_buzzyBeetleTextures[4]};
-            enemy = std::make_unique<BuzzyBeetle>(
-                spawnData.x, spawnData.y, leftFrames, rightFrames, m_buzzyBeetleTextures[2]);
-        }
-        else if (spawnData.type == "Boss") {
-            enemy = std::make_unique<Boss>(
-                spawnData.x, spawnData.y,
-                [this](float fx, float fy, int dir) {
-                    m_pendingSpawns.push_back(std::make_unique<BossFireball>(fx, fy, dir));
-                });
-        }
-        else {
-            std::cerr << "[EnemyManager] Unknown enemy type: " << spawnData.type << std::endl;
-        }
+    for (const auto& spawnData : spawns) {
+        auto enemy = m_enemyFactory->createEnemy(
+            spawnData,
+            [this](float fx, float fy, int dir) {
+                m_pendingSpawns.push_back(std::make_unique<BossFireball>(fx, fy, dir));
+            }
+        );
 
         if (enemy) {
-            if (spawnData.moveSpeed > 0.f)
-                enemy->setMoveSpeed(spawnData.moveSpeed);
             m_enemies.push_back(std::move(enemy));
         }
     }
 
     std::cout << "[EnemyManager] Spawned " << m_enemies.size()
-              << " enemies from map data." << std::endl;
+              << " enemies from map data using EnemyFactory." << std::endl;
+}
+
+void EnemyManager::killEnemiesAboveTile(int gx, int gy)
+{
+    if (!m_mapManager) return;
+
+    // World bounds of the tile directly above the broken/bumped block (gy - 1).
+    // We use a full-tile rectangle so an enemy standing partly on the edge is
+    // still caught.
+    const float ts   = static_cast<float>(m_mapManager->getTileSize());
+    const float left = static_cast<float>(gx) * ts;
+    const float top  = static_cast<float>(gy - 1) * ts;
+    sf::FloatRect aboveRect({ left, top }, { ts, ts });
+
+    for (auto& enemy : m_enemies) {
+        if (enemy->isDead()) continue;
+        if (enemy->getHitbox().findIntersection(aboveRect).has_value()) {
+            enemy->onStomp(); // treat like a stomp kill (plays death anim, removes enemy)
+        }
+    }
 }

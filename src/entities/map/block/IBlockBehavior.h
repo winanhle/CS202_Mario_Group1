@@ -1,6 +1,6 @@
 #pragma once
 
-class MapManager;
+class IMapContext;    // narrow context interface — not the concrete MapManager
 class IPlayerManager;
 
 /**
@@ -10,13 +10,14 @@ class IPlayerManager;
  * Mỗi TileType có một behavior xác định:
  *  - Có solid hay không (va chạm).
  *  - Phản ứng khi player đập từ dưới lên (side-effects + chuyển trạng thái
- *    thông qua MapManager::setTile để đồng bộ cả m_mapData lẫn m_rawGids).
+ *    thông qua IMapContext::setTile để đồng bộ cả m_mapData lẫn m_rawGids).
  *
  * Nguyên tắc OOP:
  *  - SRP: hành vi từng block nằm trong từng subclass, MapManager chỉ dispatch.
  *  - OCP: thêm loại block mới = thêm subclass + đăng ký vào factory,
  *         không sửa MapManager.
- *  - DIP: MapManager phụ thuộc interface này, không phụ thuộc concrete class.
+ *  - DIP: MapManager phụ thuộc interface này; block behaviors phụ thuộc
+ *         IMapContext (không phụ thuộc concrete MapManager).
  */
 class IBlockBehavior
 {
@@ -36,11 +37,10 @@ public:
 
     /**
      * @brief Xử lý khi player đập block từ dưới lên.
-     * @param map      MapManager (để gọi setTile + side-effects).
+     * @param ctx      Narrow map context (setTile + side-effects).
      * @param gx       Grid column của tile.
      * @param gy       Grid row của tile.
-     * @param formType Form hiện tại của player (Normal=0, Super/Fire>0),
-     *                 dùng để quyết định Mushroom hay FireFlower.
+     * @param player   Player hiện tại (nullptr nếu không có).
      */
-    virtual void onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const = 0;
+    virtual void onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const = 0;
 };

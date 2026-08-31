@@ -3,6 +3,7 @@
 #include "../../interfaces/IEnemyManager.h"
 #include "../../interfaces/IMapManager.h"
 #include "Enemy.h"
+#include "EnemyFactory.h"
 #include "../map/MapData.h"
 #include <SFML/Graphics/Rect.hpp>
 #include <array>
@@ -21,19 +22,19 @@ class EnemyManager : public IEnemyManager
     IPlayerManager* m_player2 = nullptr;
     IMapManager* m_mapManager = nullptr;
     std::vector<std::unique_ptr<Enemy>> m_enemies;
-
-    std::array<sf::Texture, 2> m_goombaTextures; // Goomba1, Goomba2 - leg-swap walk animation
-    sf::Texture m_goombaDeadTexture;
-
-    std::array<sf::Texture, 5> m_buzzyBeetleTextures; // 1,2 = left; 3 = shell; 4,5 = right
-    std::array<sf::Texture, 6> m_koopaTroopaTextures; // 1,2 = left; 3,4 = right; shell1 = idle pose, shell2 = running pose
+    std::unique_ptr<IEnemyFactory> m_enemyFactory;
 
     std::vector<std::unique_ptr<Enemy>> m_pendingSpawns;
 
     void resolvePlayerCollision(Enemy& enemy, IPlayerManager* player, int playerIndex);
 public:
     EnemyManager();
+    explicit EnemyManager(std::unique_ptr<IEnemyFactory> factory);
     ~EnemyManager() override = default;
+
+    void setEnemyFactory(std::unique_ptr<IEnemyFactory> factory) {
+        m_enemyFactory = std::move(factory);
+    }
 
     void initialize() override;
     void update(float deltaTime) override;
@@ -50,4 +51,10 @@ public:
     bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox) override;
 
     void spawnFromMapData(const std::vector<EntitySpawnData>& spawns) override;
+
+    /**
+     * @brief Stomp-kill all enemies whose hitbox overlaps the tile row
+     *        directly above (gy - 1). Called when a brick breaks.
+     */
+    void killEnemiesAboveTile(int gx, int gy) override;
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <stdexcept>
 
 #include "../EnemySprite.h"
 #include "../Enemy.h"
@@ -15,6 +16,20 @@ public:
         ShellIdle,   // retreated into shell, not moving
         ShellMoving  // kicked shell, sliding and dangerous
     };
+
+    static sf::Texture& left1()  { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::Koopa1); if (!ok) throw std::runtime_error("Koopa: failed to load Koopa1"); return t; }
+    static sf::Texture& left2()  { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::Koopa2); if (!ok) throw std::runtime_error("Koopa: failed to load Koopa2"); return t; }
+    static sf::Texture& right1() { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::Koopa3); if (!ok) throw std::runtime_error("Koopa: failed to load Koopa3"); return t; }
+    static sf::Texture& right2() { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::Koopa4); if (!ok) throw std::runtime_error("Koopa: failed to load Koopa4"); return t; }
+    static sf::Texture& shell1() { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::KoopaShell1); if (!ok) throw std::runtime_error("Koopa: failed to load KoopaShell1"); return t; }
+    static sf::Texture& shell2() { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::KoopaShell2); if (!ok) throw std::runtime_error("Koopa: failed to load KoopaShell2"); return t; }
+
+    explicit KoopaTroopa(float x, float y)
+        : Enemy(x, y, left1())
+        , m_leftFrames({ &left1(), &left2() })
+        , m_rightFrames({ &right1(), &right2() })
+        , m_shellFrames({ &shell1(), &shell2() })
+    {}
 
     // leftFrames  = {Koopa1, Koopa2}          -> walking left
     // rightFrames = {Koopa3, Koopa4}          -> walking right

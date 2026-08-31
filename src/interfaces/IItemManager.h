@@ -1,5 +1,8 @@
 #pragma once
 #include "IMapManager.h"
+#include "../entities/map/MapData.h"
+#include <vector>
+
 class IPlayerManager;
 
 namespace sf {
@@ -45,6 +48,17 @@ public:
      * @return Count of items
      */
     virtual int getItemCount() const = 0;
+
+    /**
+     * @brief Remove all active items from the world.
+     */
+    virtual void clear() = 0;
+
+    /**
+     * @brief Clears active items and spawns initial items parsed from map data.
+     * @param spawns List of item spawn points
+     */
+    virtual void spawnFromMapData(const std::vector<EntitySpawnData>& spawns) = 0;
 
     // ─── NHẬN DEPENDENCY ───
     virtual void setPlayerManager(IPlayerManager* player) = 0;

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
@@ -13,94 +14,69 @@ static constexpr int   GID_FLAGPOLE_ATTACH   = 832;
 static constexpr int   GID_FLAGPOLE_SHAFT    = 1043;
 static constexpr int   GID_FLAGPOLE_BASE     = 2667;
 static constexpr float FLAG_SLIDE_SPEED      = 90.f;
-static constexpr int   FLAGPOLE_FALLBACK_TOP = 5;
-static constexpr int   FLAGPOLE_FALLBACK_BOT = 12;
 
 MapManager::MapManager() {}
 
 void MapManager::initialize() {
     m_mapData.clear();
     m_rawGids.clear();
+    m_bgGids.clear();
     m_objectData = MapObjectData{};
     m_multiCoinStates.clear();
     m_brickDebris.clear();
     m_coinPopAnims.clear();
+    m_undoStack.clear();
+    m_redoStack.clear();
     // Bản đồ được tải bởi GameWorld thông qua LevelManager (loadCurrentLevel()).
 }
 
-bool MapManager::loadMapCSV(const std::string& filepath) {
-    std::ifstream file(filepath);
-    if (!file.is_open()) return false;
-
-    std::string line;
-    m_mapData.clear();
-
-    while (std::getline(file, line)) {
-        std::vector<TileType> row;
-        std::stringstream ss(line);
-        std::string cell;
-
-        while (std::getline(ss, cell, ',')) {
-            if (cell.empty()) continue;
-            int tileID = std::stoi(cell);
-            row.push_back(static_cast<TileType>(tileID));
-        }
-        if (!row.empty())
-            m_mapData.push_back(row);
-    }
-    
-    std::cout << "[MapManager] CSV loaded: "
-              << m_mapData[0].size() << "x" << m_mapData.size() << std::endl;
-    return true;
-}
-
 // =============================================================================
-//  TMX / TSX LOADER
+//  HELPER: stringToTileType — OCP-compliant unordered_map registry
+//  Thêm TileType mới = thêm một entry vào bảng, không sửa if-else nào.
 // =============================================================================
-
-// ── Helpers ───────────────────────────────────────────────────────────────────────────────
 
 TileType MapManager::stringToTileType(const std::string& s) {
-    if (s == "GROUND")           return TileType::GROUND;
-    if (s == "PIPE")             return TileType::PIPE;
-    if (s == "BRICK_NORMAL")     return TileType::BRICK_NORMAL;
-    if (s == "QUESTION_COIN")    return TileType::QUESTION_COIN;
-    if (s == "QUESTION_POWERUP") return TileType::QUESTION_POWERUP;
-    if (s == "MULTI_COIN")       return TileType::MULTI_COIN;
-    if (s == "HIDDEN_BLOCK")     return TileType::HIDDEN_BLOCK;
-    if (s == "DEATH_ZONE")       return TileType::DEATH_ZONE;
-    if (s == "FLAGPOLE")         return TileType::FLAGPOLE;
-    if (s == "SOLID_BRICK")      return TileType::SOLID_BRICK;
-    if (s == "FIRE_BAR" || s == "FIREBAR" || s == "FireBar" || s == "Firebar" || s == "fire_bar" || s == "firebar") return TileType::FIRE_BAR;
-    if (s == "BACKGROUND")       return TileType::BACKGROUND; // trang trí, giống EMPTY
-    return TileType::EMPTY; // unknown / decorative
+    static const std::unordered_map<std::string, TileType> table = {
+        {"GROUND",          TileType::GROUND},
+        {"PIPE",            TileType::PIPE},
+        {"BRICK_NORMAL",    TileType::BRICK_NORMAL},
+        {"QUESTION_COIN",   TileType::QUESTION_COIN},
+        {"QUESTION_POWERUP",TileType::QUESTION_POWERUP},
+        {"MULTI_COIN",      TileType::MULTI_COIN},
+        {"HIDDEN_BLOCK",    TileType::HIDDEN_BLOCK},
+        {"DEATH_ZONE",      TileType::DEATH_ZONE},
+        {"FLAGPOLE",        TileType::FLAGPOLE},
+        {"SOLID_BRICK",     TileType::SOLID_BRICK},
+        {"QUESTION_USED",   TileType::QUESTION_USED},
+        // FIRE_BAR aliases — normalised to one enum value
+        {"FIRE_BAR",        TileType::FIRE_BAR},
+        {"FIREBAR",         TileType::FIRE_BAR},
+        {"FireBar",         TileType::FIRE_BAR},
+        {"Firebar",         TileType::FIRE_BAR},
+        {"fire_bar",        TileType::FIRE_BAR},
+        {"firebar",         TileType::FIRE_BAR},
+        {"BACKGROUND",      TileType::BACKGROUND},
+        {"COIN",            TileType::COIN},
+    };
+    auto it = table.find(s);
+    return (it != table.end()) ? it->second : TileType::EMPTY;
 }
 
 std::string MapManager::resolvePath(const std::string& baseDir, const std::string& relativePath) {
-    // Use std::filesystem to cleanly resolve relative paths
     fs::path resolved = fs::path(baseDir) / fs::path(relativePath);
     return resolved.lexically_normal().string();
 }
 
 TileType MapManager::gidToTileType(int gid) const {
-    if (gid == 0) return TileType::EMPTY; // GID 0 means no tile
+    if (gid == 0) return TileType::EMPTY;
     auto it = m_gidTypeMap.find(gid);
     if (it != m_gidTypeMap.end()) return it->second;
-    return TileType::EMPTY; // unmapped GIDs are decorative
+    return TileType::EMPTY;
 }
 
-// ── TSX tileset parser ─────────────────────────────────────────────────────────────────────
-//
-// Tiled property format used in this project:
-//   <tile id="N">
-//     <properties>
-//       <property name="TileTypeName" type="int" propertytype="TileTypeName" value="0"/>
-//     </properties>
-//   </tile>
-//
-// The TileType is encoded in the `propertytype` attribute (which is the
-// Tiled enum class name).  We also accept `name` as a secondary fallback
-// in case the tile was annotated using the simple string approach.
+// =============================================================================
+//  TSX TILESET PARSER
+// =============================================================================
 
 bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
     tinyxml2::XMLDocument doc;
@@ -120,12 +96,10 @@ bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
     if (imgEl) {
         const char* imgSrc = imgEl->Attribute("source");
         if (imgSrc) {
-            // The image path is relative to the .tsx file's directory
             std::string tsxDir = fs::path(tsxPath).parent_path().string();
             std::string imgPath = resolvePath(tsxDir, imgSrc);
             if (m_tilesetTexture.loadFromFile(imgPath)) {
-                m_tilesetTexture.setSmooth(false); // pixel-art: no blurring
-                // SFML 3: Sprite must be constructed with a texture (no default ctor)
+                m_tilesetTexture.setSmooth(false);
                 m_tileSprite.emplace(m_tilesetTexture);
                 m_textureLoaded = true;
                 std::cout << "[MapManager] Tileset texture loaded: " << imgPath << std::endl;
@@ -154,28 +128,13 @@ bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
                 // PRIMARY: use the `propertytype` attribute (Tiled enum class name)
                 const char* proptype = prop->Attribute("propertytype");
                 if (proptype && proptype[0] != '\0') {
-                    TileType candidate = stringToTileType(proptype);
-                    if (candidate != TileType::EMPTY) {
-                        resolved = candidate;
-                        found = true;
-                        break;
-                    }
+                    resolved = stringToTileType(proptype);
+                    found = true;
+                    break;
                 }
 
-                // FALLBACK A: property name IS the type string
-                //   e.g. <property name="GROUND" .../>
+                // FALLBACK A: property named "type" with string value
                 const char* propname = prop->Attribute("name");
-                if (!found && propname) {
-                    TileType candidate = stringToTileType(propname);
-                    if (candidate != TileType::EMPTY) {
-                        resolved = candidate;
-                        found = true;
-                        break;
-                    }
-                }
-
-                // FALLBACK B: property named "type" with string value
-                //   e.g. <property name="type" value="GROUND"/>
                 if (!found && propname && std::string(propname) == "type") {
                     const char* val = prop->Attribute("value");
                     if (val) {
@@ -184,18 +143,26 @@ bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
                         break;
                     }
                 }
+
+                // FALLBACK B: property name IS the type string
+                if (!found && propname) {
+                    TileType candidate = stringToTileType(propname);
+                    if (candidate != TileType::EMPTY) {
+                        resolved = candidate;
+                        found = true;
+                        break;
+                    }
+                }
             }
         }
 
-        // m_gidTypeMap chỉ lưu type khác EMPTY (EMPTY là mặc định của GID 0).
         if (found && resolved != TileType::EMPTY) {
             m_gidTypeMap[gid] = resolved;
         }
 
-        // Reverse lookup: TileType → GID (dùng cho block transitions).
-        // EMPTY là một tile THẬT trong tileset (vd tile id 0 → GID firstGid).
-        // Ghi nhận nó để setTile(EMPTY) load đúng texture EMPTY, thay vì GID 0
-        // (GID 0 = "không có tile" → renderer sẽ bỏ qua, không vẽ texture nào).
+        // Reverse lookup: TileType → GID (first occurrence wins).
+        // Registered even for EMPTY so setTile(EMPTY) can restore the correct
+        // background sprite rather than falling back to GID 0 (= no tile).
         if (found) {
             if (m_typeToGid.find(resolved) == m_typeToGid.end()) {
                 m_typeToGid[resolved] = gid;
@@ -203,12 +170,20 @@ bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
         }
     }
 
+    // Fallback: ensure TileType::EMPTY maps to firstGid (usually 1, the top-left sky tile)
+    if (m_typeToGid.find(TileType::EMPTY) == m_typeToGid.end()) {
+        m_typeToGid[TileType::EMPTY] = firstGid;
+    }
+
     std::cout << "[MapManager] TSX loaded: " << tsxPath
               << "  (" << m_gidTypeMap.size() << " typed tiles)" << std::endl;
     return true;
 }
 
-// ── TMX map parser ─────────────────────────────────────────────────────────────────────────
+// =============================================================================
+//  TMX MAP PARSER
+// =============================================================================
+
 bool MapManager::loadMapTMX(const std::string& tmxPath) {
     tinyxml2::XMLDocument doc;
     if (doc.LoadFile(tmxPath.c_str()) != tinyxml2::XML_SUCCESS) {
@@ -224,9 +199,8 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
     mapEl->QueryIntAttribute("height",     &mapHeight);
     mapEl->QueryIntAttribute("tilewidth",  &tileW);
     mapEl->QueryIntAttribute("tileheight", &tileH);
-    m_tileSize = tileW; // use the map's declared tile size
+    m_tileSize = tileW;
 
-    // Base directory of the .tmx file (used to resolve relative .tsx paths)
     std::string baseDir = fs::path(tmxPath).parent_path().string();
 
     // ── Load external tileset(s) ────────────────────────────────────────
@@ -238,27 +212,26 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
 
         const char* src = tsEl->Attribute("source");
         if (src) {
-            // External .tsx
+            m_tsxRelativePath = src; // store for saveToTMX
             std::string tsxPath = resolvePath(baseDir, src);
             loadTileset(tsxPath, firstGid);
         } else {
-            // Inline tileset – parse <tile> children directly
-            // (reuse the same logic by forwarding to a temporary doc would be
-            // complex; for now we call loadTileset with the mapEl as the root)
-            // This project uses external .tsx so this branch is for safety.
-            std::cerr << "[MapManager] Inline tilesets not supported yet." << std::endl;
+            std::cerr << "[MapManager] Inline tilesets not supported." << std::endl;
         }
     }
 
     // ── Parse layer data ──────────────────────────────────────────────────
-    // Merge TẤT CẢ tile layer. Mỗi layer (vd 2 layer GROUND) là một phần của
-    // bản đồ; GID 0 trong layer trên = trong suốt → giữ layer dưới;
-    // layer sau ghi đè layer trước ở các ô có tile (GID > 0).
+    // Merge ALL tile layers. GID 0 = transparent → keep lower layer value.
+    // While merging, capture the background GID (m_bgGids) for each cell:
+    // the GID that existed before a higher-layer block overwrote it.
+    // When a brick is later broken (setTile EMPTY), m_bgGids is restored.
     m_mapData.clear();
     m_rawGids.clear();
+    m_bgGids.clear();
     m_flagAnim = {};
     m_mapData.assign(mapHeight, std::vector<TileType>(mapWidth, TileType::EMPTY));
     m_rawGids.assign(mapHeight, std::vector<int>(mapWidth, 0));
+    m_bgGids.assign(mapHeight, std::vector<int>(mapWidth, 0));
 
     bool anyLayerLoaded = false;
     for (auto* layerEl = mapEl->FirstChildElement("layer"); layerEl;
@@ -286,14 +259,17 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
         int row = 0, col = 0;
 
         while (std::getline(stream, token, ',')) {
-            // Strip whitespace / newlines
             token.erase(0, token.find_first_not_of(" \t\r\n"));
             token.erase(token.find_last_not_of(" \t\r\n") + 1);
             if (token.empty()) continue;
 
             int gid = std::stoi(token);
             if (gid > 0 && row < mapHeight && col < mapWidth) {
-                // Layer trên có tile thật → ghi đè layer dưới cùng ô.
+                // Before overwriting: save the current visual as background.
+                // This captures the sky/terrain beneath interactive blocks.
+                if (m_rawGids[row][col] > 0) {
+                    m_bgGids[row][col] = m_rawGids[row][col];
+                }
                 m_rawGids[row][col] = gid;
                 m_mapData[row][col] = gidToTileType(gid);
             }
@@ -308,29 +284,61 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
         return false;
     }
 
-    // ── Discover FireBar spawn points from tile layers (FIRE_BAR tiles) ──
-    int tileFireBars = 0;
-    for (int r = 0; r < mapHeight; ++r) {
-        for (int c = 0; c < mapWidth; ++c) {
-            if (m_mapData[r][c] == TileType::FIRE_BAR) {
-                FireBarSpawnData fb;
-                fb.x = static_cast<float>(c * m_tileSize) + static_cast<float>(m_tileSize) / 2.f;
-                fb.y = static_cast<float>(r * m_tileSize) + static_cast<float>(m_tileSize) / 2.f;
-                fb.fireCount = 6;
-                fb.speed = 2.0f;
-                fb.clockwise = true;
-                fb.initialAngle = 0.f;
-                m_objectData.fireBarSpawns.push_back(fb);
-                ++tileFireBars;
+    // ── Post-process: infer background GID for interactive tiles ─────────────
+    // On single-layer maps every cell is on the same layer, so interactive
+    // tiles (BRICK_NORMAL, ?-blocks, etc.) never had a lower layer beneath
+    // them → m_bgGids stays 0 → breaking a brick shows black.
+    //
+    // Fix: scan each row for the GID used by EMPTY-typed cells (sky, bg, etc.)
+    // and store that into m_bgGids for any interactive tile in the same row.
+    // Vertical scan and global fallback handle edge cases.
+    {
+        // Step 1: per-row fallback GID = first EMPTY cell with a real sprite GID
+        std::vector<int> rowBgGid(mapHeight, 0);
+        for (int r = 0; r < mapHeight; ++r) {
+            for (int c = 0; c < mapWidth; ++c) {
+                TileType t = m_mapData[r][c];
+                if ((t == TileType::EMPTY || t == TileType::BACKGROUND) && m_rawGids[r][c] > 0) {
+                    rowBgGid[r] = m_rawGids[r][c];
+                    break;
+                }
+            }
+        }
+
+        // Step 2: global fallback — the registered GID for the EMPTY tile type
+        int globalFallback = 0;
+        {
+            auto it = m_typeToGid.find(TileType::EMPTY);
+            if (it != m_typeToGid.end()) globalFallback = it->second;
+        }
+
+        // Step 3: for each interactive tile that still has no background, fill it
+        for (int r = 0; r < mapHeight; ++r) {
+            // Use row-level bg; if row is fully solid, search neighboring rows
+            int bgGid = rowBgGid[r];
+            if (bgGid == 0) {
+                for (int delta = 1; delta < mapHeight && bgGid == 0; ++delta) {
+                    if (r - delta >= 0)          bgGid = rowBgGid[r - delta];
+                    if (bgGid == 0 && r + delta < mapHeight) bgGid = rowBgGid[r + delta];
+                }
+            }
+            if (bgGid == 0) bgGid = globalFallback; // last resort
+
+            for (int c = 0; c < mapWidth; ++c) {
+                TileType t = m_mapData[r][c];
+                // Only fill cells that are interactive and have no stored background
+                if (m_bgGids[r][c] == 0 &&
+                    t != TileType::EMPTY &&
+                    t != TileType::BACKGROUND) {
+                    m_bgGids[r][c] = bgGid;
+                }
             }
         }
     }
-    if (tileFireBars > 0) {
-        std::cout << "[MapManager] Discovered " << tileFireBars
-                  << " FIRE_BAR tile(s) in map." << std::endl;
-    }
 
     // ── Parse object groups (enemy spawns, player spawn, lifts, firebars) ─
+    // Note: FireBar spawns come ONLY from object groups now.
+    // The tile-scan loop was removed to prevent duplicate FireBar spawns.
     parseObjectGroups(mapEl);
 
     std::cout << "[MapManager] TMX loaded: " << tmxPath
@@ -341,13 +349,43 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
 }
 
 // =============================================================================
+//  CSV LOADER (fallback)
+// =============================================================================
+
+bool MapManager::loadMapCSV(const std::string& filepath) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) return false;
+
+    std::string line;
+    m_mapData.clear();
+
+    while (std::getline(file, line)) {
+        std::vector<TileType> row;
+        std::stringstream ss(line);
+        std::string cell;
+
+        while (std::getline(ss, cell, ',')) {
+            if (cell.empty()) continue;
+            int tileID = std::stoi(cell);
+            row.push_back(static_cast<TileType>(tileID));
+        }
+        if (!row.empty())
+            m_mapData.push_back(row);
+    }
+
+    std::cout << "[MapManager] CSV loaded: "
+              << m_mapData[0].size() << "x" << m_mapData.size() << std::endl;
+    return true;
+}
+
+// =============================================================================
 //  PUBLIC LOAD API
 // =============================================================================
 
 void MapManager::loadMap(const std::string& tmxPath) {
-    // Clear previous state
     m_mapData.clear();
     m_rawGids.clear();
+    m_bgGids.clear();
     m_objectData = MapObjectData{};
     m_multiCoinStates.clear();
     m_brickDebris.clear();
@@ -355,6 +393,9 @@ void MapManager::loadMap(const std::string& tmxPath) {
     m_gidTypeMap.clear();
     m_typeToGid.clear();
     m_textureLoaded = false;
+    m_undoStack.clear();
+    m_redoStack.clear();
+    m_tmxPath = tmxPath;
 
     if (!loadMapTMX(tmxPath)) {
         std::cerr << "[MapManager] TMX load failed for: " << tmxPath << std::endl;
@@ -376,18 +417,14 @@ void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
         for (auto* objEl = groupEl->FirstChildElement("object"); objEl;
              objEl = objEl->NextSiblingElement("object")) {
 
-            // Tiled stores the type in "name", "type", or "class" attribute
             const char* typeName  = objEl->Attribute("name");
             const char* typeAttr  = objEl->Attribute("type");
             const char* classAttr = objEl->Attribute("class");
 
             std::string typeStr;
-            if (typeAttr && typeAttr[0] != '\0')
-                typeStr = typeAttr;
-            else if (classAttr && classAttr[0] != '\0')
-                typeStr = classAttr;
-            else if (typeName && typeName[0] != '\0')
-                typeStr = typeName;
+            if (typeAttr  && typeAttr[0]  != '\0') typeStr = typeAttr;
+            else if (classAttr && classAttr[0] != '\0') typeStr = classAttr;
+            else if (typeName  && typeName[0]  != '\0') typeStr = typeName;
 
             // Also check <property name="type" value="..."/>
             if (auto* propsEl = objEl->FirstChildElement("properties")) {
@@ -402,47 +439,35 @@ void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
                 }
             }
 
-            if (typeStr.empty())
-                continue; // skip objects without a type/name
+            if (typeStr.empty()) continue;
 
             float x = 0.f, y = 0.f;
             objEl->QueryFloatAttribute("x", &x);
             objEl->QueryFloatAttribute("y", &y);
 
-            // Check if it's a player spawn point
             if (typeStr == "PlayerSpawn") {
                 m_objectData.playerSpawn = { x, y, true };
                 std::cout << "[MapManager] PlayerSpawn at (" << x << ", " << y << ")" << std::endl;
                 continue;
             }
 
-            // Chỉ item được spawn là Star — xử lý riêng cho gọn.
             if (typeStr == "Star") {
                 EntitySpawnData item;
-                item.type = typeStr;
-                item.x = x;
-                item.y = y;
+                item.type = typeStr; item.x = x; item.y = y;
                 m_objectData.itemSpawns.push_back(item);
                 continue;
             }
 
-            // STATIC_COIN / Coin: spawn a static coin collectible
             if (typeStr == "STATIC_COIN" || typeStr == "Coin") {
                 EntitySpawnData item;
-                item.type = "STATIC_COIN";  // normalise to one canonical type
-                item.x = x;
-                item.y = y;
+                item.type = "STATIC_COIN"; item.x = x; item.y = y;
                 m_objectData.itemSpawns.push_back(item);
                 continue;
             }
 
-            // ── Lift platform objects ─────────────────────────────────────
             if (typeStr == "Lift") {
                 LiftSpawnData lift;
-                lift.x = x;
-                lift.y = y;
-
-                // Parse optional custom properties
+                lift.x = x; lift.y = y;
                 if (auto* propsEl = objEl->FirstChildElement("properties")) {
                     for (auto* prop = propsEl->FirstChildElement("property"); prop;
                          prop = prop->NextSiblingElement("property")) {
@@ -451,15 +476,9 @@ void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
                         if (!pname || !pval) continue;
                         std::string name(pname);
                         if (name == "motionType") lift.motionType = pval;
-                        else if (name == "holes") {
-                            try { lift.holes = std::stoi(pval); } catch (...) {}
-                        }
-                        else if (name == "range") {
-                            try { lift.range = std::stof(pval); } catch (...) {}
-                        }
-                        else if (name == "speed") {
-                            try { lift.speed = std::stof(pval); } catch (...) {}
-                        }
+                        else if (name == "holes")  { try { lift.holes = std::stoi(pval); } catch (...) {} }
+                        else if (name == "range")  { try { lift.range = std::stof(pval); } catch (...) {} }
+                        else if (name == "speed")  { try { lift.speed = std::stof(pval); } catch (...) {} }
                     }
                 }
                 m_objectData.liftSpawns.push_back(lift);
@@ -474,16 +493,11 @@ void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
 
             if (isFireBarType(typeStr)) {
                 FireBarSpawnData fb;
-                fb.x = x;
-                fb.y = y;
-                // If object has width/height, place at center
+                fb.x = x; fb.y = y;
                 float width = 0.f, height = 0.f;
-                objEl->QueryFloatAttribute("width", &width);
+                objEl->QueryFloatAttribute("width",  &width);
                 objEl->QueryFloatAttribute("height", &height);
-                if (width > 0.f && height > 0.f) {
-                    fb.x += width / 2.f;
-                    fb.y += height / 2.f;
-                }
+                if (width > 0.f && height > 0.f) { fb.x += width / 2.f; fb.y += height / 2.f; }
                 if (auto* propsEl = objEl->FirstChildElement("properties")) {
                     for (auto* prop = propsEl->FirstChildElement("property"); prop;
                          prop = prop->NextSiblingElement("property")) {
@@ -493,14 +507,11 @@ void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
                         std::string name(pname);
                         if (name == "fireCount" || name == "length") {
                             try { fb.fireCount = std::stoi(pval); } catch (...) {}
-                        }
-                        else if (name == "speed") {
+                        } else if (name == "speed") {
                             try { fb.speed = std::stof(pval); } catch (...) {}
-                        }
-                        else if (name == "clockwise") {
+                        } else if (name == "clockwise") {
                             fb.clockwise = (std::string(pval) == "true" || std::string(pval) == "1");
-                        }
-                        else if (name == "initialAngle") {
+                        } else if (name == "initialAngle") {
                             try { fb.initialAngle = std::stof(pval); } catch (...) {}
                         }
                     }
@@ -511,13 +522,8 @@ void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
             }
 
             // Otherwise treat as enemy spawn
-
             EntitySpawnData spawn;
-            spawn.type = typeStr;
-            spawn.x = x;
-            spawn.y = y;
-
-            // Parse optional custom properties on the object
+            spawn.type = typeStr; spawn.x = x; spawn.y = y;
             if (auto* propsEl = objEl->FirstChildElement("properties")) {
                 for (auto* prop = propsEl->FirstChildElement("property"); prop;
                      prop = prop->NextSiblingElement("property")) {
@@ -526,12 +532,10 @@ void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
                     if (!pname || !pval) continue;
                     if (std::string(pname) == "direction") spawn.direction = pval;
                     if (std::string(pname) == "moveSpeed") {
-                        try { spawn.moveSpeed = std::stof(pval); }
-                        catch (...) { /* ignore parse errors */ }
+                        try { spawn.moveSpeed = std::stof(pval); } catch (...) {}
                     }
                 }
             }
-
             m_objectData.enemySpawns.push_back(spawn);
         }
     }
@@ -551,12 +555,11 @@ void MapManager::update(float deltaTime) {
         if (state.active) {
             state.timer -= deltaTime;
             if (state.timer <= 0.f) {
-                // Countdown expired → convert tile to exhausted solid brick
                 int gx = it->first.first;
                 int gy = it->first.second;
                 if (gy >= 0 && gy < (int)m_mapData.size() &&
                     gx >= 0 && gx < (int)m_mapData[0].size()) {
-                    setTile(gx, gy, TileType::SOLID_BRICK); // đổi cả type lẫn texture
+                    setTileInternal(gx, gy, TileType::QUESTION_USED);
                 }
                 it = m_multiCoinStates.erase(it);
                 continue;
@@ -602,12 +605,6 @@ void MapManager::update(float deltaTime) {
 // =============================================================================
 
 void MapManager::render(sf::RenderWindow& window) const {
-    // ── Tile rendering ────────────────────────────────────────────────────────
-    // When the tileset texture is available we render each tile as a sprite
-    // cropped from the sprite-sheet.  Otherwise we fall back to a solid-colour
-    // rectangle so the game is still playable without the asset.
-
-    // Fallback shape (used only when m_textureLoaded == false)
     sf::RectangleShape tileShape(sf::Vector2f((float)m_tileSize, (float)m_tileSize));
 
     const bool hasRawGids = !m_rawGids.empty();
@@ -623,28 +620,20 @@ void MapManager::render(sf::RenderWindow& window) const {
                 y < m_rawGids.size() && x < m_rawGids[y].size()) {
 
                 int gid = m_rawGids[y][x];
-                // GID == 0 means "no tile placed here" in Tiled → truly skip
-                // GID > 0 → always draw from sprite-sheet, including EMPTY-typed tiles
-                //           that still have a visual in the tileset
                 if (gid > 0 && m_tilesetColumns > 0) {
-                    // Convert GID → local tile index → (col, row) on the sprite-sheet
-                    int localId  = gid - m_tilesetFirstGid; // 0-based index
+                    int localId  = gid - m_tilesetFirstGid;
                     int tileCol  = localId % m_tilesetColumns;
                     int tileRow  = localId / m_tilesetColumns;
-
-                    // SFML 3: IntRect takes two Vector2i (position, size)
                     m_tileSprite->setTextureRect(sf::IntRect(
                         {tileCol * m_tileSize, tileRow * m_tileSize},
                         {m_tileSize, m_tileSize}));
-                    // SFML 3: setPosition takes a single Vector2f
                     m_tileSprite->setPosition({worldX, worldY});
                     window.draw(*m_tileSprite);
-                    continue; // sprite drawn, skip fallback
+                    continue;
                 }
             }
 
             // ── Fallback: solid colour (texture not available) ────────────────
-            // EMPTY / HIDDEN_BLOCK / BACKGROUND không có màu fallback (tile trong suốt) → skip
             if (type == TileType::EMPTY || type == TileType::HIDDEN_BLOCK ||
                 type == TileType::BACKGROUND) continue;
             tileShape.setPosition(sf::Vector2f(worldX, worldY));
@@ -653,6 +642,7 @@ void MapManager::render(sf::RenderWindow& window) const {
                 case TileType::PIPE:             tileShape.setFillColor(sf::Color::Green);          break;
                 case TileType::BRICK_NORMAL:     tileShape.setFillColor(sf::Color(205, 133,  63)); break;
                 case TileType::SOLID_BRICK:      tileShape.setFillColor(sf::Color(160, 110,  80)); break;
+                case TileType::QUESTION_USED:    tileShape.setFillColor(sf::Color(130,  90,  60)); break;
                 case TileType::MULTI_COIN:       tileShape.setFillColor(sf::Color(205, 133,  63)); break;
                 case TileType::QUESTION_COIN:
                 case TileType::QUESTION_POWERUP: tileShape.setFillColor(sf::Color::Yellow);         break;
@@ -667,7 +657,6 @@ void MapManager::render(sf::RenderWindow& window) const {
 
     // ── Flag slide animation ──────────────────────────────────────────────────
     if (m_flagAnim.active && m_tileSprite && m_tilesetColumns > 0) {
-        // Flag triangle
         int localId = GID_FLAGPOLE_FLAG - m_tilesetFirstGid;
         int tileCol = localId % m_tilesetColumns;
         int tileRow = localId / m_tilesetColumns;
@@ -677,7 +666,6 @@ void MapManager::render(sf::RenderWindow& window) const {
         m_tileSprite->setPosition(m_flagAnim.pos);
         window.draw(*m_tileSprite);
 
-        // Pole attachment piece
         int localIdAttach = GID_FLAGPOLE_ATTACH - m_tilesetFirstGid;
         int tileColAttach = localIdAttach % m_tilesetColumns;
         int tileRowAttach = localIdAttach / m_tilesetColumns;
@@ -705,7 +693,7 @@ void MapManager::render(sf::RenderWindow& window) const {
         uint8_t a = static_cast<uint8_t>(alpha * 255.f);
         sf::RectangleShape coinShape(sf::Vector2f(8.f, 8.f));
         coinShape.setPosition(coin.pos);
-        coinShape.setFillColor(sf::Color(255, 215, 0, a)); // gold
+        coinShape.setFillColor(sf::Color(255, 215, 0, a));
         window.draw(coinShape);
     }
 }
@@ -718,12 +706,19 @@ TileType MapManager::getTileType(float x, float y) const {
     int gridX = static_cast<int>(x) / m_tileSize;
     int gridY = static_cast<int>(y) / m_tileSize;
 
-    if (gridY < 0 || gridY >= (int)m_mapData.size() || 
+    if (gridY < 0 || gridY >= (int)m_mapData.size() ||
         gridX < 0 || gridX >= (int)m_mapData[0].size()) {
         return TileType::GROUND;
     }
-
     return m_mapData[gridY][gridX];
+}
+
+TileType MapManager::getTileTypeAt(int gx, int gy) const {
+    if (gy < 0 || gy >= (int)m_mapData.size() ||
+        gx < 0 || gx >= (int)m_mapData[0].size()) {
+        return TileType::GROUND;
+    }
+    return m_mapData[gy][gx];
 }
 
 bool MapManager::isSolid(float x, float y) const {
@@ -732,9 +727,8 @@ bool MapManager::isSolid(float x, float y) const {
 
     if (gridY < 0 || gridY >= (int)m_mapData.size() ||
         gridX < 0 || gridX >= (int)m_mapData[0].size()) {
-        return true; // treat out-of-bounds as wall
+        return true;
     }
-
     TileType type = m_mapData[gridY][gridX];
     return getBlockBehavior(type).isSolid();
 }
@@ -745,22 +739,44 @@ bool MapManager::isSolidFromBelow(float x, float y) const {
 
     if (gridY < 0 || gridY >= (int)m_mapData.size() ||
         gridX < 0 || gridX >= (int)m_mapData[0].size()) {
-        return true; // treat out-of-bounds as wall
+        return true;
     }
-
     TileType type = m_mapData[gridY][gridX];
     return getBlockBehavior(type).isSolidFromBelow();
 }
 
-void MapManager::setTile(int gx, int gy, TileType type) {
+// =============================================================================
+//  TILE WRITE — INTERNAL (game logic, no undo) & IMapContext PUBLIC
+// =============================================================================
+
+void MapManager::setTileInternal(int gx, int gy, TileType type) {
     if (gy < 0 || gy >= (int)m_mapData.size() ||
         gx < 0 || gx >= (int)m_mapData[0].size()) return;
 
     m_mapData[gy][gx] = type;
-    // Đồng bộ texture: set GID theo type (EMPTY → GID của tile EMPTY trong tileset;
-    // type không có trong m_typeToGid → 0 = không có tile → không vẽ)
-    auto it = m_typeToGid.find(type);
-    m_rawGids[gy][gx] = (it != m_typeToGid.end()) ? it->second : 0;
+
+    if (type == TileType::EMPTY) {
+        // Restore the background tile that was visually beneath this block.
+        int bg = m_bgGids[gy][gx];
+        if (bg <= 0) {
+            auto it = m_typeToGid.find(TileType::EMPTY);
+            if (it != m_typeToGid.end()) {
+                bg = it->second;
+            } else {
+                bg = m_tilesetFirstGid;
+            }
+        }
+        m_rawGids[gy][gx] = bg;
+    } else {
+        auto it = m_typeToGid.find(type);
+        m_rawGids[gy][gx] = (it != m_typeToGid.end()) ? it->second : 0;
+    }
+}
+
+// IMapContext::setTile — called by block behaviors.
+// Delegates to setTileInternal (game logic, no undo recording).
+void MapManager::setTile(int gx, int gy, TileType type) {
+    setTileInternal(gx, gy, type);
 }
 
 // =============================================================================
@@ -771,16 +787,17 @@ void MapManager::onHitFromBelow(int gx, int gy, IPlayerManager* player) {
     if (gy < 0 || gy >= (int)m_mapData.size() ||
         gx < 0 || gx >= (int)m_mapData[0].size()) return;
 
-    TileType type = getTileType(static_cast<float>(gx) * m_tileSize, static_cast<float>(gy) * m_tileSize);
+    TileType type = getTileType(static_cast<float>(gx) * m_tileSize,
+                                static_cast<float>(gy) * m_tileSize);
+    // *this satisfies IMapContext — block behaviors call back through the interface.
     getBlockBehavior(type).onHitFromBelow(*this, gx, gy, player);
 }
 
 // =============================================================================
-//  BLOCK TRANSITION + SIDE-EFFECT API  (gọi bởi các IBlockBehavior)
+//  IMapContext SIDE-EFFECT API  (called by IBlockBehavior subclasses)
 // =============================================================================
 
 void MapManager::spawnCoinPop(int gx, int gy) {
-    // 1. Pop animation
     CoinPopAnim c;
     c.pos  = {
         (float)gx * m_tileSize + m_tileSize / 2.f - 4.f,
@@ -790,7 +807,6 @@ void MapManager::spawnCoinPop(int gx, int gy) {
     c.life = COINPOP_LIFE;
     m_coinPopAnims.push_back(c);
 
-    // 2. Award coin immediately (visual pop is handled by MapManager)
     if (m_itemManager)
         m_itemManager->spawnCoinPop(
             (float)gx * m_tileSize,
@@ -799,14 +815,12 @@ void MapManager::spawnCoinPop(int gx, int gy) {
 
 void MapManager::spawnItemForFormType(int gx, int gy, int formType) {
     float worldX = (float)gx * m_tileSize;
-    float worldY = (float)(gy - 1) * m_tileSize; // spawn one tile above
+    float worldY = (float)(gy - 1) * m_tileSize; // one tile above
 
     if (m_itemManager) {
         if (formType == 0) {
-            // NormalForm → Mushroom
             m_itemManager->spawnMushroom(worldX, worldY);
         } else {
-            // SuperForm or FireForm → FireFlower
             m_itemManager->spawnFireFlower(worldX, worldY);
         }
     }
@@ -815,14 +829,15 @@ void MapManager::spawnItemForFormType(int gx, int gy, int formType) {
 void MapManager::setMultiCoinActive(int gx, int gy) {
     auto key = std::make_pair(gx, gy);
     MultiCoinState& state = m_multiCoinStates[key];
-
     if (!state.active) {
-        // First hit: start the countdown
         state.active = true;
         state.timer  = MULTI_COIN_DURATION;
     }
-    // Whether just started or still running, keep giving coins.
-    // When the countdown expires, update() converts the tile to SOLID_BRICK.
+}
+
+void MapManager::killEnemiesAboveTile(int gx, int gy) {
+    if (m_enemyManager)
+        m_enemyManager->killEnemiesAboveTile(gx, gy);
 }
 
 // =============================================================================
@@ -830,21 +845,17 @@ void MapManager::setMultiCoinActive(int gx, int gy) {
 // =============================================================================
 
 void MapManager::spawnBrickDebris(int gx, int gy) {
-    // Brick colour – same orange-brown as the tile
     const sf::Color brickColor(205, 133, 63);
-
     float tileX = (float)gx * m_tileSize;
     float tileY = (float)gy * m_tileSize;
     float half  = (float)m_tileSize / 2.f;
 
-    // 4 quarter-pieces: top-left, top-right, bottom-left, bottom-right
-    // Each piece starts at the corner of its quarter and flies outward + upward
     struct PieceDesc { float ox, oy, vx, vy; };
     const PieceDesc pieces[4] = {
-        { 0.f,  0.f,  -90.f, -280.f },   // top-left    → flies left + up
-        { half, 0.f,   90.f, -280.f },   // top-right   → flies right + up
-        { 0.f,  half, -60.f, -180.f },   // bottom-left → flies left + less up
-        { half, half,  60.f, -180.f },   // bottom-right→ flies right + less up
+        { 0.f,  0.f,  -90.f, -280.f },
+        { half, 0.f,   90.f, -280.f },
+        { 0.f,  half, -60.f, -180.f },
+        { half, half,  60.f, -180.f },
     };
 
     for (auto& p : pieces) {
@@ -859,19 +870,23 @@ void MapManager::spawnBrickDebris(int gx, int gy) {
     }
 }
 
+// =============================================================================
+//  FLAG SLIDE
+// =============================================================================
+
 void MapManager::triggerFlagSlide(int poleGridX) {
     if (m_flagAnim.active) return;
 
-    int topY = -1;
-    int bottomY = -1;
+    int topY = -1, bottomY = -1;
 
     for (int gy = 0; gy < (int)m_rawGids.size(); ++gy) {
         if (poleGridX >= 0 && poleGridX < (int)m_rawGids[gy].size()) {
             int gid = m_rawGids[gy][poleGridX];
             if (gid == GID_FLAGPOLE_TOP_BALL) {
-                topY = gy + 1; // row below top ball
-            } else if (gid == GID_FLAGPOLE_BASE || (topY != -1 && m_mapData[gy][poleGridX] == TileType::GROUND)) {
-                bottomY = gy - 1; // row above base/ground block
+                topY = gy + 1;
+            } else if (gid == GID_FLAGPOLE_BASE ||
+                       (topY != -1 && m_mapData[gy][poleGridX] == TileType::GROUND)) {
+                bottomY = gy - 1;
                 break;
             }
         }
@@ -881,13 +896,14 @@ void MapManager::triggerFlagSlide(int poleGridX) {
     if (bottomY == -1) bottomY = 12;
 
     int flagCol = poleGridX - 1;
-    if (topY >= 0 && topY < (int)m_rawGids.size() && flagCol >= 0 && flagCol < (int)m_rawGids[0].size()) {
+    if (topY >= 0 && topY < (int)m_rawGids.size() &&
+        flagCol >= 0 && flagCol < (int)m_rawGids[0].size()) {
         int skyGid = (topY > 0) ? m_rawGids[topY - 1][flagCol] : 1;
         if (skyGid == 0) skyGid = 1;
-        m_rawGids[topY][flagCol] = skyGid; // Fill with sky tile so no black background is left!
+        m_rawGids[topY][flagCol] = skyGid;
         m_mapData[topY][flagCol] = TileType::EMPTY;
         if (m_rawGids[topY][poleGridX] == GID_FLAGPOLE_ATTACH) {
-            m_rawGids[topY][poleGridX] = GID_FLAGPOLE_SHAFT; // Restore bare pole shaft
+            m_rawGids[topY][poleGridX] = GID_FLAGPOLE_SHAFT;
         }
     }
 
@@ -896,4 +912,167 @@ void MapManager::triggerFlagSlide(int poleGridX) {
     m_flagAnim.speed    = FLAG_SLIDE_SPEED;
     m_flagAnim.active   = true;
     m_flagAnim.finished = false;
+}
+
+// =============================================================================
+//  MAP EDITOR API
+// =============================================================================
+
+void MapManager::editTile(int gx, int gy, TileType newType) {
+    if (gy < 0 || gy >= (int)m_mapData.size() ||
+        gx < 0 || gx >= (int)m_mapData[0].size()) return;
+
+    // Record undo entry before mutating
+    TileEdit edit;
+    edit.gx      = gx;
+    edit.gy      = gy;
+    edit.oldType = m_mapData[gy][gx];
+    edit.oldGid  = m_rawGids[gy][gx];
+    edit.newType = newType;
+    auto it      = m_typeToGid.find(newType);
+    edit.newGid  = (it != m_typeToGid.end()) ? it->second : 0;
+
+    m_undoStack.push_back(edit);
+    m_redoStack.clear(); // branching edit invalidates redo history
+
+    setTileInternal(gx, gy, newType);
+}
+
+bool MapManager::undoEdit() {
+    if (m_undoStack.empty()) return false;
+
+    TileEdit edit = m_undoStack.back();
+    m_undoStack.pop_back();
+    m_redoStack.push_back(edit);
+
+    // Restore old state directly (bypass setTileInternal's bgGid logic)
+    m_mapData[edit.gy][edit.gx]  = edit.oldType;
+    m_rawGids[edit.gy][edit.gx]  = edit.oldGid;
+    return true;
+}
+
+bool MapManager::redoEdit() {
+    if (m_redoStack.empty()) return false;
+
+    TileEdit edit = m_redoStack.back();
+    m_redoStack.pop_back();
+    m_undoStack.push_back(edit);
+
+    m_mapData[edit.gy][edit.gx]  = edit.newType;
+    m_rawGids[edit.gy][edit.gx]  = edit.newGid;
+    return true;
+}
+
+bool MapManager::saveToTMX(const std::string& path) const {
+    if (m_mapData.empty() || m_mapData[0].empty()) return false;
+
+    const int mapH = (int)m_mapData.size();
+    const int mapW = (int)m_mapData[0].size();
+
+    std::ofstream out(path);
+    if (!out.is_open()) {
+        std::cerr << "[MapManager] saveToTMX: cannot open " << path << std::endl;
+        return false;
+    }
+
+    // ── XML header & <map> ─────────────────────────────────────────────────
+    out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+    out << "<map version=\"1.10\" tiledversion=\"1.12.2\""
+        << " orientation=\"orthogonal\" renderorder=\"right-down\""
+        << " width=\""      << mapW << "\""
+        << " height=\""     << mapH << "\""
+        << " tilewidth=\""  << m_tileSize << "\""
+        << " tileheight=\"" << m_tileSize << "\""
+        << " infinite=\"0\">\n";
+
+    // ── <tileset> reference ────────────────────────────────────────────────
+    if (!m_tsxRelativePath.empty()) {
+        out << " <tileset firstgid=\"" << m_tilesetFirstGid
+            << "\" source=\"" << m_tsxRelativePath << "\"/>\n";
+    }
+
+    // ── <layer> with merged GID grid in CSV encoding ───────────────────────
+    out << " <layer id=\"1\" name=\"Terrain\""
+        << " width=\"" << mapW << "\" height=\"" << mapH << "\">\n";
+    out << "  <data encoding=\"csv\">\n";
+    for (int r = 0; r < mapH; ++r) {
+        for (int c = 0; c < mapW; ++c) {
+            out << m_rawGids[r][c];
+            if (c < mapW - 1) out << ',';
+        }
+        if (r < mapH - 1) out << ',';
+        out << '\n';
+    }
+    out << "  </data>\n";
+    out << " </layer>\n";
+
+    // ── <objectgroup> with spawn data ──────────────────────────────────────
+    out << " <objectgroup id=\"2\" name=\"Entities\">\n";
+    int objId = 1;
+
+    if (m_objectData.playerSpawn.found) {
+        out << "  <object id=\"" << objId++ << "\" name=\"PlayerSpawn\""
+            << " x=\"" << m_objectData.playerSpawn.x
+            << "\" y=\"" << m_objectData.playerSpawn.y << "\"/>\n";
+    }
+
+    for (const auto& s : m_objectData.enemySpawns) {
+        out << "  <object id=\"" << objId++ << "\" name=\"" << s.type << "\""
+            << " x=\"" << s.x << "\" y=\"" << s.y << "\"";
+        bool hasProps = (s.direction != "left" || s.moveSpeed >= 0.f);
+        if (hasProps) {
+            out << ">\n   <properties>\n";
+            if (s.direction != "left")
+                out << "    <property name=\"direction\" value=\"" << s.direction << "\"/>\n";
+            if (s.moveSpeed >= 0.f)
+                out << "    <property name=\"moveSpeed\" value=\"" << s.moveSpeed << "\"/>\n";
+            out << "   </properties>\n  </object>\n";
+        } else {
+            out << "/>\n";
+        }
+    }
+
+    for (const auto& s : m_objectData.itemSpawns) {
+        out << "  <object id=\"" << objId++ << "\" name=\"" << s.type << "\""
+            << " x=\"" << s.x << "\" y=\"" << s.y << "\"/>\n";
+    }
+
+    for (const auto& lift : m_objectData.liftSpawns) {
+        out << "  <object id=\"" << objId++ << "\" name=\"Lift\""
+            << " x=\"" << lift.x << "\" y=\"" << lift.y << "\">\n"
+            << "   <properties>\n"
+            << "    <property name=\"motionType\" value=\"" << lift.motionType << "\"/>\n"
+            << "    <property name=\"holes\" value=\""      << lift.holes      << "\"/>\n"
+            << "    <property name=\"range\" value=\""      << lift.range      << "\"/>\n"
+            << "    <property name=\"speed\" value=\""      << lift.speed      << "\"/>\n"
+            << "   </properties>\n"
+            << "  </object>\n";
+    }
+
+    for (const auto& fb : m_objectData.fireBarSpawns) {
+        out << "  <object id=\"" << objId++ << "\" name=\"FireBar\""
+            << " x=\"" << fb.x << "\" y=\"" << fb.y << "\">\n"
+            << "   <properties>\n"
+            << "    <property name=\"fireCount\"    value=\"" << fb.fireCount    << "\"/>\n"
+            << "    <property name=\"speed\"        value=\"" << fb.speed        << "\"/>\n"
+            << "    <property name=\"clockwise\"    value=\"" << (fb.clockwise ? "true" : "false") << "\"/>\n"
+            << "    <property name=\"initialAngle\" value=\"" << fb.initialAngle << "\"/>\n"
+            << "   </properties>\n"
+            << "  </object>\n";
+    }
+
+    out << " </objectgroup>\n";
+    out << "</map>\n";
+
+    std::cout << "[MapManager] Saved TMX: " << path << std::endl;
+    return true;
+}
+
+void MapManager::addEnemySpawn(const EntitySpawnData& spawn) {
+    m_objectData.enemySpawns.push_back(spawn);
+}
+
+void MapManager::removeEnemySpawn(int index) {
+    if (index < 0 || index >= (int)m_objectData.enemySpawns.size()) return;
+    m_objectData.enemySpawns.erase(m_objectData.enemySpawns.begin() + index);
 }

@@ -651,6 +651,11 @@ void PlayerManager::respawn()
     m_isAlive    = true;
     m_isInvincible      = true;
     m_invincibilityTimer = INVINCIBILITY_DURATION;
+    m_starState.reset();
+    if (m_fireballManager)
+    {
+        m_fireballManager->clear();
+    }
 }
 
 void PlayerManager::takeDamage()

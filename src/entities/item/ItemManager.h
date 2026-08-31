@@ -33,6 +33,9 @@ public:
 
     int getItemCount() const override;
 
+    void clear() override;
+    void spawnFromMapData(const std::vector<EntitySpawnData>& spawns) override;
+
     void setPlayerManager(IPlayerManager* player) override
     {
         m_player = player;

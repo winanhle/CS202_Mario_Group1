@@ -1,9 +1,11 @@
 #pragma once
 
+#include <array>
+#include <stdexcept>
+
+#include "../EnemySprite.h"
 #include "../Enemy.h"
 #include "../../../interfaces/IPlayerManager.h"
-
-#include <array>
 
 class Goomba : public Enemy
 {
@@ -20,6 +22,42 @@ private:
     static constexpr float DEATH_DISPLAY_DURATION = 0.6f; // seconds to show the squished sprite before it vanishes
 
 public:
+    static sf::Texture& walk1()
+    {
+        static sf::Texture t;
+        static bool ok = t.loadFromFile(EnemySprite::Goomba1);
+        if (!ok) throw std::runtime_error("Goomba: failed to load Goomba1");
+        return t;
+    }
+
+    static sf::Texture& walk2()
+    {
+        static sf::Texture t;
+        static bool ok = t.loadFromFile(EnemySprite::Goomba2);
+        if (!ok) throw std::runtime_error("Goomba: failed to load Goomba2");
+        return t;
+    }
+
+    static sf::Texture& dead()
+    {
+        static sf::Texture t;
+        static bool ok = t.loadFromFile(EnemySprite::GoombaDead);
+        if (!ok) throw std::runtime_error("Goomba: failed to load GoombaDead");
+        return t;
+    }
+
+    static std::array<sf::Texture*, 2> defaultWalkFrames()
+    {
+        return { &walk1(), &walk2() };
+    }
+
+    explicit Goomba(float x, float y)
+        : Enemy(x, y, walk1()),
+          m_walkFrames(defaultWalkFrames()),
+          m_deadTexture(&dead())
+    {
+    }
+
     Goomba(
         float x,
         float y,

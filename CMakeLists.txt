@@ -49,6 +49,7 @@ set(SHARED_SOURCES
     src/entities/map/block/BlockBehavior.cpp
     src/entities/enemy/Enemy.cpp
     src/entities/enemy/EnemyManager.cpp
+    src/entities/enemy/EnemyFactory.cpp
     src/entities/item/Item.cpp
     src/entities/item/ItemManager.cpp
     src/entities/lift/Lift.cpp

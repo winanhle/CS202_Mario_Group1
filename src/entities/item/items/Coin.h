@@ -10,7 +10,7 @@ private:
     std::array<sf::Texture*, 4> m_frames;
     float animationTimer = 0.f;
     std::size_t currentFrame = 0;
-    static constexpr float FRAME_DURATION = 1.2f;
+    static constexpr float FRAME_DURATION = 0.3f;
     bool m_isStatic = false;
 public:
     Coin(float x, float y,

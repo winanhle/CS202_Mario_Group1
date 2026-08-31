@@ -197,6 +197,27 @@ int ItemManager::getItemCount() const
     return static_cast<int>(m_items.size());
 }
 
+void ItemManager::clear()
+{
+    m_items.clear();
+}
+
+void ItemManager::spawnFromMapData(const std::vector<EntitySpawnData>& spawns)
+{
+    m_items.clear();
+    for (const auto& item : spawns)
+    {
+        if (item.type == "STATIC_COIN" || item.type == "Coin")
+            spawnStaticCoin(item.x, item.y);
+        else if (item.type == "Star")
+            spawnStar(item.x, item.y);
+        else if (item.type == "Mushroom")
+            spawnMushroom(item.x, item.y);
+        else if (item.type == "FireFlower")
+            spawnFireFlower(item.x, item.y);
+    }
+}
+
 // =============================================================================
 //  SPAWN API  – called by MapManager on tile interactions
 // =============================================================================

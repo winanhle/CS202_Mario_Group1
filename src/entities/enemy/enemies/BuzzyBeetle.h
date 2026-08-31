@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <stdexcept>
 
 #include "../EnemySprite.h"
 #include "../Enemy.h"
@@ -9,6 +10,19 @@
 class BuzzyBeetle : public Enemy
 {
 public:
+    static sf::Texture& left1()  { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::BuzzyBeetle1); if (!ok) throw std::runtime_error("BuzzyBeetle: failed to load BuzzyBeetle1"); return t; }
+    static sf::Texture& left2()  { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::BuzzyBeetle2); if (!ok) throw std::runtime_error("BuzzyBeetle: failed to load BuzzyBeetle2"); return t; }
+    static sf::Texture& shell()  { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::BuzzyBeetle3); if (!ok) throw std::runtime_error("BuzzyBeetle: failed to load BuzzyBeetle3"); return t; }
+    static sf::Texture& right1() { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::BuzzyBeetle4); if (!ok) throw std::runtime_error("BuzzyBeetle: failed to load BuzzyBeetle4"); return t; }
+    static sf::Texture& right2() { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::BuzzyBeetle5); if (!ok) throw std::runtime_error("BuzzyBeetle: failed to load BuzzyBeetle5"); return t; }
+
+    explicit BuzzyBeetle(float x, float y)
+        : Enemy(x, y, left1())
+        , m_leftFrames({ &left1(), &left2() })
+        , m_rightFrames({ &right1(), &right2() })
+        , m_shellTexture(&shell())
+    {}
+
     // leftFrames  = {BuzzyBeetle1, BuzzyBeetle2}  -> walking left
     // rightFrames = {BuzzyBeetle4, BuzzyBeetle5}  -> walking right
     // shellTexture = BuzzyBeetle3                 -> flipped/shell state

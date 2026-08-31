@@ -22,7 +22,8 @@ enum class TileType {
     COIN = 10,
     SOLID_BRICK = 11,
     BACKGROUND = 12,  // trang trí (bụi cỏ, đám mây) — xử lý giống hệt EMPTY
-    FIRE_BAR = 13
+    FIRE_BAR = 13,
+    QUESTION_USED = 14 // ? block đã dùng hết — solid + texture riêng (khác SOLID_BRICK)
 };
 
 /**

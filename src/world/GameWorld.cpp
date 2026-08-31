@@ -82,15 +82,7 @@ void GameWorld::loadCurrentLevel()
         m_enemyManager->spawnFromMapData(mapData.enemySpawns);
 
     if (m_itemManager)
-    {
-        for (const auto& item : mapData.itemSpawns)
-        {
-            if (item.type == "STATIC_COIN")
-                m_itemManager->spawnStaticCoin(item.x, item.y);
-            else
-                m_itemManager->spawnStar(item.x, item.y);
-        }
-    }
+        m_itemManager->spawnFromMapData(mapData.itemSpawns);
 
     if (m_liftManager)
         m_liftManager->spawnFromMapData(mapData.liftSpawns);
@@ -710,6 +702,10 @@ void GameWorld::injectDependencies()
     // MapManager ← ItemManager (để map có thể spawn item khi block bị đập)
     if (m_mapManager)
         m_mapManager->setItemManager(m_itemManager.get());
+
+    // MapManager ← EnemyManager (để brick vỡ có thể diệt enemy ngồi trên)
+    if (m_mapManager)
+        m_mapManager->setEnemyManager(m_enemyManager.get());
 
     // CameraManager ← PlayerManager(s)
     if (m_cameraManager)

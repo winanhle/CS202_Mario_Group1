@@ -616,6 +616,11 @@
    <property name="type" value="GROUND"/>
   </properties>
  </tile>
+ <tile id="1698">
+  <properties>
+   <property name="type" value="QUESTION_USED"/>
+  </properties>
+ </tile>
  <tile id="1699">
   <properties>
    <property name="type" value="QUESTION_COIN"/>

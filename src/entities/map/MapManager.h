@@ -1,7 +1,9 @@
 #pragma once
 #include "../../interfaces/IPlayerManager.h"
 #include "../../interfaces/IMapManager.h"
+#include "../../interfaces/IMapContext.h"
 #include "../../interfaces/IItemManager.h"
+#include "../../interfaces/IEnemyManager.h"
 #include <vector>
 #include <string>
 #include <fstream>
@@ -16,6 +18,7 @@
 #include "../../tinyxml2.h"
 #include "block/IBlockBehavior.h"
 #include "MapData.h"
+#include "MapEdit.h"
 
 // ─── Animation Structs ────────────────────────────────────────────────────────
 
@@ -66,16 +69,31 @@ struct MultiCoinState {
     bool  active = false; // true while countdown is running
 };
 
-class MapManager : public IMapManager {
+/**
+ * @class MapManager
+ * @brief Implements IMapManager (public game API) and IMapContext (block-behavior API).
+ *
+ * IMapContext is a narrow interface that block behaviors use to make tile
+ * transitions and spawn side-effects without depending on the full MapManager
+ * concrete class (Dependency-Inversion Principle).
+ */
+class MapManager : public IMapManager, public IMapContext {
 private:
     std::vector<std::vector<TileType>> m_mapData;
     // Raw GID grid — mirrors m_mapData but stores the original Tiled GID
     // (0 = no tile).  Used to compute UV rects into the tileset sprite-sheet.
     std::vector<std::vector<int>> m_rawGids;
-    int m_tileSize = 16; 
-    
-    // ─── Injected dependency ─────────────────────────────────────────────────
-    IItemManager* m_itemManager = nullptr;
+    // Background GID cache — stores the GID that was visually beneath each
+    // interactive tile before it was overwritten by a higher layer.
+    // When setTile(EMPTY) is called (e.g. brick breaks), this is restored
+    // into m_rawGids so the correct background (sky, underground, etc.) shows.
+    std::vector<std::vector<int>> m_bgGids;
+
+    int m_tileSize = 16;
+
+    // ─── Injected dependencies ────────────────────────────────────────────────
+    IItemManager*  m_itemManager  = nullptr;
+    IEnemyManager* m_enemyManager = nullptr;
 
     // ─── Parsed object layer data ─────────────────────────────────────────────
     MapObjectData m_objectData;
@@ -94,11 +112,19 @@ private:
     mutable std::optional<sf::Sprite> m_tileSprite; // absent until texture is ready (SFML 3 has no default ctor)
     bool m_textureLoaded = false;                   // true once the texture loaded successfully
 
+    // ─── TSX metadata ─────────────────────────────────────────────────────────
+    std::string m_tsxRelativePath; // relative path used in the TMX <tileset source="...">
+    std::string m_tmxPath;         // path of the last successfully loaded TMX (for saveToTMX)
+
     static constexpr float DEBRIS_LIFE     = 0.7f;  // seconds
     static constexpr float COINPOP_LIFE    = 0.55f; // seconds
     static constexpr float COINPOP_INIT_VY = -200.f;// px/s upward
     static constexpr float DEBRIS_GRAVITY  = 600.f; // px/s²
     static constexpr float COINPOP_GRAVITY = 400.f;
+
+    // ─── Map Editor undo/redo stacks ──────────────────────────────────────────
+    std::vector<TileEdit> m_undoStack;
+    std::vector<TileEdit> m_redoStack;
 
     // ─── CSV loader (kept as fallback) ───────────────────────────────────
     bool loadMapCSV(const std::string& filepath);
@@ -120,11 +146,14 @@ private:
     // GID → TileType lookup table (populated by loadTileset)
     std::unordered_map<int, TileType> m_gidTypeMap;
     // TileType → GID lookup table (reverse of m_gidTypeMap, built in loadTileset).
-    // EMPTY cũng có GID riêng (tile EMPTY trong tileset) để setTile(EMPTY) load
-    // đúng texture EMPTY; GID 0 chỉ dành cho ô "không có tile".
     std::unordered_map<TileType, int> m_typeToGid;
     int m_tilesetFirstGid  = 1;  // firstgid attribute from <tileset> element
     int m_tilesetColumns   = 0;  // columns of the tileset sprite sheet
+
+    // ─── Internal tile write (no undo recording) ──────────────────────────────
+    // Used by game logic (block behaviors, MultiCoin countdown, etc.).
+    // Editor operations use editTile() which records to m_undoStack.
+    void setTileInternal(int gx, int gy, TileType type);
 
 public:
     MapManager();
@@ -136,7 +165,7 @@ public:
     const MapObjectData& getMapObjectData() const override;
     void update(float deltaTime) override;
     void render(sf::RenderWindow& window) const override;
-    
+
     // Hàm phục vụ xử lý va chạm cho Player/Enemy
     bool isSolid(float x, float y) const override;
     bool isSolidFromBelow(float x, float y) const override;
@@ -148,26 +177,36 @@ public:
             static_cast<unsigned>(m_mapData.size()) * m_tileSize
         );
     }
-    
+
     // Hàm mở rộng: Lấy chính xác loại Tile để xử lý đụng đầu
     TileType getTileType(float x, float y) const override;
 
-    // ─── Block transition API ─────────────────────────────────────────────────
-    // Điểm duy nhất thay đổi tile: cập nhật ĐỒNG THỜI m_mapData (logic)
-    // và m_rawGids (texture) qua m_typeToGid — Encapsulation.
-    void setTile(int gx, int gy, TileType type);
+    // IMapManager — grid-coord query for editor
+    TileType getTileTypeAt(int gx, int gy) const override;
 
-    // ─── Side-effect API (được các IBlockBehavior gọi) ───────────────────────
-    void spawnBrickDebris(int gx, int gy);
-    void spawnCoinPop(int gx, int gy);                 // pop animation + award coin
-    void spawnItemForFormType(int gx, int gy, int formType); // Mushroom / FireFlower
-    void setMultiCoinActive(int gx, int gy);           // bắt đầu/giữ countdown 3.5s
-
-    // ─── IMapManager new API ─────────────────────────────────────────────────
+    // ─── Block transition API (IMapManager) ───────────────────────────────────
     void onHitFromBelow(int tileGridX, int tileGridY, IPlayerManager* player) override;
-    void setItemManager(IItemManager* itemManager) override { m_itemManager = itemManager; }
+    void setItemManager(IItemManager* itemManager) override  { m_itemManager  = itemManager; }
+    void setEnemyManager(IEnemyManager* enemyManager) override { m_enemyManager = enemyManager; }
 
+    // ─── IMapContext implementation (called by IBlockBehavior subclasses) ─────
+    void setTile(int gx, int gy, TileType type) override;      // wraps setTileInternal
+    void spawnBrickDebris(int gx, int gy) override;
+    void spawnCoinPop(int gx, int gy) override;
+    void spawnItemForFormType(int gx, int gy, int formType) override;
+    void setMultiCoinActive(int gx, int gy) override;
+    void killEnemiesAboveTile(int gx, int gy) override;
+
+    // ─── Flag API ─────────────────────────────────────────────────────────────
     void triggerFlagSlide(int poleGridX) override;
     bool isFlagSliding() const override { return m_flagAnim.active; }
     bool hasFlagSlideFinished() const override { return m_flagAnim.finished; }
+
+    // ─── Map Editor API (IMapManager) ─────────────────────────────────────────
+    void editTile(int gx, int gy, TileType newType) override;
+    bool undoEdit() override;
+    bool redoEdit() override;
+    bool saveToTMX(const std::string& path) const override;
+    void addEnemySpawn(const EntitySpawnData& spawn) override;
+    void removeEnemySpawn(int index) override;
 };

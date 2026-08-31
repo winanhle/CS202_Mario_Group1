@@ -26,8 +26,8 @@ public:
     void update(float dt);
     void render(sf::RenderWindow& window) const;
 
-    // Gọi từ PlayerManager::shoot()
     void spawnFireball(float x, float y, int direction /* -1 hoặc +1 */);
+    void clear() { m_fireballs.clear(); }
 
     void setMapManager(IMapManager* map)        { m_mapManager   = map; }
     void setEnemyManager(IEnemyManager* enemies) { m_enemyManager = enemies; }

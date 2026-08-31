@@ -156,6 +156,11 @@
    <property name="type" value="QUESTION_COIN"/>
   </properties>
  </tile>
+ <tile id="1916">
+  <properties>
+   <property name="type" value="QUESTION_USED"/>
+  </properties>
+ </tile>
  <tile id="1919">
   <properties>
    <property name="type" value="BRICK_NORMAL"/>

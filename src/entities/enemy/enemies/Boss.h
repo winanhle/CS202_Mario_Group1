@@ -200,6 +200,7 @@ private:
         m_attackCooldownTimer = m_attackCooldownDuration;
     }
 
+public:
     static sf::Texture& walkLeft1()    { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::BossWalkingLeft1);    if (!ok) throw std::runtime_error("Boss: failed to load BossWalkingLeft1");    return t; }
     static sf::Texture& walkLeft2()    { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::BossWalkingLeft2);    if (!ok) throw std::runtime_error("Boss: failed to load BossWalkingLeft2");    return t; }
     static sf::Texture& walkRight1()   { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::BossWalkingRight1);   if (!ok) throw std::runtime_error("Boss: failed to load BossWalkingRight1");   return t; }
@@ -210,6 +211,8 @@ private:
     static sf::Texture& attackRight2() { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::BossAttackingRight2); if (!ok) throw std::runtime_error("Boss: failed to load BossAttackingRight2"); return t; }
     static sf::Texture& shell1()       { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::KoopaShell1);         if (!ok) throw std::runtime_error("Boss: failed to load KoopaShell1");         return t; }
     static sf::Texture& shell2()       { static sf::Texture t; static bool ok = t.loadFromFile(EnemySprite::KoopaShell2);         if (!ok) throw std::runtime_error("Boss: failed to load KoopaShell2");         return t; }
+
+private:
 
     FireballSpawnFn m_fireballSpawnFn;
 

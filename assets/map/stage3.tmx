@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="154" height="16" tilewidth="16" tileheight="16" infinite="0" nextlayerid="3" nextobjectid="3">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="154" height="16" tilewidth="16" tileheight="16" infinite="0" nextlayerid="3" nextobjectid="5">
  <tileset firstgid="1" name="world1_3" tilewidth="16" tileheight="16" tilecount="2460" columns="164">
   <image source="../tileset/world1_3.png" width="2624" height="240"/>
   <tile id="0">
@@ -1490,7 +1490,9 @@
 </data>
  </layer>
  <objectgroup id="2" name="Object">
-  <object id="1" name="PlayerSpawn" x="105.5" y="158"/>
+  <object id="1" name="PlayerSpawn" x="116.5" y="160.5"/>
   <object id="2" x="272.5" y="-98" width="0.5" height="0.5"/>
+  <object id="3" name="Boss" x="2142" y="156"/>
+  <object id="4" x="2033" y="304"/>
  </objectgroup>
 </map>

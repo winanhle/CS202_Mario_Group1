@@ -67,4 +67,13 @@ public:
      * @param spawns Vector of EntitySpawnData parsed from the map's object layer
      */
     virtual void spawnFromMapData(const std::vector<EntitySpawnData>& spawns) = 0;
+
+    /**
+     * @brief Stomp-kill all enemies standing on (or overlapping) the tile
+     *        row directly above (gy - 1). Called when a BRICK_NORMAL is
+     *        broken by a Super or Fire player.
+     * @param gx  Grid column of the broken tile.
+     * @param gy  Grid row of the broken tile.
+     */
+    virtual void killEnemiesAboveTile(int gx, int gy) = 0;
 };
