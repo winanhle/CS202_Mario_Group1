@@ -29,6 +29,26 @@ void PipeBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManag
     (void)ctx; (void)gx; (void)gy; (void)player; // không phản ứng
 }
 
+void PipeEntranceBehavior::onStandingOn(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
+{
+    (void)gx; (void)gy;
+    if (player && player->isDownPressed()) {
+        ctx.requestWarp("assets/map/stage1_hidden.tmx");
+    }
+}
+
+void PipeExitBehavior::onSideTouch(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
+{
+    (void)gx; (void)gy; (void)player;
+    ctx.requestWarp("assets/map/stage1.tmx", 2616.f, 192.f);
+}
+
+void PipeExitBehavior::onStandingOn(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
+{
+    (void)gx; (void)gy; (void)player;
+    ctx.requestWarp("assets/map/stage1.tmx", 2616.f, 192.f);
+}
+
 // BRICK_EMPTY (BRICK_NORMAL):
 // - Super/Fire Mario: diệt enemy trên gạch -> tạo mảnh vỡ -> biến thành EMPTY.
 // - Normal Mario: diệt enemy trên gạch -> nảy lên nửa ô (spawnBlockBump) và giữ nguyên BRICK_EMPTY.
@@ -143,6 +163,8 @@ const IBlockBehavior& getBlockBehavior(TileType type)
     static const BackgroundBehavior     background;
     static const GroundBehavior         ground;
     static const PipeBehavior           pipe;
+    static const PipeEntranceBehavior   pipeEntrance;
+    static const PipeExitBehavior       pipeExit;
     static const BrickEmptyBehavior     brickEmpty;
     static const BrickSolidBehavior     brickSolid;
     static const QuestionCoinBehavior   qCoin;
@@ -162,6 +184,8 @@ const IBlockBehavior& getBlockBehavior(TileType type)
         {TileType::BACKGROUND,         &background},
         {TileType::GROUND,             &ground},
         {TileType::PIPE,               &pipe},
+        {TileType::PIPE_ENTRANCE,      &pipeEntrance},
+        {TileType::PIPE_EXIT,          &pipeExit},
         {TileType::BRICK_NORMAL,       &brickEmpty},
         {TileType::BRICK_EMPTY,        &brickEmpty},
         {TileType::BRICK_SOLID,        &brickSolid},

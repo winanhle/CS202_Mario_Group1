@@ -73,6 +73,8 @@ void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
     keys.left2nd  = sf::Keyboard::Key::Unknown;
     keys.right1st = sf::Keyboard::Key::Unknown;
     keys.right2nd = sf::Keyboard::Key::Unknown;
+    keys.down1st  = sf::Keyboard::Key::Unknown;
+    keys.down2nd  = sf::Keyboard::Key::Unknown;
     keys.shoot    = sf::Keyboard::Key::Unknown;
     keys.run      = sf::Keyboard::Key::Unknown;
 
@@ -82,6 +84,7 @@ void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
         keys.jump1st  = settings ? settings->getKey(GameAction::P1Jump)      : sf::Keyboard::Key::Space;
         keys.left1st  = settings ? settings->getKey(GameAction::P1MoveLeft)  : sf::Keyboard::Key::A;
         keys.right1st = settings ? settings->getKey(GameAction::P1MoveRight) : sf::Keyboard::Key::D;
+        keys.down1st  = sf::Keyboard::Key::S;
         keys.shoot    = settings ? settings->getKey(GameAction::P1Shoot)     : sf::Keyboard::Key::F;
         keys.run      = sf::Keyboard::Key::LShift;
 
@@ -104,6 +107,7 @@ void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
             if (keys.right1st == sf::Keyboard::Key::D) {
                 keys.right2nd = sf::Keyboard::Key::Right;
             }
+            keys.down2nd = sf::Keyboard::Key::Down;
         }
 
         // Conflict guard: Clear any secondary/tertiary key if it conflicts with ANY primary key of another action
@@ -133,6 +137,7 @@ void PlayerManager::rebuildKeyBindings(ISettingsManager* settings)
         keys.jump1st  = settings ? settings->getKey(GameAction::P2Jump)      : sf::Keyboard::Key::Up;
         keys.left1st  = settings ? settings->getKey(GameAction::P2MoveLeft)  : sf::Keyboard::Key::Left;
         keys.right1st = settings ? settings->getKey(GameAction::P2MoveRight) : sf::Keyboard::Key::Right;
+        keys.down1st  = sf::Keyboard::Key::Down;
         keys.shoot    = settings ? settings->getKey(GameAction::P2Shoot)     : sf::Keyboard::Key::Period;
         keys.run      = sf::Keyboard::Key::RShift;
     }
@@ -339,6 +344,11 @@ float PlayerManager::getPositionY() const
     return m_positionY;
 }
 
+bool PlayerManager::isDownPressed() const
+{
+    return m_inputHandler && m_inputHandler->isDownKeyHeld();
+}
+
 // ==================== COMMAND PATTERN ====================
 void JumpCommand::execute(PlayerManager& player)          { player.jump(); }
 void StopJumpCommand::execute(PlayerManager& player)      { player.stopJump(); }
@@ -511,6 +521,7 @@ void PlayerManager::tileCollisionX(float deltaTime) {
                 }
 
                 if (m_mapManager->isSolid(probeX, probeY)) {
+                    m_mapManager->onSideTouch(gx, gy, this);
                     if (m_velocityX > 0) {
                         newX = gx * tileSize - m_playerSize.x;
                     } else if (m_velocityX < 0) {
@@ -561,6 +572,7 @@ void PlayerManager::tileCollisionY(float deltaTime) {
                     if (m_mapManager->isSolid(probeX, probeY)) {
                         newY = gy * tileSize - m_playerSize.y;
                         m_isGrounded = true;
+                        m_mapManager->onStandingOn(gx, gy, this);
                         m_velocityY = 0;
                         collided = true;
                         break;

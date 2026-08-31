@@ -141,6 +141,9 @@ private:
     std::vector<TileEdit> m_undoStack;
     std::vector<TileEdit> m_redoStack;
 
+    // ─── Pending Warp Request ────────────────────────────────────────────────
+    std::optional<WarpRequest> m_pendingWarp;
+
     // ─── CSV loader (kept as fallback) ───────────────────────────────────
     bool loadMapCSV(const std::string& filepath);
 
@@ -210,6 +213,10 @@ public:
 
     // ─── Block transition API (IMapManager) ───────────────────────────────────
     void onHitFromBelow(int tileGridX, int tileGridY, IPlayerManager* player) override;
+    void onStandingOn(int tileGridX, int tileGridY, IPlayerManager* player) override;
+    void onSideTouch(int tileGridX, int tileGridY, IPlayerManager* player) override;
+    bool hasPendingWarp() const override { return m_pendingWarp.has_value(); }
+    WarpRequest consumePendingWarp() override;
     void setItemManager(IItemManager* itemManager) override  { m_itemManager  = itemManager; }
     void setEnemyManager(IEnemyManager* enemyManager) override { m_enemyManager = enemyManager; }
 
@@ -221,6 +228,7 @@ public:
     void setMultiCoinActive(int gx, int gy) override;
     void killEnemiesAboveTile(int gx, int gy) override;
     void spawnBlockBump(int gx, int gy, TileType finalType) override;
+    void requestWarp(const std::string& targetMap, float targetX = -1.f, float targetY = -1.f) override;
 
     // ─── Flag API ─────────────────────────────────────────────────────────────
     void triggerFlagSlide(int poleGridX) override;

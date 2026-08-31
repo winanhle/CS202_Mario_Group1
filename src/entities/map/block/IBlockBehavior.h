@@ -43,4 +43,20 @@ public:
      * @param player   Player hiện tại (nullptr nếu không có).
      */
     virtual void onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const = 0;
+
+    /**
+     * @brief Xử lý khi player đứng trên mặt trên của block (grounded).
+     * Mặc định không làm gì; PIPE_ENTRANCE override để kiểm tra phím Down và chuyển map.
+     */
+    virtual void onStandingOn(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const {
+        (void)ctx; (void)gx; (void)gy; (void)player;
+    }
+
+    /**
+     * @brief Xử lý khi player chạm cạnh bên của block.
+     * Mặc định không làm gì; PIPE_EXIT override để kích hoạt warp quay lại stage chính.
+     */
+    virtual void onSideTouch(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const {
+        (void)ctx; (void)gx; (void)gy; (void)player;
+    }
 };

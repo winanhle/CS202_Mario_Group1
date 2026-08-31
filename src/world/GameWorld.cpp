@@ -118,6 +118,54 @@ void GameWorld::loadCurrentLevel()
     }
 }
 
+void GameWorld::warpToMap(const std::string& mapPath, float targetX, float targetY)
+{
+    if (!m_mapManager)
+        return;
+
+    m_mapManager->loadMap(mapPath);
+
+    const MapObjectData& mapData = m_mapManager->getMapObjectData();
+
+    if (m_enemyManager)
+        m_enemyManager->spawnFromMapData(mapData.enemySpawns);
+
+    if (m_itemManager)
+        m_itemManager->spawnFromMapData(mapData.itemSpawns);
+
+    if (m_liftManager)
+        m_liftManager->spawnFromMapData(mapData.liftSpawns);
+
+    if (m_fireBarManager)
+        m_fireBarManager->spawnFromMapData(mapData.fireBarSpawns);
+
+    float sx = 32.f, sy = 100.f;
+    if (targetX >= 0.f && targetY >= 0.f)
+    {
+        sx = targetX;
+        sy = targetY;
+    }
+    else if (mapData.playerSpawn.found)
+    {
+        sx = mapData.playerSpawn.x;
+        sy = mapData.playerSpawn.y;
+    }
+
+    if (m_playerManager)
+    {
+        m_playerManager->setSpawnPoint(sx, sy);
+        m_playerManager->respawn();
+    }
+    if (m_playerManager2)
+    {
+        m_playerManager2->setSpawnPoint(sx, sy);
+        m_playerManager2->respawn();
+    }
+
+    if (m_cameraManager)
+        m_cameraManager->initialize(m_mapManager->getMapPixelSize());
+}
+
 bool GameWorld::hitboxTouchesFlagpole(const sf::FloatRect& box) const
 {
     if (!m_mapManager)
@@ -313,6 +361,14 @@ void GameWorld::update(float deltaTime)
 
     if (m_playerManager2)
         m_playerManager2->update(deltaTime);
+
+    // 2.5. Kiểm tra yêu cầu chuyển map qua ống (PIPE_ENTRANCE / PIPE_EXIT)
+    if (m_mapManager && m_mapManager->hasPendingWarp())
+    {
+        WarpRequest warp = m_mapManager->consumePendingWarp();
+        warpToMap(warp.targetMap, warp.targetX, warp.targetY);
+        return;
+    }
 
     // 1.5. Chạm FLAGPOLE → sang stage kế tiếp (hoặc chiến thắng)
     checkFlagpoleCollision();

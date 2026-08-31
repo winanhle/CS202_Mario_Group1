@@ -184,6 +184,16 @@
    <property name="type" value="MULTI_COIN2"/>
   </properties>
  </tile>
+ <tile id="1945">
+  <properties>
+   <property name="type" value="PIPE_ENTRANCE"/>
+  </properties>
+ </tile>
+ <tile id="1946">
+  <properties>
+   <property name="type" value="PIPE_ENTRANCE"/>
+  </properties>
+ </tile>
  <tile id="2097">
   <properties>
    <property name="type" value="FLAGPOLE"/>
@@ -2616,7 +2626,7 @@
  </tile>
  <tile id="5547">
   <properties>
-   <property name="type" value="PIPE"/>
+   <property name="type" value="PIPE_EXIT"/>
   </properties>
  </tile>
  <tile id="5548">
@@ -2631,7 +2641,7 @@
  </tile>
  <tile id="5758">
   <properties>
-   <property name="type" value="PIPE"/>
+   <property name="type" value="PIPE_EXIT"/>
   </properties>
  </tile>
  <tile id="5759">

@@ -30,10 +30,21 @@ public:
     void onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
 };
 
-class PipeBehavior final : public IBlockBehavior {
+class PipeBehavior : public IBlockBehavior {
 public:
     bool isSolid() const override { return true; }
     void onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
+};
+
+class PipeEntranceBehavior final : public PipeBehavior {
+public:
+    void onStandingOn(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
+};
+
+class PipeExitBehavior final : public PipeBehavior {
+public:
+    void onSideTouch(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
+    void onStandingOn(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
 };
 
 class BrickEmptyBehavior final : public IBlockBehavior {

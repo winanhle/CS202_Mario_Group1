@@ -113,6 +113,11 @@ public:
     virtual float getPositionY() const = 0;
 
     /**
+     * @brief Check if the player is currently pressing/holding the Down input.
+     */
+    virtual bool isDownPressed() const { return false; }
+
+    /**
      * @brief Restore a previously saved player state (score, lives, position)
      * @param score Saved score
      * @param lives Saved lives

@@ -26,7 +26,19 @@ enum class TileType {
     FIRE_BAR = 13,
     QUESTION_USED = 14, // ? block đã dùng hết — solid + texture riêng (khác SOLID_BRICK)
     BRICK_SOLID = 15,  // Gạch đặc — khi đập sẽ bounce và biến thành QUESTION_USED
-    MULTI_COIN2 = 16   // Frame 2 của animation MULTI_COIN khi đang hoạt động
+    MULTI_COIN2 = 16,  // Frame 2 của animation MULTI_COIN khi đang hoạt động
+    PIPE_ENTRANCE = 17,// Ống vào phụ/bonus stage khi đứng lên và ấn Down
+    PIPE_EXIT = 18     // Ống ra để trở về stage chính
+};
+
+/**
+ * @struct WarpRequest
+ * @brief Yêu cầu chuyển map (warp) từ block behavior gửi tới GameWorld.
+ */
+struct WarpRequest {
+    std::string targetMap;
+    float targetX = -1.f; // -1 = dùng PlayerSpawn của map đích
+    float targetY = -1.f;
 };
 
 /**

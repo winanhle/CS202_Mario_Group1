@@ -11,6 +11,8 @@ struct KeyBinding {
     sf::Keyboard::Key left2nd  = sf::Keyboard::Key::Unknown;
     sf::Keyboard::Key right1st = sf::Keyboard::Key::Unknown;
     sf::Keyboard::Key right2nd = sf::Keyboard::Key::Unknown;
+    sf::Keyboard::Key down1st  = sf::Keyboard::Key::Unknown;
+    sf::Keyboard::Key down2nd  = sf::Keyboard::Key::Unknown;
     sf::Keyboard::Key shoot    = sf::Keyboard::Key::Unknown; // phím bắn, ví dụ F / Period
     sf::Keyboard::Key run      = sf::Keyboard::Key::Unknown; // phím chạy (giữ để dùng RUN_MAX_SPEED), ví dụ Shift
 };
@@ -42,5 +44,11 @@ public:
         return (m_keys.jump1st != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.jump1st))
             || (m_keys.jump2nd != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.jump2nd))
             || (m_keys.jump3rd != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.jump3rd));
+    }
+
+    /** @brief True nếu player ĐANG GIỮ 1 trong các phím Down. */
+    bool isDownKeyHeld() const {
+        return (m_keys.down1st != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.down1st))
+            || (m_keys.down2nd != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.down2nd));
     }
 };

@@ -222,6 +222,12 @@ private:
     void loadCurrentLevel();
 
     /**
+     * @brief Chuyển sang một map khác (ví dụ: stage1_hidden.tmx) và định vị player
+     *        tại (targetX, targetY) hoặc PlayerSpawn của map đích, bảo toàn coins, score, form và timer.
+     */
+    void warpToMap(const std::string& mapPath, float targetX = -1.f, float targetY = -1.f);
+
+    /**
      * @brief Kiểm tra player chạm cột FLAGPOLE → advance lên stage tiếp theo.
      *        Nếu đã ở stage cuối thì quay vòng lại stage 1.
      */

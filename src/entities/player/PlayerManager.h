@@ -124,6 +124,7 @@ public:
     void  setCoins(int coins) override { m_coins = coins; }
     float getPositionX() const override;
     float getPositionY() const override;
+    bool  isDownPressed() const override;
     void restoreState(int score, int lives, float posX, float posY) override;
     void setSpawnPoint(float x, float y) override;
 

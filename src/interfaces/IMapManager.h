@@ -54,6 +54,26 @@ public:
     virtual void onHitFromBelow(int tileGridX, int tileGridY, IPlayerManager* player) = 0;
 
     /**
+     * @brief Called by PlayerManager when player is grounded on top of a tile.
+     */
+    virtual void onStandingOn(int tileGridX, int tileGridY, IPlayerManager* player) = 0;
+
+    /**
+     * @brief Called by PlayerManager when player collides with the side of a tile.
+     */
+    virtual void onSideTouch(int tileGridX, int tileGridY, IPlayerManager* player) = 0;
+
+    /**
+     * @brief Check if a warp request has been triggered (by PIPE_ENTRANCE / PIPE_EXIT).
+     */
+    virtual bool hasPendingWarp() const = 0;
+
+    /**
+     * @brief Consume and return the pending warp request.
+     */
+    virtual WarpRequest consumePendingWarp() = 0;
+
+    /**
      * @brief Inject ItemManager so MapManager can spawn coins/power-ups.
      * Called by GameWorld::injectDependencies().
      */

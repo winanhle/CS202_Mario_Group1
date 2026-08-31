@@ -27,6 +27,8 @@ namespace KeyBindingPresets
         kb.left2nd  = sf::Keyboard::Key::Left;
         kb.right1st = sf::Keyboard::Key::D;
         kb.right2nd = sf::Keyboard::Key::Right;
+        kb.down1st  = sf::Keyboard::Key::S;
+        kb.down2nd  = sf::Keyboard::Key::Down;
         kb.shoot    = sf::Keyboard::Key::F;
         kb.run      = sf::Keyboard::Key::LShift;
         return kb;
@@ -34,7 +36,7 @@ namespace KeyBindingPresets
 
     /**
      * @brief 2-Player – Player 1 dùng WASD + Space.
-     * jump = W hoặc Space, left = A, right = D
+     * jump = W hoặc Space, left = A, right = D, down = S
      */
     inline KeyBinding player1TwoPlayer()
     {
@@ -46,14 +48,16 @@ namespace KeyBindingPresets
         kb.left2nd  = sf::Keyboard::Key::A;  // slot dư
         kb.right1st = sf::Keyboard::Key::D;
         kb.right2nd = sf::Keyboard::Key::D;  // slot dư
+        kb.down1st  = sf::Keyboard::Key::S;
+        kb.down2nd  = sf::Keyboard::Key::S;
         kb.shoot    = sf::Keyboard::Key::F;
         kb.run      = sf::Keyboard::Key::LShift;
         return kb;
     }
 
     /**
-     * @brief 2-Player – Player 2 dùng mũi tên ↑ ← →.
-     * jump = ↑, left = ←, right = →
+     * @brief 2-Player – Player 2 dùng mũi tên ↑ ← → ↓.
+     * jump = ↑, left = ←, right = →, down = ↓
      */
     inline KeyBinding player2TwoPlayer()
     {
@@ -65,6 +69,8 @@ namespace KeyBindingPresets
         kb.left2nd  = sf::Keyboard::Key::Left; // slot dư
         kb.right1st = sf::Keyboard::Key::Right;
         kb.right2nd = sf::Keyboard::Key::Right; // slot dư
+        kb.down1st  = sf::Keyboard::Key::Down;
+        kb.down2nd  = sf::Keyboard::Key::Down;
         kb.shoot    = sf::Keyboard::Key::Period;
         kb.run      = sf::Keyboard::Key::RShift;
         return kb;

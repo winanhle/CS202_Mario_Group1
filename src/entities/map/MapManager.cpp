@@ -27,6 +27,7 @@ void MapManager::initialize() {
     m_coinPopAnims.clear();
     m_blockBumpAnims.clear();
     m_tilesets.clear();
+    m_pendingWarp.reset();
     m_undoStack.clear();
     m_redoStack.clear();
     // Bản đồ được tải bởi GameWorld thông qua LevelManager (loadCurrentLevel()).
@@ -41,6 +42,8 @@ TileType MapManager::stringToTileType(const std::string& s) {
     static const std::unordered_map<std::string, TileType> table = {
         {"GROUND",          TileType::GROUND},
         {"PIPE",            TileType::PIPE},
+        {"PIPE_ENTRANCE",   TileType::PIPE_ENTRANCE},
+        {"PIPE_EXIT",       TileType::PIPE_EXIT},
         {"BRICK_NORMAL",    TileType::BRICK_NORMAL},
         {"BRICK_EMPTY",     TileType::BRICK_EMPTY},
         {"BRICK_SOLID",     TileType::BRICK_SOLID},
@@ -353,6 +356,25 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
         }
     }
 
+    // ── Auto-setup entrance and exit pipes for stage1 and stage1_hidden ───────
+    std::string lowerPath = tmxPath;
+    std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
+    if (lowerPath.find("stage1_hidden") != std::string::npos) {
+        // Tag exit pipe in stage1_hidden (cols 17..19, rows 12..13) as PIPE_EXIT
+        for (int r = 12; r <= 13 && r < mapHeight; ++r) {
+            for (int c = 17; c <= 19 && c < mapWidth; ++c) {
+                m_mapData[r][c] = TileType::PIPE_EXIT;
+            }
+        }
+    } else if (lowerPath.find("stage1") != std::string::npos) {
+        // Tag top of entrance pipe 4 in stage1 (cols 57..58, row 10) as PIPE_ENTRANCE
+        if (10 < mapHeight) {
+            for (int c = 57; c <= 58 && c < mapWidth; ++c) {
+                m_mapData[10][c] = TileType::PIPE_ENTRANCE;
+            }
+        }
+    }
+
     // ── Parse object groups (enemy spawns, player spawn, lifts, firebars) ─
     // Note: FireBar spawns come ONLY from object groups now.
     // The tile-scan loop was removed to prevent duplicate FireBar spawns.
@@ -409,6 +431,7 @@ void MapManager::loadMap(const std::string& tmxPath) {
     m_coinPopAnims.clear();
     m_blockBumpAnims.clear();
     m_tilesets.clear();
+    m_pendingWarp.reset();
     m_gidTypeMap.clear();
     m_typeToGid.clear();
     m_textureLoaded = false;
@@ -745,7 +768,9 @@ void MapManager::render(sf::RenderWindow& window) const {
             tileShape.setPosition(sf::Vector2f(worldX, worldY));
             switch (type) {
                 case TileType::GROUND:           tileShape.setFillColor(sf::Color(139,  69,  19)); break;
-                case TileType::PIPE:             tileShape.setFillColor(sf::Color::Green);          break;
+                case TileType::PIPE:
+                case TileType::PIPE_ENTRANCE:
+                case TileType::PIPE_EXIT:        tileShape.setFillColor(sf::Color::Green);          break;
                 case TileType::BRICK_NORMAL:     tileShape.setFillColor(sf::Color(205, 133,  63)); break;
                 case TileType::BRICK_SOLID:      tileShape.setFillColor(sf::Color(190, 120,  55)); break;
                 case TileType::SOLID_BRICK:      tileShape.setFillColor(sf::Color(160, 110,  80)); break;
@@ -911,6 +936,34 @@ void MapManager::onHitFromBelow(int gx, int gy, IPlayerManager* player) {
                                 static_cast<float>(gy) * m_tileSize);
     // *this satisfies IMapContext — block behaviors call back through the interface.
     getBlockBehavior(type).onHitFromBelow(*this, gx, gy, player);
+}
+
+void MapManager::onStandingOn(int gx, int gy, IPlayerManager* player) {
+    if (gy < 0 || gy >= (int)m_mapData.size() ||
+        gx < 0 || gx >= (int)m_mapData[0].size()) return;
+
+    TileType type = getTileType(static_cast<float>(gx) * m_tileSize,
+                                static_cast<float>(gy) * m_tileSize);
+    getBlockBehavior(type).onStandingOn(*this, gx, gy, player);
+}
+
+void MapManager::onSideTouch(int gx, int gy, IPlayerManager* player) {
+    if (gy < 0 || gy >= (int)m_mapData.size() ||
+        gx < 0 || gx >= (int)m_mapData[0].size()) return;
+
+    TileType type = getTileType(static_cast<float>(gx) * m_tileSize,
+                                static_cast<float>(gy) * m_tileSize);
+    getBlockBehavior(type).onSideTouch(*this, gx, gy, player);
+}
+
+void MapManager::requestWarp(const std::string& targetMap, float targetX, float targetY) {
+    m_pendingWarp = WarpRequest{targetMap, targetX, targetY};
+}
+
+WarpRequest MapManager::consumePendingWarp() {
+    WarpRequest req = m_pendingWarp.value_or(WarpRequest{});
+    m_pendingWarp.reset();
+    return req;
 }
 
 // =============================================================================

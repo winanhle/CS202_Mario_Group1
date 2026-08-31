@@ -52,4 +52,12 @@ public:
      *        moving up by half a tile (8px) and returning, while setting finalType.
      */
     virtual void spawnBlockBump(int gx, int gy, TileType finalType) = 0;
+
+    /**
+     * @brief Yêu cầu chuyển map (warp) đến mapPath tại tọa độ đích (targetX, targetY).
+     * @param targetMap Đường dẫn map đích (ví dụ "assets/map/stage1_hidden.tmx").
+     * @param targetX Tọa độ X đích (-1 = lấy PlayerSpawn từ map đích).
+     * @param targetY Tọa độ Y đích (-1 = lấy PlayerSpawn từ map đích).
+     */
+    virtual void requestWarp(const std::string& targetMap, float targetX = -1.f, float targetY = -1.f) = 0;
 };
