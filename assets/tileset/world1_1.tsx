@@ -146,6 +146,11 @@
    <property name="type" value="MULTI_COIN"/>
   </properties>
  </tile>
+ <tile id="1924">
+  <properties>
+   <property name="type" value="MULTI_COIN2"/>
+  </properties>
+ </tile>
  <tile id="2097">
   <properties>
    <property name="type" value="FLAGPOLE"/>

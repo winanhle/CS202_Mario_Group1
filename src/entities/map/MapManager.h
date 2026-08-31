@@ -58,6 +58,18 @@ struct FlagSlideAnim {
     bool         finished = false;
 };
 
+/**
+ * @struct BlockBumpAnim
+ * @brief Animation for blocks bumping up by half a tile (8px) when hit from below.
+ */
+struct BlockBumpAnim {
+    int gx = 0;
+    int gy = 0;
+    float time = 0.f;
+    static constexpr float DURATION = 0.18f;  // seconds
+    static constexpr float MAX_OFFSET = -8.f; // 8 pixels upward (half a 16px tile)
+};
+
 // ─── State Structs ────────────────────────────────────────────────────────────
 
 /**
@@ -65,8 +77,10 @@ struct FlagSlideAnim {
  * @brief Tracks the 3.5 s countdown for a MULTI_COIN block.
  */
 struct MultiCoinState {
-    float timer  = 0.f;   // counts down from MULTI_COIN_DURATION → 0
-    bool  active = false; // true while countdown is running
+    float timer     = 0.f;   // counts down from MULTI_COIN_DURATION → 0
+    float animTimer = 0.f;   // accumulates deltaTime to toggle between MULTI_COIN and MULTI_COIN2
+    bool  isFrame2  = false; // toggles between false (MULTI_COIN) and true (MULTI_COIN2)
+    bool  active    = false; // true while countdown is running
 };
 
 /**
@@ -103,9 +117,10 @@ private:
     static constexpr float MULTI_COIN_DURATION = 3.5f;
 
     // ─── Live animations ──────────────────────────────────────────────────────
-    std::vector<BrickDebris> m_brickDebris;
-    std::vector<CoinPopAnim> m_coinPopAnims;
-    FlagSlideAnim            m_flagAnim;
+    std::vector<BrickDebris>    m_brickDebris;
+    std::vector<CoinPopAnim>    m_coinPopAnims;
+    std::vector<BlockBumpAnim>  m_blockBumpAnims;
+    FlagSlideAnim               m_flagAnim;
 
     // ─── Tileset sprite-sheet rendering ──────────────────────────────────────
     sf::Texture                  m_tilesetTexture;  // PNG loaded from the TSX <image> node
@@ -133,6 +148,8 @@ private:
     bool loadMapTMX(const std::string& tmxPath);
     // Parses the external .tsx tileset file and populates m_gidTypeMap
     bool loadTileset(const std::string& tsxPath, int firstGid);
+    // Parses a <tileset> XML element (used for both external .tsx and inline <tileset>)
+    bool parseTilesetElement(tinyxml2::XMLElement* root, const std::string& baseDir, int firstGid);
     // Converts a GID integer to the corresponding TileType
     TileType gidToTileType(int gid) const;
     // Converts the Tiled propertytype / value string to TileType
@@ -143,10 +160,17 @@ private:
     // Parses <objectgroup> layers from TMX for enemy/player spawn points
     void parseObjectGroups(tinyxml2::XMLElement* mapElement);
 
-    // GID → TileType lookup table (populated by loadTileset)
+    // GID → TileType lookup table (populated by loadTileset / parseTilesetElement)
     std::unordered_map<int, TileType> m_gidTypeMap;
-    // TileType → GID lookup table (reverse of m_gidTypeMap, built in loadTileset).
+    // TileType → GID lookup table (reverse of m_gidTypeMap).
     std::unordered_map<TileType, int> m_typeToGid;
+
+    struct LoadedTileset {
+        int firstGid = 1;
+        int columns  = 0;
+    };
+    std::vector<LoadedTileset> m_tilesets;
+
     int m_tilesetFirstGid  = 1;  // firstgid attribute from <tileset> element
     int m_tilesetColumns   = 0;  // columns of the tileset sprite sheet
 
@@ -196,6 +220,7 @@ public:
     void spawnItemForFormType(int gx, int gy, int formType) override;
     void setMultiCoinActive(int gx, int gy) override;
     void killEnemiesAboveTile(int gx, int gy) override;
+    void spawnBlockBump(int gx, int gy, TileType finalType) override;
 
     // ─── Flag API ─────────────────────────────────────────────────────────────
     void triggerFlagSlide(int poleGridX) override;

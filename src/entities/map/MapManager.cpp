@@ -25,6 +25,8 @@ void MapManager::initialize() {
     m_multiCoinStates.clear();
     m_brickDebris.clear();
     m_coinPopAnims.clear();
+    m_blockBumpAnims.clear();
+    m_tilesets.clear();
     m_undoStack.clear();
     m_redoStack.clear();
     // Bản đồ được tải bởi GameWorld thông qua LevelManager (loadCurrentLevel()).
@@ -40,9 +42,12 @@ TileType MapManager::stringToTileType(const std::string& s) {
         {"GROUND",          TileType::GROUND},
         {"PIPE",            TileType::PIPE},
         {"BRICK_NORMAL",    TileType::BRICK_NORMAL},
+        {"BRICK_EMPTY",     TileType::BRICK_EMPTY},
+        {"BRICK_SOLID",     TileType::BRICK_SOLID},
         {"QUESTION_COIN",   TileType::QUESTION_COIN},
         {"QUESTION_POWERUP",TileType::QUESTION_POWERUP},
         {"MULTI_COIN",      TileType::MULTI_COIN},
+        {"MULTI_COIN2",     TileType::MULTI_COIN2},
         {"HIDDEN_BLOCK",    TileType::HIDDEN_BLOCK},
         {"DEATH_ZONE",      TileType::DEATH_ZONE},
         {"FLAGPOLE",        TileType::FLAGPOLE},
@@ -56,6 +61,7 @@ TileType MapManager::stringToTileType(const std::string& s) {
         {"fire_bar",        TileType::FIRE_BAR},
         {"firebar",         TileType::FIRE_BAR},
         {"BACKGROUND",      TileType::BACKGROUND},
+        {"BACK_GROUND",     TileType::BACKGROUND},
         {"COIN",            TileType::COIN},
     };
     auto it = table.find(s);
@@ -75,36 +81,33 @@ TileType MapManager::gidToTileType(int gid) const {
 }
 
 // =============================================================================
-//  TSX TILESET PARSER
+//  TSX & INLINE TILESET PARSER
 // =============================================================================
 
-bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
-    tinyxml2::XMLDocument doc;
-    if (doc.LoadFile(tsxPath.c_str()) != tinyxml2::XML_SUCCESS) {
-        std::cerr << "[MapManager] Cannot open TSX: " << tsxPath << std::endl;
-        return false;
-    }
+bool MapManager::parseTilesetElement(tinyxml2::XMLElement* root, const std::string& baseDir, int firstGid) {
+    if (!root) return false;
 
-    auto* root = doc.FirstChildElement("tileset");
-    if (!root) { std::cerr << "[MapManager] No <tileset> root in " << tsxPath << std::endl; return false; }
-
+    int columns = 0;
+    root->QueryIntAttribute("columns", &columns);
     m_tilesetFirstGid = firstGid;
-    root->QueryIntAttribute("columns", &m_tilesetColumns);
+    m_tilesetColumns  = columns;
+    m_tilesets.push_back(LoadedTileset{firstGid, columns});
 
     // ── Load the sprite-sheet image declared in <image source="..."/> ─────────
     auto* imgEl = root->FirstChildElement("image");
     if (imgEl) {
         const char* imgSrc = imgEl->Attribute("source");
         if (imgSrc) {
-            std::string tsxDir = fs::path(tsxPath).parent_path().string();
-            std::string imgPath = resolvePath(tsxDir, imgSrc);
-            if (m_tilesetTexture.loadFromFile(imgPath)) {
-                m_tilesetTexture.setSmooth(false);
-                m_tileSprite.emplace(m_tilesetTexture);
-                m_textureLoaded = true;
-                std::cout << "[MapManager] Tileset texture loaded: " << imgPath << std::endl;
-            } else {
-                std::cerr << "[MapManager] Failed to load tileset image: " << imgPath << std::endl;
+            std::string imgPath = resolvePath(baseDir, imgSrc);
+            if (!m_textureLoaded) {
+                if (m_tilesetTexture.loadFromFile(imgPath)) {
+                    m_tilesetTexture.setSmooth(false);
+                    m_tileSprite.emplace(m_tilesetTexture);
+                    m_textureLoaded = true;
+                    std::cout << "[MapManager] Tileset texture loaded: " << imgPath << std::endl;
+                } else {
+                    std::cerr << "[MapManager] Failed to load tileset image: " << imgPath << std::endl;
+                }
             }
         }
     }
@@ -161,8 +164,6 @@ bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
         }
 
         // Reverse lookup: TileType → GID (first occurrence wins).
-        // Registered even for EMPTY so setTile(EMPTY) can restore the correct
-        // background sprite rather than falling back to GID 0 (= no tile).
         if (found) {
             if (m_typeToGid.find(resolved) == m_typeToGid.end()) {
                 m_typeToGid[resolved] = gid;
@@ -175,9 +176,24 @@ bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
         m_typeToGid[TileType::EMPTY] = firstGid;
     }
 
-    std::cout << "[MapManager] TSX loaded: " << tsxPath
-              << "  (" << m_gidTypeMap.size() << " typed tiles)" << std::endl;
+    std::cout << "[MapManager] Tileset parsed (firstgid=" << firstGid
+              << ", cols=" << columns << ", " << m_gidTypeMap.size()
+              << " typed tiles total)" << std::endl;
     return true;
+}
+
+bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
+    tinyxml2::XMLDocument doc;
+    if (doc.LoadFile(tsxPath.c_str()) != tinyxml2::XML_SUCCESS) {
+        std::cerr << "[MapManager] Cannot open TSX: " << tsxPath << std::endl;
+        return false;
+    }
+
+    auto* root = doc.FirstChildElement("tileset");
+    if (!root) { std::cerr << "[MapManager] No <tileset> root in " << tsxPath << std::endl; return false; }
+
+    std::string tsxDir = fs::path(tsxPath).parent_path().string();
+    return parseTilesetElement(root, tsxDir, firstGid);
 }
 
 // =============================================================================
@@ -203,7 +219,7 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
 
     std::string baseDir = fs::path(tmxPath).parent_path().string();
 
-    // ── Load external tileset(s) ────────────────────────────────────────
+    // ── Load tileset(s) (supports both external .tsx and inline <tileset>) ─
     for (auto* tsEl = mapEl->FirstChildElement("tileset"); tsEl;
          tsEl = tsEl->NextSiblingElement("tileset")) {
 
@@ -216,7 +232,8 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
             std::string tsxPath = resolvePath(baseDir, src);
             loadTileset(tsxPath, firstGid);
         } else {
-            std::cerr << "[MapManager] Inline tilesets not supported." << std::endl;
+            // Inline tileset declared directly in the .tmx
+            parseTilesetElement(tsEl, baseDir, firstGid);
         }
     }
 
@@ -390,6 +407,8 @@ void MapManager::loadMap(const std::string& tmxPath) {
     m_multiCoinStates.clear();
     m_brickDebris.clear();
     m_coinPopAnims.clear();
+    m_blockBumpAnims.clear();
+    m_tilesets.clear();
     m_gidTypeMap.clear();
     m_typeToGid.clear();
     m_textureLoaded = false;
@@ -549,11 +568,29 @@ void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
 // =============================================================================
 
 void MapManager::update(float deltaTime) {
-    // ── MULTI_COIN countdowns ─────────────────────────────────────────────────
+    // ── MULTI_COIN countdowns & animation ─────────────────────────────────────
     for (auto it = m_multiCoinStates.begin(); it != m_multiCoinStates.end(); ) {
         MultiCoinState& state = it->second;
         if (state.active) {
             state.timer -= deltaTime;
+            state.animTimer += deltaTime;
+
+            // Toggle animation frame every 0.15s between MULTI_COIN and MULTI_COIN2
+            if (state.animTimer >= 0.15f) {
+                state.animTimer = 0.f;
+                state.isFrame2 = !state.isFrame2;
+                int gx = it->first.first;
+                int gy = it->first.second;
+                if (gy >= 0 && gy < (int)m_mapData.size() &&
+                    gx >= 0 && gx < (int)m_mapData[0].size()) {
+                    TileType currentFrame = state.isFrame2 ? TileType::MULTI_COIN2 : TileType::MULTI_COIN;
+                    auto gidIt = m_typeToGid.find(currentFrame);
+                    if (gidIt != m_typeToGid.end()) {
+                        m_rawGids[gy][gx] = gidIt->second;
+                    }
+                }
+            }
+
             if (state.timer <= 0.f) {
                 int gx = it->first.first;
                 int gy = it->first.second;
@@ -578,6 +615,15 @@ void MapManager::update(float deltaTime) {
         std::remove_if(m_brickDebris.begin(), m_brickDebris.end(),
             [](const BrickDebris& d){ return d.life <= 0.f; }),
         m_brickDebris.end());
+
+    // ── Block bump animations ─────────────────────────────────────────────────
+    for (auto& b : m_blockBumpAnims) {
+        b.time += deltaTime;
+    }
+    m_blockBumpAnims.erase(
+        std::remove_if(m_blockBumpAnims.begin(), m_blockBumpAnims.end(),
+            [](const BlockBumpAnim& b){ return b.time >= BlockBumpAnim::DURATION; }),
+        m_blockBumpAnims.end());
 
     // ── Coin pop animations ───────────────────────────────────────────────────
     for (auto& c : m_coinPopAnims) {
@@ -614,22 +660,82 @@ void MapManager::render(sf::RenderWindow& window) const {
             TileType type = m_mapData[y][x];
 
             const float worldX = (float)x * m_tileSize;
-            const float worldY = (float)y * m_tileSize;
+            const float originalWorldY = (float)y * m_tileSize;
+            float worldY = originalWorldY;
+
+            bool hasBump = false;
+            // Check if this block currently has a bump bounce animation
+            for (const auto& b : m_blockBumpAnims) {
+                if (b.gx == static_cast<int>(x) && b.gy == static_cast<int>(y)) {
+                    float progress = std::clamp(b.time / BlockBumpAnim::DURATION, 0.f, 1.f);
+                    float offsetY = BlockBumpAnim::MAX_OFFSET * std::sin(progress * 3.14159265f);
+                    worldY += offsetY;
+                    hasBump = true;
+                    break;
+                }
+            }
 
             if (m_textureLoaded && hasRawGids &&
                 y < m_rawGids.size() && x < m_rawGids[y].size()) {
 
+                // If block is bouncing upward, draw the background underneath at its resting position
+                if (hasBump) {
+                    int bgGid = (y < m_bgGids.size() && x < m_bgGids[y].size()) ? m_bgGids[y][x] : 0;
+                    if (bgGid <= 0) {
+                        auto it = m_typeToGid.find(TileType::EMPTY);
+                        if (it != m_typeToGid.end()) bgGid = it->second;
+                        else bgGid = m_tilesetFirstGid;
+                    }
+                    if (bgGid > 0) {
+                        const LoadedTileset* tsBg = nullptr;
+                        for (const auto& candidate : m_tilesets) {
+                            if (bgGid >= candidate.firstGid) {
+                                if (!tsBg || candidate.firstGid > tsBg->firstGid) {
+                                    tsBg = &candidate;
+                                }
+                            }
+                        }
+                        int colsBg = tsBg ? tsBg->columns : m_tilesetColumns;
+                        int fgidBg = tsBg ? tsBg->firstGid : m_tilesetFirstGid;
+                        if (colsBg > 0) {
+                            int localIdBg = bgGid - fgidBg;
+                            int tileColBg = localIdBg % colsBg;
+                            int tileRowBg = localIdBg / colsBg;
+                            m_tileSprite->setTextureRect(sf::IntRect(
+                                {tileColBg * m_tileSize, tileRowBg * m_tileSize},
+                                {m_tileSize, m_tileSize}));
+                            m_tileSprite->setPosition({worldX, originalWorldY});
+                            window.draw(*m_tileSprite);
+                        }
+                    }
+                }
+
                 int gid = m_rawGids[y][x];
-                if (gid > 0 && m_tilesetColumns > 0) {
-                    int localId  = gid - m_tilesetFirstGid;
-                    int tileCol  = localId % m_tilesetColumns;
-                    int tileRow  = localId / m_tilesetColumns;
-                    m_tileSprite->setTextureRect(sf::IntRect(
-                        {tileCol * m_tileSize, tileRow * m_tileSize},
-                        {m_tileSize, m_tileSize}));
-                    m_tileSprite->setPosition({worldX, worldY});
-                    window.draw(*m_tileSprite);
-                    continue;
+                if (gid > 0) {
+                    // Find the best matching tileset for this GID
+                    const LoadedTileset* ts = nullptr;
+                    for (const auto& candidate : m_tilesets) {
+                        if (gid >= candidate.firstGid) {
+                            if (!ts || candidate.firstGid > ts->firstGid) {
+                                ts = &candidate;
+                            }
+                        }
+                    }
+
+                    int cols = ts ? ts->columns : m_tilesetColumns;
+                    int fgid = ts ? ts->firstGid : m_tilesetFirstGid;
+
+                    if (cols > 0) {
+                        int localId  = gid - fgid;
+                        int tileCol  = localId % cols;
+                        int tileRow  = localId / cols;
+                        m_tileSprite->setTextureRect(sf::IntRect(
+                            {tileCol * m_tileSize, tileRow * m_tileSize},
+                            {m_tileSize, m_tileSize}));
+                        m_tileSprite->setPosition({worldX, worldY});
+                        window.draw(*m_tileSprite);
+                        continue;
+                    }
                 }
             }
 
@@ -641,6 +747,7 @@ void MapManager::render(sf::RenderWindow& window) const {
                 case TileType::GROUND:           tileShape.setFillColor(sf::Color(139,  69,  19)); break;
                 case TileType::PIPE:             tileShape.setFillColor(sf::Color::Green);          break;
                 case TileType::BRICK_NORMAL:     tileShape.setFillColor(sf::Color(205, 133,  63)); break;
+                case TileType::BRICK_SOLID:      tileShape.setFillColor(sf::Color(190, 120,  55)); break;
                 case TileType::SOLID_BRICK:      tileShape.setFillColor(sf::Color(160, 110,  80)); break;
                 case TileType::QUESTION_USED:    tileShape.setFillColor(sf::Color(130,  90,  60)); break;
                 case TileType::MULTI_COIN:       tileShape.setFillColor(sf::Color(205, 133,  63)); break;
@@ -656,24 +763,37 @@ void MapManager::render(sf::RenderWindow& window) const {
     }
 
     // ── Flag slide animation ──────────────────────────────────────────────────
-    if (m_flagAnim.active && m_tileSprite && m_tilesetColumns > 0) {
-        int localId = GID_FLAGPOLE_FLAG - m_tilesetFirstGid;
-        int tileCol = localId % m_tilesetColumns;
-        int tileRow = localId / m_tilesetColumns;
-        m_tileSprite->setTextureRect(sf::IntRect(
-            {tileCol * m_tileSize, tileRow * m_tileSize},
-            {m_tileSize, m_tileSize}));
-        m_tileSprite->setPosition(m_flagAnim.pos);
-        window.draw(*m_tileSprite);
+    if (m_flagAnim.active && m_tileSprite) {
+        const LoadedTileset* ts = nullptr;
+        for (const auto& candidate : m_tilesets) {
+            if (GID_FLAGPOLE_FLAG >= candidate.firstGid) {
+                if (!ts || candidate.firstGid > ts->firstGid) {
+                    ts = &candidate;
+                }
+            }
+        }
+        int cols = ts ? ts->columns : m_tilesetColumns;
+        int fgid = ts ? ts->firstGid : m_tilesetFirstGid;
 
-        int localIdAttach = GID_FLAGPOLE_ATTACH - m_tilesetFirstGid;
-        int tileColAttach = localIdAttach % m_tilesetColumns;
-        int tileRowAttach = localIdAttach / m_tilesetColumns;
-        m_tileSprite->setTextureRect(sf::IntRect(
-            {tileColAttach * m_tileSize, tileRowAttach * m_tileSize},
-            {m_tileSize, m_tileSize}));
-        m_tileSprite->setPosition({m_flagAnim.pos.x + (float)m_tileSize, m_flagAnim.pos.y});
-        window.draw(*m_tileSprite);
+        if (cols > 0) {
+            int localId = GID_FLAGPOLE_FLAG - fgid;
+            int tileCol = localId % cols;
+            int tileRow = localId / cols;
+            m_tileSprite->setTextureRect(sf::IntRect(
+                {tileCol * m_tileSize, tileRow * m_tileSize},
+                {m_tileSize, m_tileSize}));
+            m_tileSprite->setPosition(m_flagAnim.pos);
+            window.draw(*m_tileSprite);
+
+            int localIdAttach = GID_FLAGPOLE_ATTACH - fgid;
+            int tileColAttach = localIdAttach % cols;
+            int tileRowAttach = localIdAttach / cols;
+            m_tileSprite->setTextureRect(sf::IntRect(
+                {tileColAttach * m_tileSize, tileRowAttach * m_tileSize},
+                {m_tileSize, m_tileSize}));
+            m_tileSprite->setPosition({m_flagAnim.pos.x + (float)m_tileSize, m_flagAnim.pos.y});
+            window.draw(*m_tileSprite);
+        }
     }
 
     // ── Brick debris ──────────────────────────────────────────────────────────
@@ -832,12 +952,26 @@ void MapManager::setMultiCoinActive(int gx, int gy) {
     if (!state.active) {
         state.active = true;
         state.timer  = MULTI_COIN_DURATION;
+        state.animTimer = 0.f;
+        state.isFrame2  = false;
     }
 }
 
 void MapManager::killEnemiesAboveTile(int gx, int gy) {
     if (m_enemyManager)
         m_enemyManager->killEnemiesAboveTile(gx, gy);
+}
+
+void MapManager::spawnBlockBump(int gx, int gy, TileType finalType) {
+    setTileInternal(gx, gy, finalType);
+
+    // Reset any active bump animation on the same tile
+    m_blockBumpAnims.erase(
+        std::remove_if(m_blockBumpAnims.begin(), m_blockBumpAnims.end(),
+            [gx, gy](const BlockBumpAnim& b) { return b.gx == gx && b.gy == gy; }),
+        m_blockBumpAnims.end());
+
+    m_blockBumpAnims.push_back(BlockBumpAnim{gx, gy, 0.f});
 }
 
 // =============================================================================

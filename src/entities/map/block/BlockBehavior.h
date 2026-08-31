@@ -36,8 +36,20 @@ public:
     void onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
 };
 
-class BrickBehavior final : public IBlockBehavior {
+class BrickEmptyBehavior final : public IBlockBehavior {
 public:
+    // BRICK_EMPTY (BRICK_NORMAL): Khi player Super/Fire đập -> vỡ vụn thành EMPTY.
+    // Khi player Normal đập -> nảy lên nửa ô rồi về vị trí cũ (không vỡ).
+    // Đều diệt/đẩy enemy đứng trên gạch.
+    bool isSolid() const override { return true; }
+    void onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
+};
+using BrickBehavior = BrickEmptyBehavior; // Alias for backward compatibility
+
+class BrickSolidBehavior final : public IBlockBehavior {
+public:
+    // BRICK_SOLID: Khi đập -> nảy lên nửa ô và biến thành QUESTION_USED.
+    // Diệt/đẩy enemy đứng trên gạch.
     bool isSolid() const override { return true; }
     void onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
 };
@@ -60,12 +72,18 @@ public:
     void onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
 };
 
-class HiddenBlockBehavior final : public IBlockBehavior {
+class MultiCoin2Behavior final : public IBlockBehavior {
 public:
+    bool isSolid() const override { return true; }
+    void onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
+};
+
+class HiddenBlockBehavior final : public IBlockBehavior {
     // HIDDEN_BLOCK: vô hình & KHÔNG solid từ trái/phải/trên (Mario đi xuyên qua).
     // Chỉ bump được từ dưới lên (isSolidFromBelow = true) vì PlayerManager
     // gọi onHitFromBelow trong nhánh isSolidFromBelow(). Sau khi đập →
     // setTile(SOLID_BRICK) trở thành block solid thật sự.
+public:
     bool isSolid() const override { return false; }
     bool isSolidFromBelow() const override { return true; }
     void onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;

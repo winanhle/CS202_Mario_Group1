@@ -46,4 +46,10 @@ public:
      * above (gy - 1). Called when a brick is broken by a Super/Fire player.
      */
     virtual void killEnemiesAboveTile(int gx, int gy) = 0;
+
+    /**
+     * @brief Spawn a vertical bounce animation for block at (gx, gy)
+     *        moving up by half a tile (8px) and returning, while setting finalType.
+     */
+    virtual void spawnBlockBump(int gx, int gy, TileType finalType) = 0;
 };

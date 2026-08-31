@@ -5,9 +5,8 @@
 #include <unordered_map>
 
 // =============================================================================
-//  Implementations — chuyển trạng thái qua IMapContext::setTile để đảm bảo
-//  m_mapData và m_rawGids (texture) LUÔN đồng bộ (Encapsulation).
-//  Brick behavior cũng gọi killEnemiesAboveTile để diệt enemy ngồi trên đỉnh.
+//  Implementations — chuyển trạng thái qua IMapContext::setTile hoặc spawnBlockBump
+//  để đảm bảo m_mapData và m_rawGids (texture) LUÔN đồng bộ (Encapsulation).
 // =============================================================================
 
 void EmptyBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
@@ -30,47 +29,77 @@ void PipeBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManag
     (void)ctx; (void)gx; (void)gy; (void)player; // không phản ứng
 }
 
-// BRICK_NORMAL: Super/Fire Mario breaks it → kill enemies above → debris → EMPTY.
-// Normal Mario: no effect (just bump animation handled by PlayerManager).
-void BrickBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
+// BRICK_EMPTY (BRICK_NORMAL):
+// - Super/Fire Mario: diệt enemy trên gạch -> tạo mảnh vỡ -> biến thành EMPTY.
+// - Normal Mario: diệt enemy trên gạch -> nảy lên nửa ô (spawnBlockBump) và giữ nguyên BRICK_EMPTY.
+void BrickEmptyBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
+    ctx.killEnemiesAboveTile(gx, gy); // diệt enemy đứng trên gạch vỡ/bị nảy
     if (player && player->getFormType() != FormType::Normal) {
-        ctx.killEnemiesAboveTile(gx, gy); // diệt enemy đứng trên gạch vỡ
         ctx.spawnBrickDebris(gx, gy);
         ctx.setTile(gx, gy, TileType::EMPTY);
         player->addScore(50);
+    } else {
+        ctx.spawnBlockBump(gx, gy, TileType::BRICK_EMPTY);
     }
 }
 
-// QUESTION_COIN: spawn coin pop → transition to QUESTION_USED (exhausted ? visual).
+// BRICK_SOLID:
+// - Khi đập: diệt enemy trên gạch -> nảy lên nửa ô và biến thành QUESTION_USED.
+void BrickSolidBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
+{
+    ctx.killEnemiesAboveTile(gx, gy); // diệt enemy đứng trên gạch
+    ctx.spawnBlockBump(gx, gy, TileType::QUESTION_USED);
+    if (player) player->addScore(50);
+}
+
+// QUESTION_COIN:
+// - Diệt enemy trên block -> nảy lên nửa ô -> spawn coin pop -> chuyển thành QUESTION_USED.
 void QuestionCoinBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
+    ctx.killEnemiesAboveTile(gx, gy);
     ctx.spawnCoinPop(gx, gy);
     if (player) player->collectCoin(1);
-    ctx.setTile(gx, gy, TileType::QUESTION_USED); // đổi sang texture ? đã dùng
+    ctx.spawnBlockBump(gx, gy, TileType::QUESTION_USED); // nảy lên nửa ô và thành QUESTION_USED
 }
 
-// QUESTION_POWERUP: spawn item → transition to QUESTION_USED.
+// QUESTION_POWERUP:
+// - Diệt enemy trên block -> spawn item -> nảy lên nửa ô -> chuyển thành QUESTION_USED.
 void QuestionPowerupBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
+    ctx.killEnemiesAboveTile(gx, gy);
     ctx.spawnItemForFormType(gx, gy, player ? static_cast<int>(player->getFormType()) : 0);
-    ctx.setTile(gx, gy, TileType::QUESTION_USED); // đổi sang texture ? đã dùng
+    ctx.spawnBlockBump(gx, gy, TileType::QUESTION_USED); // nảy lên nửa ô và thành QUESTION_USED
 }
 
-// MULTI_COIN: vẫn cho coin trong cửa sổ 3.5s (award lặp lại ở mỗi lần đập),
-// countdown do MapManager::update() xử lý → setTile(QUESTION_USED) khi hết giờ.
+// MULTI_COIN:
+// - Vẫn cho coin và nảy lên trong cửa sổ 3.5s; countdown do MapManager::update() xử lý.
 void MultiCoinBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
+    ctx.killEnemiesAboveTile(gx, gy);
     ctx.spawnCoinPop(gx, gy);
     if (player) player->collectCoin(1);
+    ctx.spawnBlockBump(gx, gy, TileType::MULTI_COIN);
     ctx.setMultiCoinActive(gx, gy);
 }
 
-// HIDDEN_BLOCK: vô hình + không solid; khi đập → trở thành SOLID_BRICK.
+// MULTI_COIN2:
+// - Frame 2 của MULTI_COIN khi đang hoạt động, có cùng hành vi khi bị đập tiếp
+void MultiCoin2Behavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
+{
+    ctx.killEnemiesAboveTile(gx, gy);
+    ctx.spawnCoinPop(gx, gy);
+    if (player) player->collectCoin(1);
+    ctx.spawnBlockBump(gx, gy, TileType::MULTI_COIN);
+    ctx.setMultiCoinActive(gx, gy);
+}
+
+// HIDDEN_BLOCK: vô hình + không solid; khi đập → nảy lên và trở thành SOLID_BRICK.
 void HiddenBlockBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
     (void)player;
-    ctx.setTile(gx, gy, TileType::SOLID_BRICK); // → solid + hiện texture block đã dùng
+    ctx.killEnemiesAboveTile(gx, gy);
+    ctx.spawnBlockBump(gx, gy, TileType::SOLID_BRICK);
 }
 
 void SolidBrickBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
@@ -114,10 +143,12 @@ const IBlockBehavior& getBlockBehavior(TileType type)
     static const BackgroundBehavior     background;
     static const GroundBehavior         ground;
     static const PipeBehavior           pipe;
-    static const BrickBehavior          brick;
+    static const BrickEmptyBehavior     brickEmpty;
+    static const BrickSolidBehavior     brickSolid;
     static const QuestionCoinBehavior   qCoin;
     static const QuestionPowerupBehavior qPower;
     static const MultiCoinBehavior      multiCoin;
+    static const MultiCoin2Behavior     multiCoin2;
     static const HiddenBlockBehavior    hidden;
     static const SolidBrickBehavior     solid;
     static const QuestionUsedBehavior   qUsed;
@@ -131,10 +162,13 @@ const IBlockBehavior& getBlockBehavior(TileType type)
         {TileType::BACKGROUND,         &background},
         {TileType::GROUND,             &ground},
         {TileType::PIPE,               &pipe},
-        {TileType::BRICK_NORMAL,       &brick},
+        {TileType::BRICK_NORMAL,       &brickEmpty},
+        {TileType::BRICK_EMPTY,        &brickEmpty},
+        {TileType::BRICK_SOLID,        &brickSolid},
         {TileType::QUESTION_COIN,      &qCoin},
         {TileType::QUESTION_POWERUP,   &qPower},
         {TileType::MULTI_COIN,         &multiCoin},
+        {TileType::MULTI_COIN2,        &multiCoin2},
         {TileType::HIDDEN_BLOCK,       &hidden},
         {TileType::SOLID_BRICK,        &solid},
         {TileType::QUESTION_USED,      &qUsed},

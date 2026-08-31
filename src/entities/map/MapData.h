@@ -13,6 +13,7 @@ enum class TileType {
     GROUND = 1,
     PIPE = 2,
     BRICK_NORMAL = 3,
+    BRICK_EMPTY = 3,  // Synonym for BRICK_NORMAL (breaks into EMPTY)
     QUESTION_COIN = 4,
     QUESTION_POWERUP = 5,
     MULTI_COIN = 6,
@@ -23,7 +24,9 @@ enum class TileType {
     SOLID_BRICK = 11,
     BACKGROUND = 12,  // trang trí (bụi cỏ, đám mây) — xử lý giống hệt EMPTY
     FIRE_BAR = 13,
-    QUESTION_USED = 14 // ? block đã dùng hết — solid + texture riêng (khác SOLID_BRICK)
+    QUESTION_USED = 14, // ? block đã dùng hết — solid + texture riêng (khác SOLID_BRICK)
+    BRICK_SOLID = 15,  // Gạch đặc — khi đập sẽ bounce và biến thành QUESTION_USED
+    MULTI_COIN2 = 16   // Frame 2 của animation MULTI_COIN khi đang hoạt động
 };
 
 /**

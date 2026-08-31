@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.12.2" name="world1_1" tilewidth="16" tileheight="16" tilecount="6330" columns="211">
+ <properties>
+  <property name="type" value="PIPE"/>
+ </properties>
  <image source="world1_1.png" width="3376" height="480"/>
  <tile id="0">
   <properties>
@@ -174,6 +177,11 @@
  <tile id="1922">
   <properties>
    <property name="type" value="MULTI_COIN"/>
+  </properties>
+ </tile>
+ <tile id="1924">
+  <properties>
+   <property name="type" value="MULTI_COIN2"/>
   </properties>
  </tile>
  <tile id="2097">
@@ -2599,6 +2607,11 @@
  <tile id="3650">
   <properties>
    <property name="type" value="PIPE"/>
+  </properties>
+ </tile>
+ <tile id="5116">
+  <properties>
+   <property name="type" value="COIN"/>
   </properties>
  </tile>
  <tile id="5547">
