@@ -2,6 +2,8 @@
 #include "enemies/Goomba.h"
 #include "enemies/BuzzyBeetle.h"
 #include "enemies/KoopaTroopa.h"
+#include "enemies/Boss.h"
+#include "enemies/BossFireball.h"
 #include "../../interfaces/IPlayerManager.h"
 #include <iostream>
 #include <SFML/Graphics.hpp>
@@ -48,9 +50,6 @@ void EnemyManager::initialize() {
         if (!m_koopaTroopaTextures[i].loadFromFile(koopaTroopaPaths[i]))
             throw std::runtime_error(std::string("Failed to load ") + koopaTroopaPaths[i]);
     }
-
-    // NOTE: Enemies are no longer hardcoded here.
-    // They are spawned via spawnFromMapData() after the map is loaded.
 }
 
 void EnemyManager::update(float deltaTime) {
@@ -60,50 +59,52 @@ void EnemyManager::update(float deltaTime) {
 
         enemy->update(deltaTime);
         //gravity
-        enemy->applyGravity(deltaTime);
+        if (enemy->usesPhysics()) {
+            enemy->applyGravity(deltaTime);
 
-        if (!m_mapManager)
-        {
+            if (!m_mapManager)
+            {
+                enemy->move(deltaTime);
+                continue;
+            }
+            //horizontal collision
+            sf::FloatRect hitbox = enemy->getHitbox();
+
+            float checkX;
+
+            if (enemy->getDirection() < 0)
+            {
+                // Enemy đang đi LEFT
+                checkX = hitbox.position.x - 1.f;
+            }
+            else
+            {
+                // Enemy đang đi RIGHT
+                checkX =
+                    hitbox.position.x +
+                    hitbox.size.x +
+                    1.f;
+            }
+
+            // Check 2 điểm ở phía trước enemy
+            float checkTop =
+                hitbox.position.y + 2.f;
+
+            float checkBottom =
+                hitbox.position.y +
+                hitbox.size.y - 2.f;
+
+            bool hitWall =
+                m_mapManager->isSolid(checkX, checkTop) ||
+                m_mapManager->isSolid(checkX, checkBottom);
+
+            if (hitWall)
+            {
+                enemy->reverseDirection();
+            }
+
             enemy->move(deltaTime);
-            continue;
         }
-        //horizontal collision
-        sf::FloatRect hitbox = enemy->getHitbox();
-
-        float checkX;
-
-        if (enemy->getDirection() < 0)
-        {
-            // Enemy đang đi LEFT
-            checkX = hitbox.position.x - 1.f;
-        }
-        else
-        {
-            // Enemy đang đi RIGHT
-            checkX =
-                hitbox.position.x +
-                hitbox.size.x +
-                1.f;
-        }
-
-        // Check 2 điểm ở phía trước enemy
-        float checkTop =
-            hitbox.position.y + 2.f;
-
-        float checkBottom =
-            hitbox.position.y +
-            hitbox.size.y - 2.f;
-
-        bool hitWall =
-            m_mapManager->isSolid(checkX, checkTop) ||
-            m_mapManager->isSolid(checkX, checkBottom);
-
-        if (hitWall)
-        {
-            enemy->reverseDirection();
-        }
-
-        enemy->move(deltaTime);
         //ground collision
         sf::FloatRect newHitbox = enemy->getHitbox();
 
@@ -150,6 +151,13 @@ void EnemyManager::update(float deltaTime) {
 
         if (m_player2)
             resolvePlayerCollision(*enemy, m_player2, 1);
+    }
+
+    if (!m_pendingSpawns.empty())
+    {
+        for (auto& spawned : m_pendingSpawns)
+            m_enemies.push_back(std::move(spawned));
+        m_pendingSpawns.clear();
     }
 }
 
@@ -247,6 +255,13 @@ void EnemyManager::spawnFromMapData(const std::vector<EntitySpawnData>& spawns) 
             std::array<sf::Texture*, 2> rightFrames{&m_buzzyBeetleTextures[3], &m_buzzyBeetleTextures[4]};
             enemy = std::make_unique<BuzzyBeetle>(
                 spawnData.x, spawnData.y, leftFrames, rightFrames, m_buzzyBeetleTextures[2]);
+        }
+        else if (spawnData.type == "Boss") {
+            enemy = std::make_unique<Boss>(
+                spawnData.x, spawnData.y,
+                [this](float fx, float fy, int dir) {
+                    m_pendingSpawns.push_back(std::make_unique<BossFireball>(fx, fy, dir));
+                });
         }
         else {
             std::cerr << "[EnemyManager] Unknown enemy type: " << spawnData.type << std::endl;
