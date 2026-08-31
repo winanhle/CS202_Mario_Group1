@@ -5,6 +5,7 @@
 #include "../entities/map/MapData.h"
 
 class IItemManager; // forward declaration
+class IPlayerManager;
 
 namespace sf {
 class RenderWindow;
@@ -43,7 +44,7 @@ public:
      * @param tileGridY  Grid row of the hit tile
      * @param formType   Current form of the player (0=Normal, 1=Super, 2=Fire)
      */
-    virtual void onHitFromBelow(int tileGridX, int tileGridY, int formType) = 0;
+    virtual void onHitFromBelow(int tileGridX, int tileGridY, IPlayerManager* player) = 0;
 
     /**
      * @brief Inject ItemManager so MapManager can spawn coins/power-ups.

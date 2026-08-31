@@ -181,6 +181,7 @@ void EnemyManager::resolvePlayerCollision(Enemy& enemy, IPlayerManager* player, 
         if (isStomp && !wasOverlapping)
         {
             enemy.onStomp();
+            player->addScore(100);
         }
         else if (!wasOverlapping || !player->isInvincible())
         {

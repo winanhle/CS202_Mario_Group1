@@ -124,10 +124,7 @@ public:
      * @param livesOverride Optional lives override (e.g. stage-start lives). If nullopt, uses current lives.
      * @param coinsOverride Optional coins override (e.g. stage-start coins). If nullopt, uses current coins.
      */
-    GameMemento createMemento(const GameConfig& config,
-                              std::optional<int> scoreOverride = std::nullopt,
-                              std::optional<int> livesOverride = std::nullopt,
-                              std::optional<int> coinsOverride = std::nullopt) const;
+    GameMemento createMemento(const GameConfig& config) const;
 
     /**
      * @brief Restores the game world state from a Memento snapshot (Originator in Memento pattern).
@@ -181,8 +178,9 @@ public:
 private:
     // --- Module manager instances ---
     std::shared_ptr<IMapManager>      m_mapManager;
-    std::shared_ptr<IPlayerManager>   m_playerManager;
-    std::shared_ptr<IPlayerManager>   m_playerManager2; // null trong 1P mode
+    std::shared_ptr<IPlayerManager> m_playerManager;
+    std::shared_ptr<IPlayerManager> m_playerManager2; // null trong 1P mode
+    std::weak_ptr<IPlayerManager> m_levelWinner;
     std::shared_ptr<IEnemyManager>    m_enemyManager;
     std::shared_ptr<IItemManager>     m_itemManager;
     std::shared_ptr<IHUDManager>      m_hudManager;
@@ -202,7 +200,8 @@ private:
     bool m_isTimerTallyActive = false;
     int  m_timerPopupCounter = 0;
     bool m_isInitialized = false;
-    int  m_lastTotalScore = -1;
+    int  m_lastScore1 = -1;
+    int  m_lastScore2 = -1;
 
     /**
      * @brief Kiểm tra điều kiện "round death" và xử lý respawn / game over.

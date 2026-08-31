@@ -24,5 +24,6 @@ public:
     void OnInteract(IPlayerManager* player) override
     {
         player->activateStar();
+        player->addScore(1000);
     }
 };

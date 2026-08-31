@@ -103,19 +103,12 @@ void PlayState::setup(const GameConfig& config)
         m_gameWorld->restoreFromMemento(*loadedMemento);
     }
 
-    m_levelStartScore = m_gameWorld->getTotalScore();
-    m_levelStartLives = m_gameWorld->getSharedLives();
-    m_levelStartCoins = m_gameWorld->getTotalCoins();
+    m_levelStartMemento = m_gameWorld->createMemento(m_config);
 }
 
 GameMemento PlayState::captureLevelStartMemento() const
 {
-    if (m_gameWorld)
-    {
-        return m_gameWorld->createMemento(
-            m_config, m_levelStartScore, m_levelStartLives, m_levelStartCoins);
-    }
-    return GameMemento{ m_levelStartScore, m_levelStartLives, 1, m_levelStartCoins, m_config };
+    return m_levelStartMemento;
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -209,9 +202,7 @@ void PlayState::update(float deltaTime)
                         m_gameWorld->advanceStage();
                         m_config.customMapPath = ""; // Clear custom testing map path for future stages and saves
                         
-                        m_levelStartScore = m_gameWorld->getTotalScore();
-                        m_levelStartLives = m_gameWorld->getSharedLives();
-                        m_levelStartCoins = m_gameWorld->getTotalCoins();
+                        m_levelStartMemento = m_gameWorld->createMemento(m_config);
 
                         if (m_saveManager)
                         {

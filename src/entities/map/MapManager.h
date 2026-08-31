@@ -1,4 +1,5 @@
 #pragma once
+#include "../../interfaces/IPlayerManager.h"
 #include "../../interfaces/IMapManager.h"
 #include "../../interfaces/IItemManager.h"
 #include <vector>
@@ -163,7 +164,7 @@ public:
     void setMultiCoinActive(int gx, int gy);           // bắt đầu/giữ countdown 3.5s
 
     // ─── IMapManager new API ─────────────────────────────────────────────────
-    void onHitFromBelow(int tileGridX, int tileGridY, int formType) override;
+    void onHitFromBelow(int tileGridX, int tileGridY, IPlayerManager* player) override;
     void setItemManager(IItemManager* itemManager) override { m_itemManager = itemManager; }
 
     void triggerFlagSlide(int poleGridX) override;

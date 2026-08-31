@@ -56,10 +56,13 @@ bool SaveManager::saveGame(const GameMemento& memento)
     }
 
     // Write save data snapshot in key=value format
-    file << "score=" << memento.score << "\n";
+    file << "numPlayers=" << memento.players.size() << "\n";
+    for (size_t i = 0; i < memento.players.size(); ++i) {
+        file << "p" << (i+1) << "score=" << memento.players[i].score << "\n";
+        file << "p" << (i+1) << "coins=" << memento.players[i].coins << "\n";
+    }
     file << "lives=" << memento.lives << "\n";
     file << "level=" << memento.stage << "\n";
-    file << "coins=" << memento.coins << "\n";
     file << "p1Char=" << static_cast<int>(memento.config.player1Character) << "\n";
     file << "p2Char=" << static_cast<int>(memento.config.player2Character) << "\n";
     file << "mode=" << static_cast<int>(memento.config.mode) << "\n";
@@ -71,8 +74,11 @@ bool SaveManager::saveGame(const GameMemento& memento)
     file.close();
     m_hasSave = true;
 
+    int totalScore = 0;
+    for (const auto& p : memento.players) totalScore += p.score;
+
     std::cout << "[SaveManager] Game saved successfully (Memento snapshot: Stage "
-              << memento.stage << ", Score " << memento.score << ")." << std::endl;
+              << memento.stage << ", Score " << totalScore << ")." << std::endl;
     return true;
 }
 
@@ -99,10 +105,29 @@ std::optional<GameMemento> SaveManager::loadGame()
         {
             try
             {
-                if (key == "score") { memento.score = std::stoi(value); hasAnyData = true; }
+                if (key == "numPlayers") {
+                    memento.players.resize(std::min(2, std::max(0, std::stoi(value))));
+                    hasAnyData = true;
+                }
+                else if (key.rfind("p", 0) == 0 && key.find("score") != std::string::npos) {
+                    // Extract player index
+                    size_t pIndex = std::stoi(key.substr(1, 1)) - 1;
+                    if (pIndex < 2) {
+                          if (pIndex >= memento.players.size()) memento.players.resize(pIndex + 1);
+                        memento.players[pIndex].score = std::stoi(value);
+                        hasAnyData = true;
+                    }
+                }
+                else if (key.rfind("p", 0) == 0 && key.find("coins") != std::string::npos) {
+                    size_t pIndex = std::stoi(key.substr(1, 1)) - 1;
+                    if (pIndex < 2) {
+                          if (pIndex >= memento.players.size()) memento.players.resize(pIndex + 1);
+                        memento.players[pIndex].coins = std::stoi(value);
+                        hasAnyData = true;
+                    }
+                }
                 else if (key == "lives") { memento.lives = std::stoi(value); hasAnyData = true; }
                 else if (key == "level") { memento.stage = std::stoi(value); hasAnyData = true; }
-                else if (key == "coins") { memento.coins = std::stoi(value); hasAnyData = true; }
                 else if (key == "p1Char") { memento.config.player1Character = static_cast<CharacterType>(std::stoi(value)); hasAnyData = true; }
                 else if (key == "p2Char") { memento.config.player2Character = static_cast<CharacterType>(std::stoi(value)); hasAnyData = true; }
                 else if (key == "mode") { memento.config.mode = static_cast<GameMode>(std::stoi(value)); hasAnyData = true; }
@@ -125,7 +150,7 @@ std::optional<GameMemento> SaveManager::loadGame()
 
     m_hasSave = true;
     std::cout << "[SaveManager] Game loaded successfully (Memento snapshot: Stage "
-              << memento.stage << ", Score " << memento.score << ")." << std::endl;
+              << memento.stage << ", Score " << memento.getTotalScore() << ")." << std::endl;
     return memento;
 }
 

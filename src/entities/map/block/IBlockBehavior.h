@@ -1,6 +1,7 @@
 #pragma once
 
 class MapManager;
+class IPlayerManager;
 
 /**
  * @interface IBlockBehavior
@@ -41,5 +42,5 @@ public:
      * @param formType Form hiện tại của player (Normal=0, Super/Fire>0),
      *                 dùng để quyết định Mushroom hay FireFlower.
      */
-    virtual void onHitFromBelow(MapManager& map, int gx, int gy, int formType) const = 0;
+    virtual void onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const = 0;
 };

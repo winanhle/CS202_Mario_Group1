@@ -203,9 +203,8 @@ int ItemManager::getItemCount() const
 
 void ItemManager::spawnCoinPop(float worldX, float worldY)
 {
-    // Award the coin immediately to the player (visual pop is handled by MapManager)
-    if (m_player)
-        m_player->collectCoin(1);
+    // The visual pop is handled by MapManager.
+    // The player is awarded the coin directly in BlockBehavior (fixes multiplayer coin theft).
 }
 
 void ItemManager::spawnMushroom(float worldX, float worldY)

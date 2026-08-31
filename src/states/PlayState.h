@@ -52,9 +52,7 @@ private:
     GameConfig m_config;
     bool m_loadSave = false;
     
-    int m_levelStartScore = 0;
-    int m_levelStartLives = 3;
-    int m_levelStartCoins = 0;
+    GameMemento m_levelStartMemento;
 
     void setup(const GameConfig& config);
     GameMemento captureLevelStartMemento() const;

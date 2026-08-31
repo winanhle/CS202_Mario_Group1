@@ -28,6 +28,7 @@ public:
     void OnInteract(IPlayerManager* player) override
     {
         player->collectPowerUp(1);
+        player->addScore(1000);
     }
 
     void move(float dt) override {};

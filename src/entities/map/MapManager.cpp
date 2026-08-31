@@ -767,12 +767,12 @@ void MapManager::setTile(int gx, int gy, TileType type) {
 //  ON HIT FROM BELOW  (main dispatcher — Strategy Pattern)
 // =============================================================================
 
-void MapManager::onHitFromBelow(int gx, int gy, int formType) {
+void MapManager::onHitFromBelow(int gx, int gy, IPlayerManager* player) {
     if (gy < 0 || gy >= (int)m_mapData.size() ||
         gx < 0 || gx >= (int)m_mapData[0].size()) return;
 
-    TileType type = m_mapData[gy][gx];
-    getBlockBehavior(type).onHitFromBelow(*this, gx, gy, formType);
+    TileType type = getTileType(static_cast<float>(gx) * m_tileSize, static_cast<float>(gy) * m_tileSize);
+    getBlockBehavior(type).onHitFromBelow(*this, gx, gy, player);
 }
 
 // =============================================================================

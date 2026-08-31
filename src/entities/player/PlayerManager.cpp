@@ -570,7 +570,7 @@ void PlayerManager::tileCollisionY(float deltaTime) {
                     if (m_mapManager->isSolidFromBelow(probeX, probeY)) {
                         newY = (gy + 1) * tileSize;
                         // Fire tile interaction
-                        m_mapManager->onHitFromBelow(gx, gy, static_cast<int>(getFormType()));
+                        m_mapManager->onHitFromBelow(gx, gy, this);
                         m_velocityY = 0;
                         collided = true;
                         break;

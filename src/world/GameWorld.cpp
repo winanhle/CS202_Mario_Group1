@@ -202,36 +202,19 @@ void GameWorld::checkFlagpoleCollision()
                     m_isStageClear = true;
                 }
             };
-
             if (m_hudManager && m_hudManager->getTimeLeft() > 0.0f)
             {
                 float px = 0.f, py = 0.f;
-                if (m_playerManager && m_playerManager->isAlive())
+                if (auto winner = m_levelWinner.lock())
                 {
-                    auto hb = m_playerManager->getHitbox();
-                    px = hb.position.x + hb.size.x / 2.f;
-                    py = hb.position.y - 6.f;
-                }
-                else if (m_playerManager2 && m_playerManager2->isAlive())
-                {
-                    auto hb = m_playerManager2->getHitbox();
-                    px = hb.position.x + hb.size.x / 2.f;
-                    py = hb.position.y - 6.f;
-                }
-                else if (m_playerManager)
-                {
-                    auto hb = m_playerManager->getHitbox();
+                    auto hb = winner->getHitbox();
                     px = hb.position.x + hb.size.x / 2.f;
                     py = hb.position.y - 6.f;
                 }
 
                 m_hudManager->startTimerBonus([this](int bonus) {
-                    if (m_playerManager && m_playerManager->isAlive())
-                        m_playerManager->addScore(bonus);
-                    else if (m_playerManager2 && m_playerManager2->isAlive())
-                        m_playerManager2->addScore(bonus);
-                    else if (m_playerManager)
-                        m_playerManager->addScore(bonus);
+                    if (auto winner = m_levelWinner.lock())
+                        winner->addScore(bonus);
                 }, onDone, px, py);
             }
             else
@@ -250,13 +233,16 @@ void GameWorld::checkFlagpoleCollision()
     {
         touchedP1 = true;
         poleX = getFlagpoleTileX(m_playerManager->getHitbox());
+        m_levelWinner = m_playerManager;
     }
 
     if (m_playerManager2 && m_playerManager2->isAlive() && hitboxTouchesFlagpole(m_playerManager2->getHitbox()))
     {
         touchedP2 = true;
-        if (!touchedP1)
+        if (!touchedP1) {
             poleX = getFlagpoleTileX(m_playerManager2->getHitbox());
+            m_levelWinner = m_playerManager2;
+        }
     }
 
     if (!touchedP1 && !touchedP2)
@@ -396,27 +382,28 @@ void GameWorld::update(float deltaTime)
                 m_hudManager->showToast("1-UP!", 1.5f);
         }
 
-        int currentScore = getTotalScore();
-        if (!m_isFlagpoleSequenceActive && !m_isTimerTallyActive && m_lastTotalScore >= 0 && currentScore > m_lastTotalScore)
+        if (!m_isFlagpoleSequenceActive && !m_isTimerTallyActive)
         {
-            int diff = currentScore - m_lastTotalScore;
-            if (m_playerManager && m_playerManager->isAlive())
+            if (m_playerManager && m_lastScore1 >= 0 && m_playerManager->getScore() > m_lastScore1)
             {
+                int diff = m_playerManager->getScore() - m_lastScore1;
                 float px = m_playerManager->getPositionX();
                 float py = m_playerManager->getPositionY();
                 m_hudManager->spawnScorePopup(diff, px + 8.0f, py - 12.0f);
             }
-            else if (m_playerManager2 && m_playerManager2->isAlive())
+            if (m_playerManager2 && m_lastScore2 >= 0 && m_playerManager2->getScore() > m_lastScore2)
             {
+                int diff = m_playerManager2->getScore() - m_lastScore2;
                 float px = m_playerManager2->getPositionX();
                 float py = m_playerManager2->getPositionY();
                 m_hudManager->spawnScorePopup(diff, px + 8.0f, py - 12.0f);
             }
         }
-        m_lastTotalScore = currentScore;
+        if (m_playerManager) m_lastScore1 = m_playerManager->getScore();
+        if (m_playerManager2) m_lastScore2 = m_playerManager2->getScore();
 
         // Score: tổng của cả 2 player
-        m_hudManager->updateScore(currentScore);
+        m_hudManager->updateScore(getTotalScore());
         // Coins: tổng số coin của player
         m_hudManager->updateItemCount(getTotalCoins());
         // Lives: shared pool
@@ -614,16 +601,20 @@ void GameWorld::deleteSaveData()
         m_saveManager->deleteSave();
 }
 
-GameMemento GameWorld::createMemento(const GameConfig& config,
-                                     std::optional<int> scoreOverride,
-                                     std::optional<int> livesOverride,
-                                     std::optional<int> coinsOverride) const
+GameMemento GameWorld::createMemento(const GameConfig& config) const
 {
     GameMemento memento;
-    memento.score = scoreOverride.value_or(getTotalScore());
-    memento.lives = livesOverride.value_or(getSharedLives());
+    memento.lives = getSharedLives();
     memento.stage = getCurrentStageNumber();
-    memento.coins = coinsOverride.value_or(getTotalCoins());
+    
+    memento.players.resize(m_playerManager2 ? 2 : 1);
+    if (m_playerManager) {
+        memento.players[0] = { m_playerManager->getScore(), m_playerManager->getCoins() };
+    }
+    if (m_playerManager2) {
+        memento.players[1] = { m_playerManager2->getScore(), m_playerManager2->getCoins() };
+    }
+    
     memento.config = config;
     memento.config.customMapPath = m_customMapPath;
     return memento;
@@ -644,27 +635,40 @@ void GameWorld::restoreFromMemento(const GameMemento& memento)
     }
     setSharedLives(memento.lives);
 
+    int p1Score = 0, p1Coins = 0;
+    if (memento.players.size() > 0) {
+        p1Score = memento.players[0].score;
+        p1Coins = memento.players[0].coins;
+    }
+    
+    int p2Score = 0, p2Coins = 0;
+    if (memento.players.size() > 1) {
+        p2Score = memento.players[1].score;
+        p2Coins = memento.players[1].coins;
+    }
+
     if (m_playerManager)
     {
-        m_playerManager->restoreState(memento.score, memento.lives,
+        m_playerManager->restoreState(p1Score, memento.lives,
                                       m_playerManager->getPositionX(),
                                       m_playerManager->getPositionY());
-        m_playerManager->setCoins(memento.coins);
+        m_playerManager->setCoins(p1Coins);
     }
     if (m_playerManager2)
     {
-        m_playerManager2->restoreState(0, memento.lives,
+        m_playerManager2->restoreState(p2Score, memento.lives,
                                        m_playerManager2->getPositionX(),
                                        m_playerManager2->getPositionY());
-        m_playerManager2->setCoins(0);
+        m_playerManager2->setCoins(p2Coins);
     }
 
-    m_lastTotalScore = memento.score;
+    m_lastScore1 = p1Score;
+    m_lastScore2 = p2Score;
 
     if (m_hudManager)
     {
-        m_hudManager->updateScore(memento.score);
-        m_hudManager->updateItemCount(memento.coins);
+        m_hudManager->updateScore(getTotalScore());
+        m_hudManager->updateItemCount(getTotalCoins());
         m_hudManager->updateLives(memento.lives);
         m_hudManager->updateWorld(memento.stage);
     }
