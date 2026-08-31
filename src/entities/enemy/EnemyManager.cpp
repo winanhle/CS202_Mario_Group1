@@ -59,50 +59,52 @@ void EnemyManager::update(float deltaTime) {
 
         enemy->update(deltaTime);
         //gravity
-        enemy->applyGravity(deltaTime);
+        if (enemy->usesPhysics()) {
+            enemy->applyGravity(deltaTime);
 
-        if (!m_mapManager)
-        {
+            if (!m_mapManager)
+            {
+                enemy->move(deltaTime);
+                continue;
+            }
+            //horizontal collision
+            sf::FloatRect hitbox = enemy->getHitbox();
+
+            float checkX;
+
+            if (enemy->getDirection() < 0)
+            {
+                // Enemy đang đi LEFT
+                checkX = hitbox.position.x - 1.f;
+            }
+            else
+            {
+                // Enemy đang đi RIGHT
+                checkX =
+                    hitbox.position.x +
+                    hitbox.size.x +
+                    1.f;
+            }
+
+            // Check 2 điểm ở phía trước enemy
+            float checkTop =
+                hitbox.position.y + 2.f;
+
+            float checkBottom =
+                hitbox.position.y +
+                hitbox.size.y - 2.f;
+
+            bool hitWall =
+                m_mapManager->isSolid(checkX, checkTop) ||
+                m_mapManager->isSolid(checkX, checkBottom);
+
+            if (hitWall)
+            {
+                enemy->reverseDirection();
+            }
+
             enemy->move(deltaTime);
-            continue;
         }
-        //horizontal collision
-        sf::FloatRect hitbox = enemy->getHitbox();
-
-        float checkX;
-
-        if (enemy->getDirection() < 0)
-        {
-            // Enemy đang đi LEFT
-            checkX = hitbox.position.x - 1.f;
-        }
-        else
-        {
-            // Enemy đang đi RIGHT
-            checkX =
-                hitbox.position.x +
-                hitbox.size.x +
-                1.f;
-        }
-
-        // Check 2 điểm ở phía trước enemy
-        float checkTop =
-            hitbox.position.y + 2.f;
-
-        float checkBottom =
-            hitbox.position.y +
-            hitbox.size.y - 2.f;
-
-        bool hitWall =
-            m_mapManager->isSolid(checkX, checkTop) ||
-            m_mapManager->isSolid(checkX, checkBottom);
-
-        if (hitWall)
-        {
-            enemy->reverseDirection();
-        }
-
-        enemy->move(deltaTime);
         //ground collision
         sf::FloatRect newHitbox = enemy->getHitbox();
 
@@ -151,7 +153,6 @@ void EnemyManager::update(float deltaTime) {
             resolvePlayerCollision(*enemy, m_player2, 1);
     }
 
-    // Safe now that the loop above is done touching m_enemies.
     if (!m_pendingSpawns.empty())
     {
         for (auto& spawned : m_pendingSpawns)

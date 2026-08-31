@@ -36,6 +36,10 @@ public:
 
     sf::FloatRect getHitbox() const;
     
+    virtual bool usesPhysics() const {
+        return true;
+    }
+
     void applyGravity(float dt);
     void move(float dt);
     void reverseDirection();

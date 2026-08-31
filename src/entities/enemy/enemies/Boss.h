@@ -27,6 +27,7 @@ public:
         , m_fireballSpawnFn(std::move(fireballSpawnFn))
     {
         m_moveSpeed = m_walkSpeed;
+        setBossScale();
     }
 
     void update(float dt) override
@@ -48,6 +49,10 @@ public:
                     fireFireball();
                     m_state = State::Walking;
                     m_frameIndex = 0;
+                    m_animTimer = 0.f;
+
+                    setBossScale();
+                    setSpriteTexture(*walkFrames(m_direction)[0]);
                 }
                 break;
 
@@ -74,11 +79,15 @@ public:
                 player->takeDamage();
                 break;
 
-            case State::ShellIdle:
-                // Side contact with the resting shell kicks it off
+            case State::ShellIdle: {
+                // Player touches resting shell → kick shell
                 m_state = State::ShellMoving;
-                setSpriteTexture(*shellFrames()[1]); // KoopaShell2 - running
+
+                setShellScale();
+                setSpriteTexture(*shellFrames()[1]);
+
                 break;
+            }
 
             case State::ShellMoving:
                 // Getting hit by the sliding shell hurts
@@ -93,27 +102,52 @@ public:
         {
             case State::Walking:
             case State::Attacking:
+            {
+                // Boss gets stomped → hide inside shell
                 m_state = State::ShellIdle;
+
                 m_frameIndex = 0;
+                m_animTimer = 0.f;
+
+                setShellScale();
                 setSpriteTexture(*shellFrames()[0]);
+
                 break;
+            }
 
             case State::ShellIdle:
-                // Stomping a resting shell sends it sliding
+            {
+                // Stomp resting shell → kick it
                 m_state = State::ShellMoving;
-                setSpriteTexture(*shellFrames()[1]); // KoopaShell2 - running
+
+                setShellScale();
+                setSpriteTexture(*shellFrames()[1]);
+
                 break;
+            }
 
             case State::ShellMoving:
-                // Stomping a moving shell stops it back to idle
+            {
+                // Stomp moving shell → stop it
                 m_state = State::ShellIdle;
-                setSpriteTexture(*shellFrames()[0]); // KoopaShell1 - resting
+
+                setShellScale();
+                setSpriteTexture(*shellFrames()[0]);
+
                 break;
+            }
         }
     }
-
 private:
-    // ── Animation frame lookups ────────────────────────────────────────────
+
+    void setBossScale() {
+        m_sprite.setScale({1.f, 1.f});
+    }
+
+    void setShellScale() {
+        m_sprite.setScale({0.5f, 0.5f});
+    }
+
     static std::array<sf::Texture*, 2> walkFrames(int direction)
     {
         if (direction < 0) return { &walkLeft1(), &walkLeft2() };

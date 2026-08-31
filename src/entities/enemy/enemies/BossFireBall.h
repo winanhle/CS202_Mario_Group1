@@ -7,17 +7,6 @@
 #include "../Enemy.h"
 #include "../../../interfaces/IPlayerManager.h"
 
-// The projectile Boss::fireFireball() spawns. Deliberately an Enemy
-// subclass, not a separate entity type - that lets it drop straight into
-// EnemyManager's existing m_enemies vector and get gravity, movement, wall
-// bounce, and player-collision handling for free, with zero new manager
-// code required. It just adds its own visuals and a couple of extra rules:
-// hurts the player on touch (and is consumed by the hit), can be stomped
-// out like a normal enemy, and expires on its own after a short lifetime so
-// it doesn't fly across the level forever.
-//
-// Sprites are preset paths from EnemySprite.h, loaded lazily once and
-// shared across every fireball instance - no texture arguments needed.
 class BossFireball : public Enemy
 {
 public:
@@ -31,14 +20,14 @@ public:
 
     void update(float dt) override
     {
-        // NOTE: EnemyManager::update() already calls applyGravity() and
-        // move() after this update() - don't call them again here.
         m_lifetime -= dt;
         if (m_lifetime <= 0.f)
         {
             m_dead = true; // quietly expires, no death animation needed
             return;
         }
+
+        m_sprite.move({m_flySpeed * static_cast<float>(m_direction) * dt, 0.f});
 
         m_animTimer += dt;
         if (m_animTimer >= m_animInterval)
@@ -47,6 +36,11 @@ public:
             m_frameIndex = (m_frameIndex + 1) % 2;
             setSpriteTexture(*frames(m_direction)[m_frameIndex]);
         }
+    }
+
+    bool usesPhysics() const override
+    {
+        return false;
     }
 
     void onPlayerCollision(IPlayerManager* player) override
@@ -60,9 +54,6 @@ public:
 
     void onStomp() override
     {
-        // Stompable like a regular enemy for a forgiving feel. If you'd
-        // rather fireballs be immune to stomping (closer to the original
-        // arcade game), just make this a no-op instead.
         Enemy::onStomp();
     }
 
