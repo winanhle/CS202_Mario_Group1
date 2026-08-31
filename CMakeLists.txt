@@ -65,9 +65,14 @@ set(SHARED_SOURCES
     src/tinyxml2.cpp
 )
 
+if(WIN32)
+    set(RESOURCE_SOURCES src/resource.rc)
+endif()
+
 add_executable(MarioGame
     src/main.cpp
     ${SHARED_SOURCES}
+    ${RESOURCE_SOURCES}
 )
 
 foreach(TARGET MarioGame)

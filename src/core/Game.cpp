@@ -14,6 +14,12 @@ Game::Game()
     m_settings->initialize();
     m_saveManager->initialize();
     m_window->setFramerateLimit(static_cast<unsigned int>(FRAME_RATE));
+
+    if (sf::Image icon; icon.loadFromFile("assets/shortcut.png"))
+    {
+        m_window->setIcon(icon.getSize(), icon.getPixelsPtr());
+    }
+
     m_stateManager.changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
 }
 
