@@ -1,5 +1,7 @@
+#include "../ui/UIUtils.h"
 #include "SettingsMenu.h"
 #include "../core/GameState.h"
+#include "../ui/UIUtils.h"
 #include <SFML/Window/Event.hpp>
 #include <algorithm>
 
@@ -156,7 +158,7 @@ std::vector<sf::FloatRect> SettingsMenu::computeItemRects() const
             sf::Text itemText{m_font};
             setupText(itemText, itemDisplayText((*items)[i]), 28, sf::Color::White);
 
-            centerOrigin(itemText);
+            UIUtils::centerOrigin(itemText);
             itemText.setPosition(pos);
 
             sf::FloatRect bounds = itemText.getLocalBounds();
@@ -465,7 +467,7 @@ void SettingsMenu::render(sf::RenderWindow& window) const
 
     sf::Text titleText{m_font};
     setupText(titleText, title, 48, sf::Color::White);
-    centerOrigin(titleText);
+    UIUtils::centerOrigin(titleText);
     titleText.setPosition({ 400.0f, 120.0f });
     window.draw(titleText);
 
@@ -476,7 +478,7 @@ void SettingsMenu::render(sf::RenderWindow& window) const
                   "Press any key for " + actionLabel(m_rebindingAction) +
                       "   (ESC to cancel)",
                   24, sf::Color::Yellow);
-        centerOrigin(hint);
+        UIUtils::centerOrigin(hint);
         hint.setPosition({ 400.0f, 300.0f });
         window.draw(hint);
 
@@ -484,7 +486,7 @@ void SettingsMenu::render(sf::RenderWindow& window) const
         {
             sf::Text warn{m_font};
             setupText(warn, "KEY RESERVED - try another", 20, sf::Color::Red);
-            centerOrigin(warn);
+            UIUtils::centerOrigin(warn);
             warn.setPosition({ 400.0f, 340.0f });
             window.draw(warn);
         }
@@ -505,7 +507,7 @@ void SettingsMenu::render(sf::RenderWindow& window) const
             
             sf::Text labelText{m_font};
             setupText(labelText, item.label, 28, (i == m_selectedIndex) ? sf::Color::Yellow : sf::Color::White);
-            centerOrigin(labelText);
+            UIUtils::centerOrigin(labelText);
             labelText.setPosition({ pos.x - 100.0f, pos.y });
             window.draw(labelText);
             
@@ -530,7 +532,7 @@ void SettingsMenu::render(sf::RenderWindow& window) const
             
             sf::Text pctText{m_font};
             setupText(pctText, std::to_string(static_cast<int>(m_settings.getVolume())) + "%", 28, (i == m_selectedIndex) ? sf::Color::Yellow : sf::Color::White);
-            centerOrigin(pctText);
+            UIUtils::centerOrigin(pctText);
             pctText.setPosition({ trackStartX + trackW + 50.0f, pos.y });
             window.draw(pctText);
         }
@@ -542,7 +544,7 @@ void SettingsMenu::render(sf::RenderWindow& window) const
             setupText(itemText, text, 28,
                       (i == m_selectedIndex) ? sf::Color::Yellow : sf::Color::White);
 
-            centerOrigin(itemText);
+            UIUtils::centerOrigin(itemText);
             itemText.setPosition(getItemPosition(i));
             window.draw(itemText);
         }

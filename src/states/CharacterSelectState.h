@@ -2,7 +2,7 @@
 
 #include "../core/GameState.h"
 #include "../core/GameConfig.h"
-#include "../ui/UINavigator.h"
+#include "../ui/UIUtils.h"
 #include <SFML/Graphics.hpp>
 
 /**

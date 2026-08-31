@@ -1,4 +1,4 @@
-#include "UINavigator.h"
+#include "UIUtils.h"
 
 UINavigator::UINavigator(int itemCount)
     : m_itemCount(itemCount)

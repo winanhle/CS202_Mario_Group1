@@ -1,3 +1,4 @@
+#include "../ui/UIUtils.h"
 #include "LeaderboardState.h"
 #include "MenuState.h"
 #include "../core/StateManager.h"
@@ -40,21 +41,27 @@ LeaderboardState::LeaderboardState(std::shared_ptr<ISettingsManager> settings,
         m_titleText.setString("HALL OF FAME");
         m_titleText.setCharacterSize(36);
         m_titleText.setFillColor(GOLD_COLOR);
-        centerOrigin(m_titleText);
+        m_titleText.setOutlineColor(sf::Color::Black);
+        m_titleText.setOutlineThickness(2.0f);
+        UIUtils::centerOrigin(m_titleText);
         m_titleText.setPosition({ 400.0f, 110.0f });
 
         m_headerText.setFont(m_font);
         m_headerText.setString("RANK     NAME       SCORE");
         m_headerText.setCharacterSize(20);
         m_headerText.setFillColor(GRAY_COLOR);
-        centerOrigin(m_headerText);
+        m_headerText.setOutlineColor(sf::Color::Black);
+        m_headerText.setOutlineThickness(2.0f);
+        UIUtils::centerOrigin(m_headerText);
         m_headerText.setPosition({ 400.0f, 165.0f });
 
         m_hintText.setFont(m_font);
         m_hintText.setString("PRESS ENTER / SPACE / ESC TO RETURN");
         m_hintText.setCharacterSize(16);
         m_hintText.setFillColor(GRAY_COLOR);
-        centerOrigin(m_hintText);
+        m_hintText.setOutlineColor(sf::Color::Black);
+        m_hintText.setOutlineThickness(2.0f);
+        UIUtils::centerOrigin(m_hintText);
         m_hintText.setPosition({ 400.0f, 500.0f });
 
         auto scores = m_saveManager ? m_saveManager->loadHighScores() : std::vector<ScoreEntry>{};
@@ -86,7 +93,9 @@ LeaderboardState::LeaderboardState(std::shared_ptr<ISettingsManager> settings,
             row.rankText.setString(rankLabels[i]);
             row.rankText.setCharacterSize(22);
             row.rankText.setFillColor(rowColor);
-            centerOrigin(row.rankText);
+        row.rankText.setOutlineColor(sf::Color::Black);
+        row.rankText.setOutlineThickness(2.0f);
+            UIUtils::centerOrigin(row.rankText);
             row.rankText.setPosition({ 200.0f, y });
 
             // Name
@@ -94,7 +103,9 @@ LeaderboardState::LeaderboardState(std::shared_ptr<ISettingsManager> settings,
             row.nameText.setString(scores[i].initials);
             row.nameText.setCharacterSize(22);
             row.nameText.setFillColor(rowColor);
-            centerOrigin(row.nameText);
+        row.nameText.setOutlineColor(sf::Color::Black);
+        row.nameText.setOutlineThickness(2.0f);
+            UIUtils::centerOrigin(row.nameText);
             row.nameText.setPosition({ 380.0f, y });
 
             // Score formatted to 6 digits
@@ -106,7 +117,9 @@ LeaderboardState::LeaderboardState(std::shared_ptr<ISettingsManager> settings,
             row.scoreText.setString(scoreStr);
             row.scoreText.setCharacterSize(22);
             row.scoreText.setFillColor(rowColor);
-            centerOrigin(row.scoreText);
+        row.scoreText.setOutlineColor(sf::Color::Black);
+        row.scoreText.setOutlineThickness(2.0f);
+            UIUtils::centerOrigin(row.scoreText);
             row.scoreText.setPosition({ 570.0f, y });
 
             m_rows.push_back(std::move(row));

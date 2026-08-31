@@ -1,3 +1,4 @@
+#include "../ui/UIUtils.h"
 #include "IntermissionState.h"
 #include "../core/StateManager.h"
 #include <iostream>
@@ -80,7 +81,7 @@ IntermissionState::IntermissionState(const GameConfig& config,
         m_clearText.setFillColor(sf::Color(255, 220, 50));
         m_clearText.setOutlineColor(sf::Color::Black);
         m_clearText.setOutlineThickness(3.0f);
-        centerOrigin(m_clearText);
+        UIUtils::centerOrigin(m_clearText);
         m_clearText.setPosition({ SCREEN_W / 2.0f, 150.0f });
 
         // World Text
@@ -88,7 +89,9 @@ IntermissionState::IntermissionState(const GameConfig& config,
         m_worldText.setString("WORLD 1-" + std::to_string(m_nextStage));
         m_worldText.setCharacterSize(26);
         m_worldText.setFillColor(sf::Color::White);
-        centerOrigin(m_worldText);
+        m_worldText.setOutlineColor(sf::Color::Black);
+        m_worldText.setOutlineThickness(2.0f);
+        UIUtils::centerOrigin(m_worldText);
         m_worldText.setPosition({ SCREEN_W / 2.0f, 240.0f });
 
         // Lives Text
@@ -96,6 +99,8 @@ IntermissionState::IntermissionState(const GameConfig& config,
         m_livesText.setString("  x  " + std::to_string(m_sharedLives));
         m_livesText.setCharacterSize(24);
         m_livesText.setFillColor(sf::Color::White);
+        m_livesText.setOutlineColor(sf::Color::Black);
+        m_livesText.setOutlineThickness(2.0f);
         const auto lb = m_livesText.getLocalBounds();
         m_livesText.setOrigin({ lb.position.x,
                                 lb.position.y + lb.size.y / 2.0f });
@@ -110,7 +115,7 @@ IntermissionState::IntermissionState(const GameConfig& config,
         m_hintText.setString("Press ENTER, SPACE or Click to continue");
         m_hintText.setCharacterSize(14);
         m_hintText.setFillColor(sf::Color(160, 170, 200));
-        centerOrigin(m_hintText);
+        UIUtils::centerOrigin(m_hintText);
         m_hintText.setPosition({ SCREEN_W / 2.0f, 520.0f });
     }
 }

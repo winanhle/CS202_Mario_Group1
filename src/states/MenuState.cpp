@@ -1,3 +1,4 @@
+#include "../ui/UIUtils.h"
 #include "MenuState.h"
 #include "CharacterSelectState.h"
 #include "LeaderboardState.h"
@@ -38,8 +39,7 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings, std::shared_ptr
         m_titleText.setFillColor(sf::Color::White);
         m_titleText.setOutlineColor(sf::Color::Black);
         m_titleText.setOutlineThickness(2.0f);
-
-        centerOrigin(m_titleText);
+        UIUtils::centerOrigin(m_titleText);
         m_titleText.setPosition({ 400.0f, 180.0f });
 
         m_promptText.setFont(m_font);
@@ -48,8 +48,7 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings, std::shared_ptr
         m_promptText.setFillColor(sf::Color::Yellow);
         m_promptText.setOutlineColor(sf::Color::Black);
         m_promptText.setOutlineThickness(1.0f);
-
-        centerOrigin(m_promptText);
+        UIUtils::centerOrigin(m_promptText);
 
         m_highScoreText.setFont(m_font);
         m_highScoreText.setString("Press H for High Scores");
@@ -57,8 +56,7 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings, std::shared_ptr
         m_highScoreText.setFillColor(sf::Color(255, 215, 0));
         m_highScoreText.setOutlineColor(sf::Color::Black);
         m_highScoreText.setOutlineThickness(1.0f);
-
-        centerOrigin(m_highScoreText);
+        UIUtils::centerOrigin(m_highScoreText);
 
         if (m_hasSave)
         {
@@ -68,8 +66,7 @@ MenuState::MenuState(std::shared_ptr<ISettingsManager> settings, std::shared_ptr
             m_continueText.setFillColor(sf::Color::White);
             m_continueText.setOutlineColor(sf::Color::Black);
             m_continueText.setOutlineThickness(1.0f);
-
-            centerOrigin(m_continueText);
+            UIUtils::centerOrigin(m_continueText);
             m_continueText.setPosition({ 400.0f, 350.0f });
 
             m_promptText.setPosition({ 400.0f, 405.0f });
@@ -155,7 +152,6 @@ void MenuState::update(float deltaTime)
         return;
     }
 
-    // Toggle prompt visibility on a timer
     m_blinkTimer += deltaTime;
     if (m_blinkTimer >= BLINK_INTERVAL)
     {

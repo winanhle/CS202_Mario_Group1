@@ -390,6 +390,8 @@ void HUDManager::renderToasts(sf::RenderWindow& window) const
         toastText.setString(toast.message);
         toastText.setCharacterSize(18);
         toastText.setFillColor(sf::Color(255, 255, 255, alphaUint));
+        toastText.setOutlineColor(sf::Color(0, 0, 0, alphaUint));
+        toastText.setOutlineThickness(1.5f);
         
         sf::FloatRect bounds = toastText.getLocalBounds();
         float boxW = bounds.size.x + 24.0f;

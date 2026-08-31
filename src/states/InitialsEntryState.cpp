@@ -1,3 +1,4 @@
+#include "../ui/UIUtils.h"
 #include "InitialsEntryState.h"
 #include "LeaderboardState.h"
 #include "../core/StateManager.h"
@@ -50,28 +51,36 @@ InitialsEntryState::InitialsEntryState(int finalScore,
         m_titleText.setString("NEW HIGH SCORE!");
         m_titleText.setCharacterSize(36);
         m_titleText.setFillColor(GOLD_COLOR);
-        centerOrigin(m_titleText);
+        m_titleText.setOutlineColor(sf::Color::Black);
+        m_titleText.setOutlineThickness(2.0f);
+        UIUtils::centerOrigin(m_titleText);
         m_titleText.setPosition({ 400.0f, 130.0f });
 
         m_scoreText.setFont(m_font);
         m_scoreText.setString("SCORE: " + std::to_string(m_score));
         m_scoreText.setCharacterSize(26);
         m_scoreText.setFillColor(WHITE_COLOR);
-        centerOrigin(m_scoreText);
+        m_scoreText.setOutlineColor(sf::Color::Black);
+        m_scoreText.setOutlineThickness(2.0f);
+        UIUtils::centerOrigin(m_scoreText);
         m_scoreText.setPosition({ 400.0f, 185.0f });
 
         m_promptText.setFont(m_font);
         m_promptText.setString("TYPE YOUR INITIALS (5 LETTERS)");
         m_promptText.setCharacterSize(20);
         m_promptText.setFillColor(GRAY_COLOR);
-        centerOrigin(m_promptText);
+        m_promptText.setOutlineColor(sf::Color::Black);
+        m_promptText.setOutlineThickness(2.0f);
+        UIUtils::centerOrigin(m_promptText);
         m_promptText.setPosition({ 400.0f, 235.0f });
 
         m_hintText.setFont(m_font);
         m_hintText.setString("KEYBOARD: TYPE LETTERS | BACKSPACE: DELETE | ENTER: CONFIRM");
         m_hintText.setCharacterSize(14);
         m_hintText.setFillColor(GRAY_COLOR);
-        centerOrigin(m_hintText);
+        m_hintText.setOutlineColor(sf::Color::Black);
+        m_hintText.setOutlineThickness(2.0f);
+        UIUtils::centerOrigin(m_hintText);
         m_hintText.setPosition({ 400.0f, 475.0f });
 
         const float startX = 220.0f;
@@ -89,7 +98,7 @@ InitialsEntryState::InitialsEntryState(int finalScore,
             m_slots[static_cast<std::size_t>(i)].text.setFont(m_font);
             m_slots[static_cast<std::size_t>(i)].text.setString(std::string(1, m_letters[static_cast<std::size_t>(i)]));
             m_slots[static_cast<std::size_t>(i)].text.setCharacterSize(38);
-            centerOrigin(m_slots[static_cast<std::size_t>(i)].text);
+            UIUtils::centerOrigin(m_slots[static_cast<std::size_t>(i)].text);
             m_slots[static_cast<std::size_t>(i)].text.setPosition({ posX, slotY - 4.0f });
         }
     }
@@ -111,7 +120,7 @@ void InitialsEntryState::handleInput(const sf::Event& event)
             char c = static_cast<char>(unicode);
             m_letters[static_cast<std::size_t>(m_activeSlot)] = c;
             m_slots[static_cast<std::size_t>(m_activeSlot)].text.setString(std::string(1, c));
-            centerOrigin(m_slots[static_cast<std::size_t>(m_activeSlot)].text);
+            UIUtils::centerOrigin(m_slots[static_cast<std::size_t>(m_activeSlot)].text);
 
             if (m_activeSlot < 4)
             {
@@ -132,14 +141,14 @@ void InitialsEntryState::handleInput(const sf::Event& event)
             {
                 m_letters[static_cast<std::size_t>(m_activeSlot)] = '_';
                 m_slots[static_cast<std::size_t>(m_activeSlot)].text.setString("_");
-                centerOrigin(m_slots[static_cast<std::size_t>(m_activeSlot)].text);
+                UIUtils::centerOrigin(m_slots[static_cast<std::size_t>(m_activeSlot)].text);
             }
             else if (m_activeSlot > 0)
             {
                 --m_activeSlot;
                 m_letters[static_cast<std::size_t>(m_activeSlot)] = '_';
                 m_slots[static_cast<std::size_t>(m_activeSlot)].text.setString("_");
-                centerOrigin(m_slots[static_cast<std::size_t>(m_activeSlot)].text);
+                UIUtils::centerOrigin(m_slots[static_cast<std::size_t>(m_activeSlot)].text);
             }
             break;
         }

@@ -1,3 +1,4 @@
+#include "../ui/UIUtils.h"
 #include "WinState.h"
 #include "PlayState.h"
 #include "MenuState.h"
@@ -96,7 +97,7 @@ WinState::WinState(std::shared_ptr<ISettingsManager> settings,
         m_titleText.setFillColor(sf::Color(255, 220, 50));
         m_titleText.setOutlineColor(sf::Color::Black);
         m_titleText.setOutlineThickness(3.0f);
-        centerOrigin(m_titleText);
+        UIUtils::centerOrigin(m_titleText);
         m_titleText.setPosition({ WIN_W / 2.0f, 60.0f });
 
         // Subtitle
@@ -112,7 +113,7 @@ WinState::WinState(std::shared_ptr<ISettingsManager> settings,
         m_subtitleText.setString(subString);
         m_subtitleText.setCharacterSize(16);
         m_subtitleText.setFillColor(sf::Color(255, 210, 230));
-        centerOrigin(m_subtitleText);
+        UIUtils::centerOrigin(m_subtitleText);
         m_subtitleText.setPosition({ WIN_W / 2.0f, 105.0f });
 
         // Score Breakdown
@@ -120,7 +121,7 @@ WinState::WinState(std::shared_ptr<ISettingsManager> settings,
         m_scoreLabelText.setString("BASE SCORE: " + std::to_string(m_baseScore));
         m_scoreLabelText.setCharacterSize(15);
         m_scoreLabelText.setFillColor(sf::Color(200, 220, 255));
-        centerOrigin(m_scoreLabelText);
+        UIUtils::centerOrigin(m_scoreLabelText);
         m_scoreLabelText.setPosition({ WIN_W / 2.0f, 240.0f });
 
         m_livesBonusText.setFont(m_font);
@@ -129,7 +130,7 @@ WinState::WinState(std::shared_ptr<ISettingsManager> settings,
                                    std::to_string(std::max(0, m_livesRemaining) * LIVES_BONUS_MULTIPLIER));
         m_livesBonusText.setCharacterSize(15);
         m_livesBonusText.setFillColor(sf::Color(180, 240, 180));
-        centerOrigin(m_livesBonusText);
+        UIUtils::centerOrigin(m_livesBonusText);
         m_livesBonusText.setPosition({ WIN_W / 2.0f, 268.0f });
 
         m_totalScoreText.setFont(m_font);
@@ -138,7 +139,7 @@ WinState::WinState(std::shared_ptr<ISettingsManager> settings,
         m_totalScoreText.setFillColor(sf::Color(255, 235, 80));
         m_totalScoreText.setOutlineColor(sf::Color::Black);
         m_totalScoreText.setOutlineThickness(2.0f);
-        centerOrigin(m_totalScoreText);
+        UIUtils::centerOrigin(m_totalScoreText);
         m_totalScoreText.setPosition({ WIN_W / 2.0f, 305.0f });
 
         // Hint Text
@@ -146,7 +147,7 @@ WinState::WinState(std::shared_ptr<ISettingsManager> settings,
         m_hintText.setString("W/S or Up/Down/Mouse to navigate   Enter / Click to select");
         m_hintText.setCharacterSize(13);
         m_hintText.setFillColor(sf::Color(160, 170, 200));
-        centerOrigin(m_hintText);
+        UIUtils::centerOrigin(m_hintText);
         m_hintText.setPosition({ WIN_W / 2.0f, 540.0f });
     }
 
@@ -207,7 +208,7 @@ void WinState::refreshUI()
             optText.setString(selected ? "> " + baseLabels[i] + " <" : baseLabels[i]);
             optText.setFillColor(selected ? sf::Color(255, 240, 100) : sf::Color(220, 230, 255));
 
-            centerOrigin(optText);
+            UIUtils::centerOrigin(optText);
         }
     }
 }

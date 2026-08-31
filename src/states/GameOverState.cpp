@@ -1,3 +1,4 @@
+#include "../ui/UIUtils.h"
 #include "GameOverState.h"
 #include "MenuState.h"
 #include "PlayState.h"
@@ -38,7 +39,7 @@ GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings,
         m_titleText.setOutlineColor(sf::Color::Black);
         m_titleText.setOutlineThickness(3.0f);
 
-        centerOrigin(m_titleText);
+        UIUtils::centerOrigin(m_titleText);
         m_titleText.setPosition({ WIN_W / 2.0f, 130.0f });
 
         // 2. Score
@@ -49,7 +50,7 @@ GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings,
         m_scoreText.setOutlineColor(sf::Color::Black);
         m_scoreText.setOutlineThickness(1.5f);
 
-        centerOrigin(m_scoreText);
+        UIUtils::centerOrigin(m_scoreText);
         m_scoreText.setPosition({ WIN_W / 2.0f, 220.0f });
 
         // 3. Option buttons
@@ -80,7 +81,7 @@ GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings,
             optText.setOutlineColor(sf::Color::Black);
             optText.setOutlineThickness(1.5f);
 
-            centerOrigin(optText);
+            UIUtils::centerOrigin(optText);
             optText.setPosition({ WIN_W / 2.0f, y });
         }
 
@@ -90,7 +91,7 @@ GameOverState::GameOverState(std::shared_ptr<ISettingsManager> settings,
         m_hintText.setCharacterSize(14);
         m_hintText.setFillColor(sf::Color(160, 160, 170));
 
-        centerOrigin(m_hintText);
+        UIUtils::centerOrigin(m_hintText);
         m_hintText.setPosition({ WIN_W / 2.0f, 530.0f });
     }
 
@@ -107,7 +108,7 @@ void GameOverState::setFinalScore(int score)
     if (m_fontLoaded)
     {
         m_scoreText.setString("FINAL SCORE: " + std::to_string(m_finalScore));
-        centerOrigin(m_scoreText);
+        UIUtils::centerOrigin(m_scoreText);
         m_scoreText.setPosition({ WIN_W / 2.0f, 220.0f });
     }
 }
@@ -131,7 +132,7 @@ void GameOverState::refreshUI()
             optText.setString(selected ? "> " + baseLabels[i] + " <" : baseLabels[i]);
             optText.setFillColor(selected ? sf::Color(255, 240, 100) : sf::Color(210, 210, 220));
 
-            centerOrigin(optText);
+            UIUtils::centerOrigin(optText);
         }
     }
 }
