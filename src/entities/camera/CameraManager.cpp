@@ -7,10 +7,7 @@
 CameraManager::CameraManager()
     : m_viewWidth(320.0f)
     , m_viewHeight(240.0f)
-    , m_lerpSpeedX(5.0f)
-    , m_lerpSpeedY(3.0f)
     , m_mapWidth(0.0f)
-    , m_deadzoneWidth(0.0f)
 {
 }
 
@@ -23,12 +20,12 @@ void CameraManager::initialize(sf::Vector2u mapSizePixels)
     m_view.setSize(sf::Vector2f(m_viewWidth, viewH));
     m_view.setCenter(sf::Vector2f(m_viewWidth / 2.0f, viewH / 2.0f));
 
-    m_mapWidth     = static_cast<float>(mapSizePixels.x);
-    m_deadzoneWidth = m_viewWidth / 2.0f - 5.0f;
+    m_mapWidth = static_cast<float>(mapSizePixels.x);
 }
 
 void CameraManager::update(float deltaTime)
 {
+    (void)deltaTime;
     // Tính target X dựa trên số lượng player đang theo dõi
     float targetCenterX = 0.f;
 
@@ -61,30 +58,29 @@ void CameraManager::update(float deltaTime)
 
     sf::Vector2f center = m_view.getCenter();
 
-    // Deadzone offsets (logic cũ)
-    const float offsetLeft  = -100.0f;
+    // Deadzone offsets: Mario moves freely inside the zone; pushing forward moves the camera
+    const float offsetLeft  = -80.0f;
     const float offsetRight =    0.0f;
 
     float deadLeft  = center.x + offsetLeft;
     float deadRight = center.x + offsetRight;
 
-    float newTargetX = center.x;
     if (targetCenterX < deadLeft)
-        newTargetX = targetCenterX - offsetLeft;
+        center.x = targetCenterX - offsetLeft;
     else if (targetCenterX > deadRight)
-        newTargetX = targetCenterX - offsetRight + 40.0f;
+        center.x = targetCenterX - offsetRight;
 
-    // Giữ view canh giữa theo chiều cao view thực tế (đã có thể lớn hơn
-    // m_viewHeight khi map cao hơn) → toàn bộ bản đồ hiển thị.
-    float targetY = m_view.getSize().y / 2.0f;
-
-    float alphaX = 1.0f - std::exp(-m_lerpSpeedX * deltaTime);
-    float alphaY = 1.0f - std::exp(-m_lerpSpeedY * deltaTime);
-    center.x += (newTargetX - center.x) * alphaX;
-    center.y += (targetY    - center.y) * alphaY;
+    // Giữ view canh giữa theo chiều cao view thực tế → toàn bộ bản đồ hiển thị.
+    center.y = m_view.getSize().y / 2.0f;
 
     float halfW = m_view.getSize().x / 2.0f;
-    center.x = std::clamp(center.x, halfW, m_mapWidth - halfW);
+    center.x = std::clamp(center.x, halfW, std::max(halfW, m_mapWidth - halfW));
+
+    // Prevent subpixel texture bleeding by snapping the camera target to pixel boundaries.
+    // Window: 800x600, View: 320x240 -> scale factor is 2.5x (snap increments of 1/2.5 = 0.4).
+    static constexpr float VIEW_SCALE = 2.5f;
+    center.x = std::round(center.x * VIEW_SCALE) / VIEW_SCALE;
+    center.y = std::round(center.y * VIEW_SCALE) / VIEW_SCALE;
 
     m_view.setCenter(center);
 }

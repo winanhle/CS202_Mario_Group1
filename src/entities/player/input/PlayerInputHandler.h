@@ -11,7 +11,8 @@ struct KeyBinding {
     sf::Keyboard::Key left2nd  = sf::Keyboard::Key::Unknown;
     sf::Keyboard::Key right1st = sf::Keyboard::Key::Unknown;
     sf::Keyboard::Key right2nd = sf::Keyboard::Key::Unknown;
-    sf::Keyboard::Key shoot    = sf::Keyboard::Key::Unknown;
+    sf::Keyboard::Key shoot    = sf::Keyboard::Key::Unknown; // phím bắn, ví dụ F / Period
+    sf::Keyboard::Key run      = sf::Keyboard::Key::Unknown; // phím chạy (giữ để dùng RUN_MAX_SPEED), ví dụ Shift
 };
 
 class PlayerInputHandler {
@@ -30,4 +31,16 @@ public:
     PlayerInputHandler(const KeyBinding& keys);
     Command* handleEvent(const sf::Event& event);
     Command* handleRealtimeInput();
+
+    /** @brief True nếu player đang giữ phím chạy (dùng RUN_MAX_SPEED). */
+    bool isRunKeyHeld() const {
+        return m_keys.run != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.run);
+    }
+
+    /** @brief True nếu player ĐANG GIỮ 1 trong các phím nhảy (variable jump). */
+    bool isJumpKeyHeld() const {
+        return (m_keys.jump1st != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.jump1st))
+            || (m_keys.jump2nd != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.jump2nd))
+            || (m_keys.jump3rd != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.jump3rd));
+    }
 };

@@ -6,16 +6,26 @@
 
 namespace fs = std::filesystem;
 
+// ── Flagpole & Flag Slide Constants ──────────────────────────────────────────
+static constexpr int   GID_FLAGPOLE_TOP_BALL = 621;
+static constexpr int   GID_FLAGPOLE_FLAG     = 831;
+static constexpr int   GID_FLAGPOLE_ATTACH   = 832;
+static constexpr int   GID_FLAGPOLE_SHAFT    = 1043;
+static constexpr int   GID_FLAGPOLE_BASE     = 2667;
+static constexpr float FLAG_SLIDE_SPEED      = 90.f;
+static constexpr int   FLAGPOLE_FALLBACK_TOP = 5;
+static constexpr int   FLAGPOLE_FALLBACK_BOT = 12;
+
 MapManager::MapManager() {}
 
 void MapManager::initialize() {
-    // Prefer the Tiled TMX map; fall back to the legacy CSV if not found
-    if (!loadMapTMX("assets/map/map_test.tmx")) {
-        std::cerr << "[MapManager] TMX load failed, falling back to CSV." << std::endl;
-        if (!loadMapCSV("assets/map/test_map.csv")) {
-            std::cerr << "[MapManager] ERROR: Could not load any map!" << std::endl;
-        }
-    }
+    m_mapData.clear();
+    m_rawGids.clear();
+    m_objectData = MapObjectData{};
+    m_multiCoinStates.clear();
+    m_brickDebris.clear();
+    m_coinPopAnims.clear();
+    // Bản đồ được tải bởi GameWorld thông qua LevelManager (loadCurrentLevel()).
 }
 
 bool MapManager::loadMapCSV(const std::string& filepath) {
@@ -61,6 +71,8 @@ TileType MapManager::stringToTileType(const std::string& s) {
     if (s == "DEATH_ZONE")       return TileType::DEATH_ZONE;
     if (s == "FLAGPOLE")         return TileType::FLAGPOLE;
     if (s == "SOLID_BRICK")      return TileType::SOLID_BRICK;
+    if (s == "FIRE_BAR" || s == "FIREBAR" || s == "FireBar" || s == "Firebar" || s == "fire_bar" || s == "firebar") return TileType::FIRE_BAR;
+    if (s == "BACKGROUND")       return TileType::BACKGROUND; // trang trí, giống EMPTY
     return TileType::EMPTY; // unknown / decorative
 }
 
@@ -185,7 +197,9 @@ bool MapManager::loadTileset(const std::string& tsxPath, int firstGid) {
         // Ghi nhận nó để setTile(EMPTY) load đúng texture EMPTY, thay vì GID 0
         // (GID 0 = "không có tile" → renderer sẽ bỏ qua, không vẽ texture nào).
         if (found) {
-            m_typeToGid[resolved] = gid;
+            if (m_typeToGid.find(resolved) == m_typeToGid.end()) {
+                m_typeToGid[resolved] = gid;
+            }
         }
     }
 
@@ -242,6 +256,7 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
     // layer sau ghi đè layer trước ở các ô có tile (GID > 0).
     m_mapData.clear();
     m_rawGids.clear();
+    m_flagAnim = {};
     m_mapData.assign(mapHeight, std::vector<TileType>(mapWidth, TileType::EMPTY));
     m_rawGids.assign(mapHeight, std::vector<int>(mapWidth, 0));
 
@@ -293,10 +308,236 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
         return false;
     }
 
+    // ── Discover FireBar spawn points from tile layers (FIRE_BAR tiles) ──
+    int tileFireBars = 0;
+    for (int r = 0; r < mapHeight; ++r) {
+        for (int c = 0; c < mapWidth; ++c) {
+            if (m_mapData[r][c] == TileType::FIRE_BAR) {
+                FireBarSpawnData fb;
+                fb.x = static_cast<float>(c * m_tileSize) + static_cast<float>(m_tileSize) / 2.f;
+                fb.y = static_cast<float>(r * m_tileSize) + static_cast<float>(m_tileSize) / 2.f;
+                fb.fireCount = 6;
+                fb.speed = 2.0f;
+                fb.clockwise = true;
+                fb.initialAngle = 0.f;
+                m_objectData.fireBarSpawns.push_back(fb);
+                ++tileFireBars;
+            }
+        }
+    }
+    if (tileFireBars > 0) {
+        std::cout << "[MapManager] Discovered " << tileFireBars
+                  << " FIRE_BAR tile(s) in map." << std::endl;
+    }
+
+    // ── Parse object groups (enemy spawns, player spawn, lifts, firebars) ─
+    parseObjectGroups(mapEl);
+
     std::cout << "[MapManager] TMX loaded: " << tmxPath
               << "  (" << (m_mapData.empty() ? 0 : m_mapData[0].size())
-              << "x" << m_mapData.size() << ")" << std::endl;
+              << "x" << m_mapData.size() << ") with "
+              << m_objectData.fireBarSpawns.size() << " FireBar(s)" << std::endl;
     return true;
+}
+
+// =============================================================================
+//  PUBLIC LOAD API
+// =============================================================================
+
+void MapManager::loadMap(const std::string& tmxPath) {
+    // Clear previous state
+    m_mapData.clear();
+    m_rawGids.clear();
+    m_objectData = MapObjectData{};
+    m_multiCoinStates.clear();
+    m_brickDebris.clear();
+    m_coinPopAnims.clear();
+    m_gidTypeMap.clear();
+    m_typeToGid.clear();
+    m_textureLoaded = false;
+
+    if (!loadMapTMX(tmxPath)) {
+        std::cerr << "[MapManager] TMX load failed for: " << tmxPath << std::endl;
+    }
+}
+
+const MapObjectData& MapManager::getMapObjectData() const {
+    return m_objectData;
+}
+
+// =============================================================================
+//  OBJECT GROUP PARSER
+// =============================================================================
+
+void MapManager::parseObjectGroups(tinyxml2::XMLElement* mapElement) {
+    for (auto* groupEl = mapElement->FirstChildElement("objectgroup"); groupEl;
+         groupEl = groupEl->NextSiblingElement("objectgroup")) {
+
+        for (auto* objEl = groupEl->FirstChildElement("object"); objEl;
+             objEl = objEl->NextSiblingElement("object")) {
+
+            // Tiled stores the type in "name", "type", or "class" attribute
+            const char* typeName  = objEl->Attribute("name");
+            const char* typeAttr  = objEl->Attribute("type");
+            const char* classAttr = objEl->Attribute("class");
+
+            std::string typeStr;
+            if (typeAttr && typeAttr[0] != '\0')
+                typeStr = typeAttr;
+            else if (classAttr && classAttr[0] != '\0')
+                typeStr = classAttr;
+            else if (typeName && typeName[0] != '\0')
+                typeStr = typeName;
+
+            // Also check <property name="type" value="..."/>
+            if (auto* propsEl = objEl->FirstChildElement("properties")) {
+                for (auto* prop = propsEl->FirstChildElement("property"); prop;
+                     prop = prop->NextSiblingElement("property")) {
+                    const char* pname = prop->Attribute("name");
+                    const char* pval  = prop->Attribute("value");
+                    if (pname && pval && std::string(pname) == "type" && pval[0] != '\0') {
+                        typeStr = pval;
+                        break;
+                    }
+                }
+            }
+
+            if (typeStr.empty())
+                continue; // skip objects without a type/name
+
+            float x = 0.f, y = 0.f;
+            objEl->QueryFloatAttribute("x", &x);
+            objEl->QueryFloatAttribute("y", &y);
+
+            // Check if it's a player spawn point
+            if (typeStr == "PlayerSpawn") {
+                m_objectData.playerSpawn = { x, y, true };
+                std::cout << "[MapManager] PlayerSpawn at (" << x << ", " << y << ")" << std::endl;
+                continue;
+            }
+
+            // Chỉ item được spawn là Star — xử lý riêng cho gọn.
+            if (typeStr == "Star") {
+                EntitySpawnData item;
+                item.type = typeStr;
+                item.x = x;
+                item.y = y;
+                m_objectData.itemSpawns.push_back(item);
+                continue;
+            }
+
+            // STATIC_COIN / Coin: spawn a static coin collectible
+            if (typeStr == "STATIC_COIN" || typeStr == "Coin") {
+                EntitySpawnData item;
+                item.type = "STATIC_COIN";  // normalise to one canonical type
+                item.x = x;
+                item.y = y;
+                m_objectData.itemSpawns.push_back(item);
+                continue;
+            }
+
+            // ── Lift platform objects ─────────────────────────────────────
+            if (typeStr == "Lift") {
+                LiftSpawnData lift;
+                lift.x = x;
+                lift.y = y;
+
+                // Parse optional custom properties
+                if (auto* propsEl = objEl->FirstChildElement("properties")) {
+                    for (auto* prop = propsEl->FirstChildElement("property"); prop;
+                         prop = prop->NextSiblingElement("property")) {
+                        const char* pname = prop->Attribute("name");
+                        const char* pval  = prop->Attribute("value");
+                        if (!pname || !pval) continue;
+                        std::string name(pname);
+                        if (name == "motionType") lift.motionType = pval;
+                        else if (name == "holes") {
+                            try { lift.holes = std::stoi(pval); } catch (...) {}
+                        }
+                        else if (name == "range") {
+                            try { lift.range = std::stof(pval); } catch (...) {}
+                        }
+                        else if (name == "speed") {
+                            try { lift.speed = std::stof(pval); } catch (...) {}
+                        }
+                    }
+                }
+                m_objectData.liftSpawns.push_back(lift);
+                continue;
+            }
+
+            // ── FireBar objects ───────────────────────────────────────────
+            auto isFireBarType = [](const std::string& str) {
+                return (str == "FireBar" || str == "FIRE_BAR" || str == "FIREBAR" ||
+                        str == "Firebar" || str == "fire_bar" || str == "firebar");
+            };
+
+            if (isFireBarType(typeStr)) {
+                FireBarSpawnData fb;
+                fb.x = x;
+                fb.y = y;
+                // If object has width/height, place at center
+                float width = 0.f, height = 0.f;
+                objEl->QueryFloatAttribute("width", &width);
+                objEl->QueryFloatAttribute("height", &height);
+                if (width > 0.f && height > 0.f) {
+                    fb.x += width / 2.f;
+                    fb.y += height / 2.f;
+                }
+                if (auto* propsEl = objEl->FirstChildElement("properties")) {
+                    for (auto* prop = propsEl->FirstChildElement("property"); prop;
+                         prop = prop->NextSiblingElement("property")) {
+                        const char* pname = prop->Attribute("name");
+                        const char* pval  = prop->Attribute("value");
+                        if (!pname || !pval) continue;
+                        std::string name(pname);
+                        if (name == "fireCount" || name == "length") {
+                            try { fb.fireCount = std::stoi(pval); } catch (...) {}
+                        }
+                        else if (name == "speed") {
+                            try { fb.speed = std::stof(pval); } catch (...) {}
+                        }
+                        else if (name == "clockwise") {
+                            fb.clockwise = (std::string(pval) == "true" || std::string(pval) == "1");
+                        }
+                        else if (name == "initialAngle") {
+                            try { fb.initialAngle = std::stof(pval); } catch (...) {}
+                        }
+                    }
+                }
+                m_objectData.fireBarSpawns.push_back(fb);
+                std::cout << "[MapManager] Object FireBar at (" << fb.x << ", " << fb.y << ")" << std::endl;
+                continue;
+            }
+
+            // Otherwise treat as enemy spawn
+
+            EntitySpawnData spawn;
+            spawn.type = typeStr;
+            spawn.x = x;
+            spawn.y = y;
+
+            // Parse optional custom properties on the object
+            if (auto* propsEl = objEl->FirstChildElement("properties")) {
+                for (auto* prop = propsEl->FirstChildElement("property"); prop;
+                     prop = prop->NextSiblingElement("property")) {
+                    const char* pname = prop->Attribute("name");
+                    const char* pval  = prop->Attribute("value");
+                    if (!pname || !pval) continue;
+                    if (std::string(pname) == "direction") spawn.direction = pval;
+                    if (std::string(pname) == "moveSpeed") {
+                        try { spawn.moveSpeed = std::stof(pval); }
+                        catch (...) { /* ignore parse errors */ }
+                    }
+                }
+            }
+
+            m_objectData.enemySpawns.push_back(spawn);
+        }
+    }
+
+    std::cout << "[MapManager] Parsed " << m_objectData.enemySpawns.size()
+              << " enemy spawn(s) from object layers." << std::endl;
 }
 
 // =============================================================================
@@ -324,7 +565,7 @@ void MapManager::update(float deltaTime) {
         ++it;
     }
 
-    // ── Brick debris particles ────────────────────────────────────────────────
+    // ── Brick debris ────────────────────────────────────────────────────────
     for (auto& d : m_brickDebris) {
         d.vel.y += DEBRIS_GRAVITY * deltaTime;
         d.pos   += d.vel * deltaTime;
@@ -345,6 +586,15 @@ void MapManager::update(float deltaTime) {
         std::remove_if(m_coinPopAnims.begin(), m_coinPopAnims.end(),
             [](const CoinPopAnim& c){ return c.life <= 0.f; }),
         m_coinPopAnims.end());
+
+    // ── Flag slide animation ──────────────────────────────────────────────────
+    if (m_flagAnim.active) {
+        m_flagAnim.pos.y += m_flagAnim.speed * deltaTime;
+        if (m_flagAnim.pos.y >= m_flagAnim.targetY) {
+            m_flagAnim.pos.y = m_flagAnim.targetY;
+            m_flagAnim.finished = true;
+        }
+    }
 }
 
 // =============================================================================
@@ -394,8 +644,9 @@ void MapManager::render(sf::RenderWindow& window) const {
             }
 
             // ── Fallback: solid colour (texture not available) ────────────────
-            // EMPTY / HIDDEN_BLOCK không có màu fallback (đều là tile trong suốt) → skip
-            if (type == TileType::EMPTY || type == TileType::HIDDEN_BLOCK) continue;
+            // EMPTY / HIDDEN_BLOCK / BACKGROUND không có màu fallback (tile trong suốt) → skip
+            if (type == TileType::EMPTY || type == TileType::HIDDEN_BLOCK ||
+                type == TileType::BACKGROUND) continue;
             tileShape.setPosition(sf::Vector2f(worldX, worldY));
             switch (type) {
                 case TileType::GROUND:           tileShape.setFillColor(sf::Color(139,  69,  19)); break;
@@ -412,6 +663,29 @@ void MapManager::render(sf::RenderWindow& window) const {
             }
             window.draw(tileShape);
         }
+    }
+
+    // ── Flag slide animation ──────────────────────────────────────────────────
+    if (m_flagAnim.active && m_tileSprite && m_tilesetColumns > 0) {
+        // Flag triangle
+        int localId = GID_FLAGPOLE_FLAG - m_tilesetFirstGid;
+        int tileCol = localId % m_tilesetColumns;
+        int tileRow = localId / m_tilesetColumns;
+        m_tileSprite->setTextureRect(sf::IntRect(
+            {tileCol * m_tileSize, tileRow * m_tileSize},
+            {m_tileSize, m_tileSize}));
+        m_tileSprite->setPosition(m_flagAnim.pos);
+        window.draw(*m_tileSprite);
+
+        // Pole attachment piece
+        int localIdAttach = GID_FLAGPOLE_ATTACH - m_tilesetFirstGid;
+        int tileColAttach = localIdAttach % m_tilesetColumns;
+        int tileRowAttach = localIdAttach / m_tilesetColumns;
+        m_tileSprite->setTextureRect(sf::IntRect(
+            {tileColAttach * m_tileSize, tileRowAttach * m_tileSize},
+            {m_tileSize, m_tileSize}));
+        m_tileSprite->setPosition({m_flagAnim.pos.x + (float)m_tileSize, m_flagAnim.pos.y});
+        window.draw(*m_tileSprite);
     }
 
     // ── Brick debris ──────────────────────────────────────────────────────────
@@ -493,12 +767,12 @@ void MapManager::setTile(int gx, int gy, TileType type) {
 //  ON HIT FROM BELOW  (main dispatcher — Strategy Pattern)
 // =============================================================================
 
-void MapManager::onHitFromBelow(int gx, int gy, int formType) {
+void MapManager::onHitFromBelow(int gx, int gy, IPlayerManager* player) {
     if (gy < 0 || gy >= (int)m_mapData.size() ||
         gx < 0 || gx >= (int)m_mapData[0].size()) return;
 
-    TileType type = m_mapData[gy][gx];
-    getBlockBehavior(type).onHitFromBelow(*this, gx, gy, formType);
+    TileType type = getTileType(static_cast<float>(gx) * m_tileSize, static_cast<float>(gy) * m_tileSize);
+    getBlockBehavior(type).onHitFromBelow(*this, gx, gy, player);
 }
 
 // =============================================================================
@@ -583,4 +857,43 @@ void MapManager::spawnBrickDebris(int gx, int gy) {
         d.size    = { half, half };
         m_brickDebris.push_back(d);
     }
+}
+
+void MapManager::triggerFlagSlide(int poleGridX) {
+    if (m_flagAnim.active) return;
+
+    int topY = -1;
+    int bottomY = -1;
+
+    for (int gy = 0; gy < (int)m_rawGids.size(); ++gy) {
+        if (poleGridX >= 0 && poleGridX < (int)m_rawGids[gy].size()) {
+            int gid = m_rawGids[gy][poleGridX];
+            if (gid == GID_FLAGPOLE_TOP_BALL) {
+                topY = gy + 1; // row below top ball
+            } else if (gid == GID_FLAGPOLE_BASE || (topY != -1 && m_mapData[gy][poleGridX] == TileType::GROUND)) {
+                bottomY = gy - 1; // row above base/ground block
+                break;
+            }
+        }
+    }
+
+    if (topY == -1) topY = 5;
+    if (bottomY == -1) bottomY = 12;
+
+    int flagCol = poleGridX - 1;
+    if (topY >= 0 && topY < (int)m_rawGids.size() && flagCol >= 0 && flagCol < (int)m_rawGids[0].size()) {
+        int skyGid = (topY > 0) ? m_rawGids[topY - 1][flagCol] : 1;
+        if (skyGid == 0) skyGid = 1;
+        m_rawGids[topY][flagCol] = skyGid; // Fill with sky tile so no black background is left!
+        m_mapData[topY][flagCol] = TileType::EMPTY;
+        if (m_rawGids[topY][poleGridX] == GID_FLAGPOLE_ATTACH) {
+            m_rawGids[topY][poleGridX] = GID_FLAGPOLE_SHAFT; // Restore bare pole shaft
+        }
+    }
+
+    m_flagAnim.pos      = { (float)flagCol * (float)m_tileSize, (float)topY * (float)m_tileSize };
+    m_flagAnim.targetY  = (float)bottomY * (float)m_tileSize;
+    m_flagAnim.speed    = FLAG_SLIDE_SPEED;
+    m_flagAnim.active   = true;
+    m_flagAnim.finished = false;
 }

@@ -1,6 +1,8 @@
 #include "PlayState.h"
 #include "PauseState.h"
 #include "GameOverState.h"
+#include "WinState.h"
+#include "IntermissionState.h"
 #include "../core/StateManager.h"
 #include "../core/GameConfig.h"
 #include "../world/GameWorld.h"
@@ -12,6 +14,8 @@
 #include "../entities/player/PlayerManager.h"
 #include "../entities/enemy/EnemyManager.h"
 #include "../entities/item/ItemManager.h"
+#include "../entities/lift/LiftManager.h"
+#include "../entities/firebar/FireBarManager.h"
 #include "../ui/HUDManager.h"
 #include "../ui/SaveManager.h"
 #include <SFML/Graphics.hpp>
@@ -56,41 +60,63 @@ void PlayState::setup(const GameConfig& config)
         m_gameWorld->setPlayerManager2(p2);
     }
 
-    // ── Enemies / Items / HUD / Save ─────────────────────────────
+    // ── Enemies / Items / Lifts / FireBars / HUD / Save ───────────
     m_gameWorld->setEnemyManager(std::make_shared<EnemyManager>());
     m_gameWorld->setItemManager(std::make_shared<ItemManager>());
-    m_gameWorld->setHUDManager(std::make_shared<HUDManager>());
-    m_gameWorld->setSaveManager(std::make_shared<SaveManager>());
+    m_gameWorld->setLiftManager(std::make_shared<LiftManager>());
+    m_gameWorld->setFireBarManager(std::make_shared<FireBarManager>());
+    auto hud = std::make_shared<HUDManager>();
+    hud->setCharacter(config.player1Character);
+    m_gameWorld->setHUDManager(hud);
+    if (!m_saveManager)
+        m_saveManager = std::make_shared<SaveManager>();
+    m_gameWorld->setSaveManager(m_saveManager);
 
     // Inject shared settings (key bindings for the player) before init
     m_gameWorld->setSettings(m_settings);
+    
+    // Inject custom map path if specified
+    m_gameWorld->setCustomMapPath(config.customMapPath);
 
-    // Initialize the game world
-    m_gameWorld->initialize();
-
-    // When starting from a save (Continue in the main menu), apply the
-    // saved player state after the world is fully initialized
-    if (m_loadSave)
+    // When starting from a save (Continue in the main menu), preload snapshot
+    std::optional<GameMemento> loadedMemento;
+    if (m_loadSave && m_saveManager)
     {
-        if (auto* save = m_gameWorld->getSaveManager())
+        loadedMemento = m_saveManager->loadGame();
+        if (loadedMemento)
         {
-            if (save->loadGame())
-            {
-                if (auto* player = m_gameWorld->getPlayerManager())
-                {
-                    player->restoreState(save->getSavedScore(), save->getSavedLives(),
-                                         save->getSavedPosX(), save->getSavedPosY());
-                }
-            }
+            m_config = loadedMemento->config;
+            m_gameWorld->setCustomMapPath(m_config.customMapPath);
+            m_gameWorld->setInitialStage(loadedMemento->stage);
+        }
+        else
+        {
+            std::cerr << "[PlayState] ERROR: Failed to load save game state from SaveManager." << std::endl;
         }
     }
+
+    // Initialize the game world (loads current level once)
+    m_gameWorld->initialize();
+
+    if (loadedMemento)
+    {
+        m_gameWorld->restoreFromMemento(*loadedMemento);
+    }
+
+    m_levelStartMemento = m_gameWorld->createMemento(m_config);
+}
+
+GameMemento PlayState::captureLevelStartMemento() const
+{
+    return m_levelStartMemento;
 }
 
 // ──────────────────────────────────────────────────────────────────
 // Constructor nhận config từ ModeSelectState
 // ──────────────────────────────────────────────────────────────────
-PlayState::PlayState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, bool loadSave)
+PlayState::PlayState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, std::shared_ptr<ISaveManager> saveManager, bool loadSave)
     : m_settings(std::move(settings))
+    , m_saveManager(std::move(saveManager))
     , m_loadSave(loadSave)
 {
     setup(config);
@@ -101,6 +127,7 @@ PlayState::PlayState(const GameConfig& config, std::shared_ptr<ISettingsManager>
 // ──────────────────────────────────────────────────────────────────
 PlayState::PlayState()
     : m_settings(nullptr)
+    , m_saveManager(nullptr)
     , m_loadSave(false)
 {
     GameConfig defaultConfig;
@@ -123,20 +150,16 @@ void PlayState::handleInput(const sf::Event& event)
             auto* manager = getStateManager();
             if (manager)
             {
-                // Sync the latest player state into the save manager so the
-                // pause menu can save it if the player picks "Save & Quit"
-                if (auto* save = m_gameWorld->getSaveManager())
-                {
-                    if (auto* player = m_gameWorld->getPlayerManager())
-                    {
-                        save->setSaveData(player->getScore(), m_gameWorld->getSharedLives(),
-                                          player->getPositionX(), player->getPositionY());
-                        save->setGameConfig(static_cast<int>(m_config.player1Character),
-                                            static_cast<int>(m_config.player2Character),
-                                            static_cast<int>(m_config.mode));
-                    }
-                }
-                manager->pushState(std::make_unique<PauseState>(m_settings, m_gameWorld->getSaveManager(), m_gameWorld->getPlayerManager()));
+                // Create a level-start Memento snapshot via Originator (GameWorld)
+                // so the pause menu can persist it if the player picks "Save & Quit".
+                // We use level start values to prevent farming lives/coins mid-level.
+                GameMemento memento = captureLevelStartMemento();
+
+                manager->pushState(std::make_unique<PauseState>(
+                    m_settings, m_saveManager,
+                    m_gameWorld->getPlayerManager(),
+                    m_gameWorld->getPlayerManager2(),
+                    memento));
             }
             return; // don't forward the pause key to the game world
         }
@@ -149,17 +172,59 @@ void PlayState::update(float deltaTime)
 {
     m_gameWorld->update(deltaTime);
 
-    if (m_gameWorld->isGameOver())
+    if (m_gameWorld->isGameWon())
+    {
+        auto* manager = getStateManager();
+        if (manager)
+        {
+            // Game completed successfully: clear save file
+            m_gameWorld->deleteSaveData();
+
+            int finalScore = m_gameWorld->getTotalScore();
+            int livesLeft  = m_gameWorld->getSharedLives();
+            auto winState  = std::make_unique<WinState>(m_settings, m_saveManager, m_config, finalScore, livesLeft);
+            manager->changeState(std::move(winState));
+        }
+    }
+    else if (m_gameWorld->isStageClear())
+    {
+        auto* manager = getStateManager();
+        if (manager)
+        {
+            int cur = m_gameWorld->getCurrentStageNumber();
+            int next = m_gameWorld->getNextStageNumber();
+            int lives = m_gameWorld->getSharedLives();
+            auto intermission = std::make_unique<IntermissionState>(
+                m_config, cur, next, lives,
+                [this]() {
+                    if (m_gameWorld)
+                    {
+                        m_gameWorld->advanceStage();
+                        m_config.customMapPath = ""; // Clear custom testing map path for future stages and saves
+                        
+                        m_levelStartMemento = m_gameWorld->createMemento(m_config);
+
+                        if (m_saveManager)
+                        {
+                            GameMemento memento = captureLevelStartMemento();
+                            m_saveManager->saveGame(memento);
+                        }
+                    }
+                }
+            );
+            manager->pushState(std::move(intermission));
+        }
+    }
+    else if (m_gameWorld->isGameOver())
     {
         auto* manager = getStateManager();
         if (manager)
         {
             // Delete save file — the player lost, no game to continue
-            if (auto* save = m_gameWorld->getSaveManager())
-                save->deleteSave();
+            m_gameWorld->deleteSaveData();
 
             int finalScore = m_gameWorld->getTotalScore();
-            auto gameOverState = std::make_unique<GameOverState>(m_settings);
+            auto gameOverState = std::make_unique<GameOverState>(m_settings, m_saveManager, m_config);
             gameOverState->setFinalScore(finalScore);
             manager->changeState(std::move(gameOverState));
         }

@@ -2,12 +2,14 @@
 #include <SFML/Graphics.hpp>
 #include "../../interfaces/IPlayerManager.h"
 #include "../../interfaces/IMapManager.h"
+#include "../../interfaces/ILiftManager.h"
 #include "input/PlayerInputHandler.h"
 #include "forms/IPlayerForm.h"
 #include "forms/NormalForm.h"
 #include "forms/SuperForm.h"
 #include "forms/FireForm.h"
 #include "../projectile/FireballManager.h"
+#include "StarState.h"
 #include <memory>
 #include <string>
 
@@ -15,12 +17,22 @@ class PlayerManager : public IPlayerManager
 {
 protected:
     // --- THÔNG SỐ VẬT LÝ & DI CHUYỂN ---
-    float m_maxSpeed;
-    float m_acceleration;
-    float m_friction;
+    float m_maxSpeed;          // WALK max speed
+    float m_runMaxSpeed;       // RUN max speed (khi giữ phím chạy)
+    float m_acceleration;      // gia tốc cùng hướng (đất, cả walk & run)
+    float m_deceleration;      // ma sát tuyến tính khi thả phím (chậm hơn accel)
+    float m_skidDeceleration;  // phanh gấp khi bấm ngược hướng (2-3 lần accel)
+    float m_airAcceleration;   // air control rất yếu — chỉ "nắn" quỹ đạo
     float m_jumpVelocity;
     float m_gravity;
 
+    bool m_isSkidding = false; // true khi đang phanh gấp (skid) — dùng cho animation
+
+    // ── Variable jump (nhấn GIỮ nút nhảy → nhảy cao hơn, tới giới hạn) ──
+    float m_jumpHoldGrace = 0.30f; // giới hạn thời gian giữ (s) để tăng thêm độ cao
+    float m_jumpHoldBoost = 0.30f; // tỉ lệ GIẢM trọng lực trong đà lên khi đang giữ
+    float m_jumpHoldTimer = 0.f;   // thời gian đã giữ trong lần nhảy hiện tại
+    
     // --- THÔNG SỐ RPG ---
     int m_maxHealth;
     int m_currentHealth;
@@ -28,25 +40,41 @@ protected:
     int m_defense;
 
     // ─── dependency ───
-    IMapManager* m_mapManager = nullptr;
+    IMapManager*  m_mapManager  = nullptr;
+    ILiftManager* m_liftManager = nullptr;
     bool m_isInvincible = false;
     float m_invincibilityTimer = 0.f;
     bool m_isInitialized       = false;
     static constexpr float INVINCIBILITY_DURATION = 2.0f; // seconds of i-frames after a hit
 
+    // ─── Star ───
+    std::unique_ptr<StarState> m_starState; // null = bình thường
+
     // ─── tile collision ───
     void tileCollisionX(float deltaTime);
     void tileCollisionY(float deltaTime);
+
+    /**
+     * @brief Vật lý di chuyển ngang kiểu Mario NES: tăng tốc dần trên đất,
+     * giữ động lượng trên không (không đảo hướng được khi đang nhảy);
+     * friction khi đảo chiều nhanh hơn khi thả phím tự trôi.
+     */
+    void applyHorizontalPhysics(float deltaTime);
 
     // --- TRẠNG THÁI HIỆN TẠI ---
     float m_positionX, m_positionY;
     float m_spawnX, m_spawnY;   // vị trí spawn ban đầu (dùng cho respawn)
     float m_velocityX, m_velocityY;
-    int   m_score;
-    bool  m_isAlive;
+    int   m_score = 0;
+    int   m_coins = 0;
+    int   m_pendingOneUps = 0;
+    bool  m_isAlive = true;
     bool  m_isGrounded;
     bool  m_isJumping;
     int   m_facingDirection = 1; // 1 = phải, -1 = trái — hướng nhìn, giữ nguyên khi đứng yên
+    int   m_inputDirection  = 0; // -1/0/1 — hướng phím thô mỗi frame (0 = không bấm)
+    int   m_playerIndex = 1;     // 1 = P1, 2 = P2
+    bool  m_isTwoPlayerMode = false;
 
     // --- PATTERNS ---
     std::unique_ptr<PlayerInputHandler> m_inputHandler;
@@ -83,15 +111,21 @@ public:
     ~PlayerManager() override = default;
 
     void initialize(ISettingsManager* settings = nullptr) override;
+    void setPlayerIndex(int index) override;
+    void setTwoPlayerMode(bool isTwoPlayer) override;
     void update(float deltaTime) override;
     void render(sf::RenderWindow& window) const override;
     void handleInput(const sf::Event& event) override;
 
     bool  isAlive()     const override;
     int   getScore()    const override;
+    void  addScore(int points) override;
+    int   getCoins()    const override { return m_coins; }
+    void  setCoins(int coins) override { m_coins = coins; }
     float getPositionX() const override;
     float getPositionY() const override;
     void restoreState(int score, int lives, float posX, float posY) override;
+    void setSpawnPoint(float x, float y) override;
 
     void jump();
     void stopJump();
@@ -109,10 +143,14 @@ public:
     void collectPowerUp(int type) override;
 
     sf::FloatRect getHitbox()   const override;
+    float getVelocityY()        const override { return m_velocityY; }
+    bool  isInvincible()        const override { return m_isInvincible; }
     void takeDamage()           override;
     void bounce()               override;
     void collectCoin(int amount) override;
+    int  consumePendingOneUps() override;
     void setMapManager(IMapManager* map) override;
+    void setLiftManager(ILiftManager* lifts) override { m_liftManager = lifts; }
 
     /**
      * @brief Instantly kill the player (DEATH_ZONE contact), no form downgrade.
@@ -137,4 +175,25 @@ public:
      * Được gọi bởi GameWorld khi shared lives pool còn > 0.
      */
     void respawn() override;
+
+    /** Kích hoạt StarState 10 giây. */
+    void activateStar() override;
+
+    /** Trả về true nếu StarState đang còn hiệu lực. */
+    bool isStarActive() const override;
+
+    void startFlagpoleSlide(float poleX) override;
+    bool isFlagpoleSliding() const override { return m_isFlagpoleSliding; }
+    bool hasFinishedFlagpole() const override { return m_hasFinishedFlagpole; }
+
+    /**
+     * @brief Offset position by (dx, dy) — called by LiftManager when player rides a lift.
+     * Zeroes vertical velocity and marks the player grounded while riding.
+     */
+    void applyLiftOffset(float dx, float dy) override;
+
+private:
+    bool  m_isFlagpoleSliding = false;
+    bool  m_hasFinishedFlagpole = false;
+    float m_flagpoleFinishTimer = 0.f;
 };

@@ -1,4 +1,5 @@
 #pragma once
+#include "../../interfaces/IPlayerManager.h"
 #include "../../interfaces/IMapManager.h"
 #include "../../interfaces/IItemManager.h"
 #include <vector>
@@ -14,21 +15,7 @@
 #include <SFML/Graphics.hpp>
 #include "../../tinyxml2.h"
 #include "block/IBlockBehavior.h"
-
-enum class TileType {
-    EMPTY = 0,
-    GROUND = 1,
-    PIPE = 2,
-    BRICK_NORMAL = 3,
-    QUESTION_COIN = 4,
-    QUESTION_POWERUP = 5,
-    MULTI_COIN = 6,
-    HIDDEN_BLOCK = 7,
-    DEATH_ZONE = 8,
-    FLAGPOLE = 9,
-    COIN = 10,
-    SOLID_BRICK = 11  
-};
+#include "MapData.h"
 
 // ─── Animation Structs ────────────────────────────────────────────────────────
 
@@ -56,6 +43,18 @@ struct CoinPopAnim {
     float        life;      // remaining lifetime in seconds
 };
 
+/**
+ * @struct FlagSlideAnim
+ * @brief Sliding flag animation on the goal flagpole.
+ */
+struct FlagSlideAnim {
+    sf::Vector2f pos{0.f, 0.f};
+    float        targetY  = 0.f;
+    float        speed    = 90.f;
+    bool         active   = false;
+    bool         finished = false;
+};
+
 // ─── State Structs ────────────────────────────────────────────────────────────
 
 /**
@@ -78,6 +77,9 @@ private:
     // ─── Injected dependency ─────────────────────────────────────────────────
     IItemManager* m_itemManager = nullptr;
 
+    // ─── Parsed object layer data ─────────────────────────────────────────────
+    MapObjectData m_objectData;
+
     // ─── MULTI_COIN per-tile state ────────────────────────────────────────────
     std::map<std::pair<int,int>, MultiCoinState> m_multiCoinStates;
     static constexpr float MULTI_COIN_DURATION = 3.5f;
@@ -85,6 +87,7 @@ private:
     // ─── Live animations ──────────────────────────────────────────────────────
     std::vector<BrickDebris> m_brickDebris;
     std::vector<CoinPopAnim> m_coinPopAnims;
+    FlagSlideAnim            m_flagAnim;
 
     // ─── Tileset sprite-sheet rendering ──────────────────────────────────────
     sf::Texture                  m_tilesetTexture;  // PNG loaded from the TSX <image> node
@@ -111,6 +114,9 @@ private:
     // Resolves a path relative to a base directory
     static std::string resolvePath(const std::string& baseDir, const std::string& relativePath);
 
+    // Parses <objectgroup> layers from TMX for enemy/player spawn points
+    void parseObjectGroups(tinyxml2::XMLElement* mapElement);
+
     // GID → TileType lookup table (populated by loadTileset)
     std::unordered_map<int, TileType> m_gidTypeMap;
     // TileType → GID lookup table (reverse of m_gidTypeMap, built in loadTileset).
@@ -126,6 +132,8 @@ public:
 
     // Các hàm được override từ IMapManager
     void initialize() override;
+    void loadMap(const std::string& tmxPath) override;
+    const MapObjectData& getMapObjectData() const override;
     void update(float deltaTime) override;
     void render(sf::RenderWindow& window) const override;
     
@@ -142,7 +150,7 @@ public:
     }
     
     // Hàm mở rộng: Lấy chính xác loại Tile để xử lý đụng đầu
-    TileType getTileType(float x, float y) const;
+    TileType getTileType(float x, float y) const override;
 
     // ─── Block transition API ─────────────────────────────────────────────────
     // Điểm duy nhất thay đổi tile: cập nhật ĐỒNG THỜI m_mapData (logic)
@@ -156,6 +164,10 @@ public:
     void setMultiCoinActive(int gx, int gy);           // bắt đầu/giữ countdown 3.5s
 
     // ─── IMapManager new API ─────────────────────────────────────────────────
-    void onHitFromBelow(int tileGridX, int tileGridY, int formType) override;
+    void onHitFromBelow(int tileGridX, int tileGridY, IPlayerManager* player) override;
     void setItemManager(IItemManager* itemManager) override { m_itemManager = itemManager; }
+
+    void triggerFlagSlide(int poleGridX) override;
+    bool isFlagSliding() const override { return m_flagAnim.active; }
+    bool hasFlagSlideFinished() const override { return m_flagAnim.finished; }
 };

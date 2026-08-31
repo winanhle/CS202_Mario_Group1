@@ -1,23 +1,32 @@
 #pragma once
 
 #include "../core/GameState.h"
+#include "../core/GameConfig.h"
+#include "../ui/UIUtils.h"
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <string>
+#include <array>
 
 class ISettingsManager;
+class ISaveManager;
 
 /**
  * @class GameOverState
- * @brief Game over state
+ * @brief Interactive game over state
  * 
- * Displays a game over screen with the final score.
- * Press SPACE to return to the main menu.
+ * Displays game over screen with the final score and interactive options:
+ * - RETRY (restarts the game with the same character & mode configuration)
+ * - MAIN MENU (returns to the title screen)
+ * 
+ * Supports both Keyboard (Up/Down/W/S/Enter/Space) and Mouse navigation.
  */
 class GameOverState : public GameState
 {
 public:
-    explicit GameOverState(std::shared_ptr<ISettingsManager> settings);
+    explicit GameOverState(std::shared_ptr<ISettingsManager> settings,
+                           std::shared_ptr<ISaveManager> saveManager,
+                           const GameConfig& config = GameConfig{});
     ~GameOverState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -27,21 +36,38 @@ public:
     void setFinalScore(int score);
 
 private:
+    void refreshUI();
+    void confirmSelection();
+    void retryGame();
     void returnToMenu();
 
     std::shared_ptr<ISettingsManager> m_settings;
+    std::shared_ptr<ISaveManager> m_saveManager;
+    GameConfig m_config;
 
     sf::Font m_font;
     bool m_fontLoaded;
 
     sf::Text m_titleText{m_font};
     sf::Text m_scoreText{m_font};
-    sf::Text m_promptText{m_font};
+    sf::Text m_hintText{m_font};
+    sf::Text m_retryText{m_font};
+    sf::Text m_menuText{m_font};
 
-    // Blinks the "Press SPACE" prompt
-    float m_blinkTimer;
-    static constexpr float BLINK_INTERVAL = 0.5f;
-    bool m_showPrompt;
+    sf::Text& getOptionText(int index) { return (index == 0) ? m_retryText : m_menuText; }
+    const sf::Text& getOptionText(int index) const { return (index == 0) ? m_retryText : m_menuText; }
 
-    int m_finalScore;
+    // Menu options: 0 = RETRY, 1 = MAIN MENU
+    static constexpr int OPTION_COUNT = 2;
+    UINavigator m_nav{OPTION_COUNT};
+
+    std::array<sf::RectangleShape, OPTION_COUNT> m_optionCards;
+
+    // Animations
+    float m_animTimer = 0.0f;
+    int   m_finalScore = 0;
+
+    mutable sf::Vector2u m_windowSize{800u, 600u};
+    static constexpr float WIN_W = 800.0f;
+    static constexpr float WIN_H = 600.0f;
 };

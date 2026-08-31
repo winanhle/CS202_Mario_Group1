@@ -5,18 +5,23 @@ PlayerInputHandler::PlayerInputHandler(const KeyBinding& keys) : m_keys(keys) {}
 Command* PlayerInputHandler::handleEvent(const sf::Event& event) {
     if (const auto* keyEvent = event.getIf<sf::Event::KeyPressed>()) {
         if (keyEvent->code != sf::Keyboard::Key::Unknown) {
-            if (keyEvent->code == m_keys.shoot) {
+            if (m_keys.shoot != sf::Keyboard::Key::Unknown && keyEvent->code == m_keys.shoot) {
                 return &m_shootCommand;
             }
-            if (keyEvent->code == m_keys.jump1st || keyEvent->code == m_keys.jump2nd || keyEvent->code == m_keys.jump3rd) {
+            if ((m_keys.jump1st != sf::Keyboard::Key::Unknown && keyEvent->code == m_keys.jump1st) ||
+                (m_keys.jump2nd != sf::Keyboard::Key::Unknown && keyEvent->code == m_keys.jump2nd) ||
+                (m_keys.jump3rd != sf::Keyboard::Key::Unknown && keyEvent->code == m_keys.jump3rd)) {
                 return &m_jumpCommand;
             }
         }
     }
     else if (const auto* keyReleased = event.getIf<sf::Event::KeyReleased>()) {
-        if (keyReleased->code != sf::Keyboard::Key::Unknown &&
-           (keyReleased->code == m_keys.jump1st || keyReleased->code == m_keys.jump2nd || keyReleased->code == m_keys.jump3rd)) {
-            return &m_stopJumpCommand;
+        if (keyReleased->code != sf::Keyboard::Key::Unknown) {
+            if ((m_keys.jump1st != sf::Keyboard::Key::Unknown && keyReleased->code == m_keys.jump1st) ||
+                (m_keys.jump2nd != sf::Keyboard::Key::Unknown && keyReleased->code == m_keys.jump2nd) ||
+                (m_keys.jump3rd != sf::Keyboard::Key::Unknown && keyReleased->code == m_keys.jump3rd)) {
+                return &m_stopJumpCommand;
+            }
         }
     }
     return nullptr;
@@ -28,6 +33,9 @@ Command* PlayerInputHandler::handleRealtimeInput() {
     bool rightPressed = (m_keys.right1st != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.right1st)) ||
                         (m_keys.right2nd != sf::Keyboard::Key::Unknown && sf::Keyboard::isKeyPressed(m_keys.right2nd));
 
+    if (leftPressed && rightPressed) {
+        return &m_stopHorizontalCommand;
+    }
     if (leftPressed) {
         return &m_moveLeftCommand;
     }

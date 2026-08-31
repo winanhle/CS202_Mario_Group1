@@ -31,13 +31,19 @@ set(COMMON_SOURCES
 set(SHARED_SOURCES
     ${COMMON_SOURCES}
     src/core/Game.cpp
+    src/core/LevelManager.cpp
     src/core/StateManager.cpp
     src/states/MenuState.cpp
     src/states/PlayState.cpp
+    src/states/LevelSelectState.cpp
     src/states/PauseState.cpp
     src/states/GameOverState.cpp
+    src/states/WinState.cpp
+    src/states/IntermissionState.cpp
     src/states/CharacterSelectState.cpp
     src/states/ModeSelectState.cpp
+    src/states/InitialsEntryState.cpp
+    src/states/LeaderboardState.cpp
     src/world/GameWorld.cpp
     src/entities/map/MapManager.cpp
     src/entities/map/block/BlockBehavior.cpp
@@ -45,11 +51,17 @@ set(SHARED_SOURCES
     src/entities/enemy/EnemyManager.cpp
     src/entities/item/Item.cpp
     src/entities/item/ItemManager.cpp
+    src/entities/lift/Lift.cpp
+    src/entities/lift/LiftManager.cpp
+    src/entities/firebar/FireBar.cpp
+    src/entities/firebar/FireBarManager.cpp
     src/entities/camera/CameraManager.cpp
     src/ui/HUDManager.cpp
     src/ui/SaveManager.cpp
     src/ui/SettingsManager.cpp
     src/ui/SettingsMenu.cpp
+    src/ui/MenuBackground.cpp
+    src/ui/UIUtils.cpp
     src/tinyxml2.cpp
 )
 
@@ -66,3 +78,4 @@ foreach(TARGET MarioGame)
                 $<TARGET_FILE_DIR:${TARGET}>/assets
     )
 endforeach()
+add_compile_options(-Wall -Wextra -Wunused)

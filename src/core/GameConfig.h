@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 /**
  * @enum CharacterType
  * @brief Nhân vật người chơi có thể chọn
@@ -23,4 +25,6 @@ struct GameConfig {
     CharacterType player1Character = CharacterType::Mario;
     CharacterType player2Character = CharacterType::Luigi;
     GameMode      mode             = GameMode::SinglePlayer;
+    
+    std::string customMapPath = ""; // Empty means normal progression
 };

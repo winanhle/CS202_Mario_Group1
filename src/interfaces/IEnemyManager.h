@@ -1,7 +1,9 @@
 #pragma once
 #include "IMapManager.h"
 #include <SFML/Graphics/Rect.hpp>
+#include <vector>
 class IPlayerManager;
+struct EntitySpawnData;
 
 namespace sf {
 class RenderWindow;
@@ -58,4 +60,11 @@ public:
      * @return true nếu có ít nhất 1 enemy bị tiêu diệt (cầu lửa nên nổ).
      */
     virtual bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox) = 0;
+
+    /**
+     * @brief Spawn enemies from parsed TMX map object data.
+     * Clears existing enemies and creates new ones based on the spawn data.
+     * @param spawns Vector of EntitySpawnData parsed from the map's object layer
+     */
+    virtual void spawnFromMapData(const std::vector<EntitySpawnData>& spawns) = 0;
 };

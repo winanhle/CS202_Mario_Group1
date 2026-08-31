@@ -2,6 +2,7 @@
 
 #include "../core/GameState.h"
 #include "../core/GameConfig.h"
+#include "../core/GameMemento.h"
 #include <memory>
 
 namespace sf {
@@ -11,6 +12,7 @@ class RenderWindow;
 
 class GameWorld;
 class ISettingsManager;
+class ISaveManager;
 
 /**
  * @class PlayState
@@ -30,7 +32,10 @@ class PlayState : public GameState
 {
 public:
     /** Khởi tạo với config từ màn hình lựa chọn */
-    explicit PlayState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, bool loadSave = false);
+    explicit PlayState(const GameConfig& config,
+                       std::shared_ptr<ISettingsManager> settings,
+                       std::shared_ptr<ISaveManager> saveManager = nullptr,
+                       bool loadSave = false);
 
     /** Constructor mặc định: 1P, Mario (dùng để quick-test) */
     PlayState();
@@ -43,7 +48,12 @@ public:
 private:
     std::unique_ptr<GameWorld> m_gameWorld;
     std::shared_ptr<ISettingsManager> m_settings;
+    std::shared_ptr<ISaveManager> m_saveManager;
     GameConfig m_config;
-    bool m_loadSave;
+    bool m_loadSave = false;
+    
+    GameMemento m_levelStartMemento;
+
     void setup(const GameConfig& config);
+    GameMemento captureLevelStartMemento() const;
 };

@@ -13,5 +13,6 @@ public:
     void OnInteract(IPlayerManager* player) override
     {
        player->collectPowerUp(0);
+       player->addScore(1000);
     }
 };

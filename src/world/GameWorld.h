@@ -1,6 +1,9 @@
 #pragma once
 
 #include <memory>
+#include <SFML/Graphics/Rect.hpp>
+#include "../core/LevelManager.h"
+#include "../core/GameMemento.h"
 
 // Forward declarations for all modules
 class IMapManager;
@@ -11,6 +14,8 @@ class IHUDManager;
 class ISaveManager;
 class ICameraManager;
 class ISettingsManager;
+class ILiftManager;
+class IFireBarManager;
 
 namespace sf {
 class RenderWindow;
@@ -69,14 +74,66 @@ public:
     bool isGameOver() const;
 
     /**
+     * @brief Returns true when the final level is cleared (flagpole reached).
+     */
+    bool isGameWon() const;
+
+    /**
+     * @brief Returns true when a non-final stage is cleared (ready for intermission).
+     */
+    bool isStageClear() const;
+
+    /**
+     * @brief Advances to the next stage and reloads map / entities.
+     */
+    void advanceStage();
+
+    /**
+     * @brief Set specific stage number and reloads level (1-based)
+     */
+    void setStage(int stageNumber);
+
+    int getCurrentStageNumber() const;
+    int getNextStageNumber() const;
+
+    /**
      * @brief Returns combined score of all active players.
      */
     int getTotalScore() const;
 
     /**
+     * @brief Returns combined coin count of all active players.
+     */
+    int getTotalCoins() const;
+
+    /**
      * @brief Returns current shared lives count.
      */
     int getSharedLives() const;
+    void setSharedLives(int lives);
+
+    /**
+     * @brief Deletes any saved progress on game end / completion.
+     */
+    void deleteSaveData();
+
+    /**
+     * @brief Creates a Memento snapshot of the game world state (Originator in Memento pattern).
+     * @param config The current game configuration (characters and mode).
+     * @param scoreOverride Optional score override (e.g. stage-start score). If nullopt, uses current total score.
+     * @param livesOverride Optional lives override (e.g. stage-start lives). If nullopt, uses current lives.
+     * @param coinsOverride Optional coins override (e.g. stage-start coins). If nullopt, uses current coins.
+     */
+    GameMemento createMemento(const GameConfig& config) const;
+
+    /**
+     * @brief Restores the game world state from a Memento snapshot (Originator in Memento pattern).
+     * @param memento Snapshot containing saved level, lives, score, coins, etc.
+     */
+    void restoreFromMemento(const GameMemento& memento);
+
+    void setInitialStage(int stageNumber);
+    void setCustomMapPath(const std::string& path) { m_customMapPath = path; }
 
     // ─── sau initialize, inject dependency ───
     void injectDependencies();
@@ -97,40 +154,54 @@ public:
     void setHUDManager(std::shared_ptr<IHUDManager> hudManager);
     void setSaveManager(std::shared_ptr<ISaveManager> saveManager);
     void setCameraManager(std::shared_ptr<ICameraManager> cameraManager);
+    void setLiftManager(std::shared_ptr<ILiftManager> liftManager);
+    void setFireBarManager(std::shared_ptr<IFireBarManager> fireBarManager);
 
     /**
      * @brief Set the shared settings manager (injected from Game)
-     * Used to pass key bindings etc. down to the player module.
+     * Used to pass key bindings down to the player module.
      */
     void setSettings(std::shared_ptr<ISettingsManager> settings);
 
     // ==================== ACCESSORS ====================
 
-    IPlayerManager* getPlayerManager();
-    IPlayerManager* getPlayerManager2();
-    IEnemyManager*  getEnemyManager();
-    IItemManager*   getItemManager();
-    IHUDManager*    getHUDManager();
-    ISaveManager*   getSaveManager();
-    ICameraManager* getCameraManager();
+    IPlayerManager*   getPlayerManager();
+    IPlayerManager*   getPlayerManager2();
+    IEnemyManager*    getEnemyManager();
+    IItemManager*     getItemManager();
+    IHUDManager*      getHUDManager();
+    ISaveManager*     getSaveManager();
+    ICameraManager*   getCameraManager();
+    ILiftManager*     getLiftManager();
+    IFireBarManager*  getFireBarManager();
 
 private:
     // --- Module manager instances ---
-    std::shared_ptr<IMapManager>    m_mapManager;
+    std::shared_ptr<IMapManager>      m_mapManager;
     std::shared_ptr<IPlayerManager> m_playerManager;
     std::shared_ptr<IPlayerManager> m_playerManager2; // null trong 1P mode
-    std::shared_ptr<IEnemyManager>  m_enemyManager;
-    std::shared_ptr<IItemManager>   m_itemManager;
-    std::shared_ptr<IHUDManager>    m_hudManager;
-    std::shared_ptr<ISaveManager>   m_saveManager;
-    std::shared_ptr<ICameraManager> m_cameraManager;
+    std::weak_ptr<IPlayerManager> m_levelWinner;
+    std::shared_ptr<IEnemyManager>    m_enemyManager;
+    std::shared_ptr<IItemManager>     m_itemManager;
+    std::shared_ptr<IHUDManager>      m_hudManager;
+    std::shared_ptr<ISaveManager>     m_saveManager;
+    std::shared_ptr<ICameraManager>   m_cameraManager;
+    std::shared_ptr<ILiftManager>     m_liftManager;
+    std::shared_ptr<IFireBarManager>  m_fireBarManager;
     std::shared_ptr<ISettingsManager> m_settings;
 
     // --- Shared lives pool (1P & 2P) ---
     static constexpr int INITIAL_LIVES = 3;
     int  m_sharedLives  = INITIAL_LIVES;
     bool m_isGameOver   = false;
+    bool m_isGameWon    = false;
+    bool m_isStageClear = false;
+    bool m_isFlagpoleSequenceActive = false;
+    bool m_isTimerTallyActive = false;
+    int  m_timerPopupCounter = 0;
     bool m_isInitialized = false;
+    int  m_lastScore1 = -1;
+    int  m_lastScore2 = -1;
 
     /**
      * @brief Kiểm tra điều kiện "round death" và xử lý respawn / game over.
@@ -139,4 +210,30 @@ private:
      * 2P:  cả 2 player đều chết → trừ 1 shared live → respawn cả 2 nếu còn live.
      */
     void checkAndHandleDeath();
+
+    // ─── Level progression ──────────────────────────────────────────────────
+    LevelManager m_levelManager;
+    std::string  m_customMapPath = "";
+
+    /**
+     * @brief Tải lại stage hiện tại từ đầu: map + enemy + item + player spawn,
+     *        đồng thời reset camera theo kích thước map mới.
+     */
+    void loadCurrentLevel();
+
+    /**
+     * @brief Kiểm tra player chạm cột FLAGPOLE → advance lên stage tiếp theo.
+     *        Nếu đã ở stage cuối thì quay vòng lại stage 1.
+     */
+    void checkFlagpoleCollision();
+
+    /**
+     * @brief Kiểm tra bất kỳ ô FLAGPOLE nào nằm trong hitbox.
+     */
+    bool hitboxTouchesFlagpole(const sf::FloatRect& box) const;
+
+    /**
+     * @brief Tìm tọa độ X của cột cờ mà hitbox đang chạm.
+     */
+    float getFlagpoleTileX(const sf::FloatRect& box) const;
 };

@@ -1,11 +1,26 @@
 #pragma once
 
+#include "../core/GameMemento.h"
+#include <string>
+#include <vector>
+#include <optional>
+
+/**
+ * @struct ScoreEntry
+ * @brief Represents a single high score leaderboard entry
+ */
+struct ScoreEntry
+{
+    std::string initials = "AAAAA";
+    int score = 0;
+};
+
 /**
  * @interface ISaveManager
- * @brief Interface for save/load management module
+ * @brief Interface for save/load management module acting as the Caretaker in the Memento pattern.
  * 
  * Implemented by: Nguyen Phuc
- * Responsible for: Game state saving, game state loading, persistence
+ * Responsible for: Game state serialization/deserialization, game state persistence, high scores
  * 
  * Extension Point:
  * - Nguyen Phuc should create SaveManager implementing this interface
@@ -23,16 +38,17 @@ public:
     virtual void initialize() = 0;
 
     /**
-     * @brief Save the current game state
+     * @brief Save the given game state snapshot (Memento) to persistent storage
+     * @param memento Snapshot containing all game state data
      * @return True if save was successful
      */
-    virtual bool saveGame() = 0;
+    virtual bool saveGame(const GameMemento& memento) = 0;
 
     /**
-     * @brief Load a previously saved game state
-     * @return True if load was successful
+     * @brief Load the game state snapshot (Memento) from persistent storage
+     * @return GameMemento if load was successful, std::nullopt otherwise
      */
-    virtual bool loadGame() = 0;
+    virtual std::optional<GameMemento> loadGame() = 0;
 
     /**
      * @brief Check if a save file exists
@@ -41,42 +57,14 @@ public:
     virtual bool hasSaveFile() const = 0;
 
     /**
-     * @brief Delete the save file (e.g. on game over)
+     * @brief Delete the save file (e.g. on game over or game completion)
      */
     virtual void deleteSave() = 0;
 
-    /**
-     * @brief Stage the data to be persisted by the next saveGame() call
-     * @param score Player score
-     * @param lives Player lives
-     * @param posX Player X position
-     * @param posY Player Y position
-     */
-    virtual void setSaveData(int score, int lives, float posX, float posY) = 0;
-
-    /**
-     * @brief Get the saved score (valid after loadGame())
-     */
-    virtual int getSavedScore() const = 0;
-
-    /**
-     * @brief Get the saved lives (valid after loadGame())
-     */
-    virtual int getSavedLives() const = 0;
-
-    /**
-     * @brief Get the saved X position (valid after loadGame())
-     */
-    virtual float getSavedPosX() const = 0;
-
-    /**
-     * @brief Get the saved Y position (valid after loadGame())
-     */
-    virtual float getSavedPosY() const = 0;
-
-    // --- GAME CONFIG ---
-    virtual void setGameConfig(int p1Char, int p2Char, int mode) = 0;
-    virtual int getSavedP1Char() const = 0;
-    virtual int getSavedP2Char() const = 0;
-    virtual int getSavedMode() const = 0;
+    // --- HIGH SCORES ---
+    virtual std::vector<ScoreEntry> loadHighScores() const = 0;
+    virtual void saveHighScores(const std::vector<ScoreEntry>& entries) = 0;
+    virtual bool isHighScore(int score) const = 0;
+    virtual void addHighScore(const std::string& initials, int score) = 0;
 };
+

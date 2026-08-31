@@ -2,6 +2,7 @@
 
 #include "../core/GameState.h"
 #include "../core/GameConfig.h"
+#include "../ui/UIUtils.h"
 #include <SFML/Graphics.hpp>
 
 /**
@@ -13,11 +14,12 @@
  * Escape để quay lại MenuState.
  */
 class ISettingsManager;
+class ISaveManager;
 
 class CharacterSelectState : public GameState
 {
 public:
-    CharacterSelectState(std::shared_ptr<ISettingsManager> settings, bool loadSave);
+    CharacterSelectState(std::shared_ptr<ISettingsManager> settings, std::shared_ptr<ISaveManager> saveManager, bool loadSave);
     ~CharacterSelectState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -29,7 +31,7 @@ private:
     void refreshUI();
 
     GameConfig m_config;          // sẽ được truyền sang ModeSelectState
-    int        m_selectedIndex;   // 0 = Mario, 1 = Luigi
+    UINavigator m_nav{2};         // 0 = Mario, 1 = Luigi
 
     sf::Font  m_font;
     bool      m_fontLoaded;
@@ -60,5 +62,7 @@ private:
     static constexpr float WIN_H = 600.f;
 
     std::shared_ptr<ISettingsManager> m_settings;
+    std::shared_ptr<ISaveManager> m_saveManager;
     bool m_loadSave;
+    mutable sf::Vector2u m_windowSize{800u, 600u};
 };

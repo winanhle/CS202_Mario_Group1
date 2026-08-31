@@ -2,10 +2,11 @@
 
 #include "../interfaces/ISaveManager.h"
 #include <string>
+#include <vector>
 
 /**
  * @class SaveManager
- * @brief Saves and loads game state (score, lives, position) to a file.
+ * @brief Saves and loads game state (score, lives, position) and high scores to disk.
  *
  * Developer: Nguyen Phuc
  *
@@ -19,41 +20,23 @@ public:
     ~SaveManager() override = default;
 
     void initialize() override;
-    bool saveGame() override;
-    bool loadGame() override;
+    bool saveGame(const GameMemento& memento) override;
+    std::optional<GameMemento> loadGame() override;
     bool hasSaveFile() const override;
     void deleteSave() override;
 
-    // Additional helpers for setting/reading saved data
-    void setSaveData(int score, int lives, float posX, float posY) override;
-    int getSavedScore() const override;
-    int getSavedLives() const override;
-    float getSavedPosX() const override;
-    float getSavedPosY() const override;
-
-    void setGameConfig(int p1Char, int p2Char, int mode) override;
-    int getSavedP1Char() const override;
-    int getSavedP2Char() const override;
-    int getSavedMode() const override;
-
-    // Static so any state (e.g. MenuState) can check for a save file
-    // without owning a SaveManager instance.
-    static bool saveFileExists();
+    // High score management
+    std::vector<ScoreEntry> loadHighScores() const override;
+    void saveHighScores(const std::vector<ScoreEntry>& entries) override;
+    bool isHighScore(int score) const override;
+    void addHighScore(const std::string& initials, int score) override;
 
 private:
     std::string getSaveFilePath() const;
+    std::string getHighScoresFilePath() const;
 
     static constexpr const char* SAVE_FILE = "mario_save.dat";
+    static constexpr const char* SCORES_FILE = "scores.dat";
 
-    bool m_hasSave;
-
-    // Saved game state
-    int m_savedScore;
-    int m_savedLives;
-    float m_savedPosX;
-    float m_savedPosY;
-
-    int m_savedP1Char = 0;
-    int m_savedP2Char = 1;
-    int m_savedMode = 0;
+    bool m_hasSave = false;
 };

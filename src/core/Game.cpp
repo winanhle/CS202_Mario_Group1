@@ -1,6 +1,7 @@
 #include "Game.h"
 #include "../states/MenuState.h"
 #include "../ui/SettingsManager.h"
+#include "../ui/SaveManager.h"
 
 Game::Game()
     : m_window(std::make_unique<sf::RenderWindow>(
@@ -8,10 +9,12 @@ Game::Game()
         "Mario"
     ))
     , m_settings(std::make_shared<SettingsManager>())
+    , m_saveManager(std::make_shared<SaveManager>())
 {
     m_settings->initialize();
+    m_saveManager->initialize();
     m_window->setFramerateLimit(static_cast<unsigned int>(FRAME_RATE));
-    m_stateManager.changeState(std::make_unique<MenuState>(m_settings));
+    m_stateManager.changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
 }
 
 void Game::run()

@@ -108,24 +108,20 @@ private:
     static constexpr float ITEM_SPACING = 55.0f;
 
     ISettingsManager& m_settings;
-    bool m_pauseContext;
+    bool m_pauseContext = false;
 
-    Screen m_screen;
-    int m_selectedIndex;
-    GameAction m_rebindingAction;
+    Screen m_screen = Screen::Root;
+    int m_selectedIndex = 0;
+    GameAction m_rebindingAction = GameAction::P1Jump;
     bool m_rebindReserved = false; // true while showing "key reserved" hint
 
     sf::Font m_font;
-    bool m_fontLoaded;
+    bool m_fontLoaded = false;
 
     // Window size tracked via render() so that mouse positions can be correctly
     // mapped into the fixed 800x600 view space when the window is resized or maximized.
     // mutable because render() (const) refreshes it every frame.
     mutable sf::Vector2u m_windowSize{800u, 600u};
-
-    // m_font must be declared before these Texts so it's initialized first
-    // m_title is mutable because render() (const) re-centers it each frame
-    mutable sf::Text m_title{m_font};
 
     std::vector<MenuItem> m_rootItems;
     std::vector<MenuItem> m_settingsItems;

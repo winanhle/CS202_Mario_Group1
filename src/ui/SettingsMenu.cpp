@@ -1,5 +1,9 @@
+#include "../ui/UIUtils.h"
 #include "SettingsMenu.h"
+#include "../core/GameState.h"
+#include "../ui/UIUtils.h"
 #include <SFML/Window/Event.hpp>
+#include <algorithm>
 
 SettingsMenu::SettingsMenu(ISettingsManager& settings, bool pauseContext)
     : m_settings(settings)
@@ -140,19 +144,29 @@ std::vector<sf::FloatRect> SettingsMenu::computeItemRects() const
 
     for (int i = 0; i < static_cast<int>(items->size()); ++i)
     {
-        sf::Text itemText{m_font};
-        setupText(itemText, itemDisplayText((*items)[i]), 28, sf::Color::White);
-
-        sf::FloatRect bounds = itemText.getLocalBounds();
-        itemText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
-                             bounds.position.y + bounds.size.y / 2.0f });
         sf::Vector2f pos = getItemPosition(i);
-        itemText.setPosition(pos);
 
-        sf::Vector2f topLeft = itemText.getPosition() - itemText.getOrigin();
-        // The hitbox height is ITEM_SPACING, centered on the text Y
-        topLeft.y = pos.y - ITEM_SPACING / 2.0f;
-        rects.push_back(sf::FloatRect(topLeft, { bounds.size.x, ITEM_SPACING }));
+        if (m_screen == Screen::Settings && (*items)[i].kind == ItemKind::Slider)
+        {
+            // The volume slider encompasses label, slider track (160px), and percentage text
+            const float leftX = pos.x - 155.0f;
+            const float totalW = 375.0f;
+            rects.push_back(sf::FloatRect({ leftX, pos.y - ITEM_SPACING / 2.0f }, { totalW, ITEM_SPACING }));
+        }
+        else
+        {
+            sf::Text itemText{m_font};
+            setupText(itemText, itemDisplayText((*items)[i]), 28, sf::Color::White);
+
+            UIUtils::centerOrigin(itemText);
+            itemText.setPosition(pos);
+
+            sf::FloatRect bounds = itemText.getLocalBounds();
+            sf::Vector2f topLeft = itemText.getPosition() - itemText.getOrigin();
+            // The hitbox height is ITEM_SPACING, centered on the text Y
+            topLeft.y = pos.y - ITEM_SPACING / 2.0f;
+            rects.push_back(sf::FloatRect(topLeft, { bounds.size.x, ITEM_SPACING }));
+        }
     }
     return rects;
 }
@@ -203,14 +217,30 @@ SettingsMenu::Request SettingsMenu::handleMouseClick(sf::Vector2i position)
         {
             m_selectedIndex = i;
 
-            // Volume slider: click left half to decrease, right half to increase
+            // Volume slider: direct track click or label/percent nudging
             if ((*items)[i].kind == ItemKind::Slider)
             {
-                float midX = rects[i].position.x + rects[i].size.x / 2.0f;
-                if (mouse.x < midX)
+                sf::Vector2f pos = getItemPosition(i);
+                const float trackStartX = pos.x - 10.0f;
+                const float trackW = 160.0f;
+
+                if (mouse.x < trackStartX)
+                {
+                    // Clicked left of track (VOLUME label): decrease by 5%
                     m_settings.setVolume(m_settings.getVolume() - 5.0f);
-                else
+                }
+                else if (mouse.x > trackStartX + trackW)
+                {
+                    // Clicked right of track (% text): increase by 5%
                     m_settings.setVolume(m_settings.getVolume() + 5.0f);
+                }
+                else
+                {
+                    // Clicked directly on the slider track: set volume proportionally snapped to 5% increments
+                    float ratio = (mouse.x - trackStartX) / trackW;
+                    float newVol = std::round(std::clamp(ratio, 0.0f, 1.0f) * 20.0f) * 5.0f;
+                    m_settings.setVolume(newVol);
+                }
                 m_settings.save();
                 return Request::None;
             }
@@ -435,12 +465,11 @@ void SettingsMenu::render(sf::RenderWindow& window) const
         break;
     }
 
-    setupText(m_title, title, 48, sf::Color::White);
-    sf::FloatRect titleBounds = m_title.getLocalBounds();
-    m_title.setOrigin({ titleBounds.position.x + titleBounds.size.x / 2.0f,
-                        titleBounds.position.y + titleBounds.size.y / 2.0f });
-    m_title.setPosition({ 400.0f, 120.0f });
-    window.draw(m_title);
+    sf::Text titleText{m_font};
+    setupText(titleText, title, 48, sf::Color::White);
+    UIUtils::centerOrigin(titleText);
+    titleText.setPosition({ 400.0f, 120.0f });
+    window.draw(titleText);
 
     if (m_screen == Screen::Rebind)
     {
@@ -449,9 +478,7 @@ void SettingsMenu::render(sf::RenderWindow& window) const
                   "Press any key for " + actionLabel(m_rebindingAction) +
                       "   (ESC to cancel)",
                   24, sf::Color::Yellow);
-        sf::FloatRect hintBounds = hint.getLocalBounds();
-        hint.setOrigin({ hintBounds.position.x + hintBounds.size.x / 2.0f,
-                         hintBounds.position.y + hintBounds.size.y / 2.0f });
+        UIUtils::centerOrigin(hint);
         hint.setPosition({ 400.0f, 300.0f });
         window.draw(hint);
 
@@ -459,9 +486,7 @@ void SettingsMenu::render(sf::RenderWindow& window) const
         {
             sf::Text warn{m_font};
             setupText(warn, "KEY RESERVED - try another", 20, sf::Color::Red);
-            sf::FloatRect warnBounds = warn.getLocalBounds();
-            warn.setOrigin({ warnBounds.position.x + warnBounds.size.x / 2.0f,
-                             warnBounds.position.y + warnBounds.size.y / 2.0f });
+            UIUtils::centerOrigin(warn);
             warn.setPosition({ 400.0f, 340.0f });
             window.draw(warn);
         }
@@ -475,16 +500,53 @@ void SettingsMenu::render(sf::RenderWindow& window) const
     for (int i = 0; i < static_cast<int>(items->size()); ++i)
     {
         const MenuItem& item = (*items)[i];
-        std::string text = itemDisplayText(item);
 
-        sf::Text itemText{m_font};
-        setupText(itemText, text, 28,
-                  (i == m_selectedIndex) ? sf::Color::Yellow : sf::Color::White);
+        if (m_screen == Screen::Settings && item.kind == ItemKind::Slider)
+        {
+            sf::Vector2f pos = getItemPosition(i);
+            
+            sf::Text labelText{m_font};
+            setupText(labelText, item.label, 28, (i == m_selectedIndex) ? sf::Color::Yellow : sf::Color::White);
+            UIUtils::centerOrigin(labelText);
+            labelText.setPosition({ pos.x - 100.0f, pos.y });
+            window.draw(labelText);
+            
+            const float trackStartX = pos.x - 10.0f;
+            const float trackW = 160.0f;
+            const float trackH = 10.0f;
+            
+            sf::RectangleShape track({ trackW, trackH });
+            track.setFillColor(sf::Color(100, 100, 100));
+            track.setOutlineColor(sf::Color::White);
+            track.setOutlineThickness(1.5f);
+            track.setPosition({ trackStartX, pos.y - trackH / 2.0f });
+            window.draw(track);
+            
+            float volRatio = m_settings.getVolume() / 100.0f;
+            if (volRatio > 0.0f) {
+                sf::RectangleShape fill({ trackW * volRatio, trackH });
+                fill.setFillColor((i == m_selectedIndex) ? sf::Color::Yellow : sf::Color::White);
+                fill.setPosition({ trackStartX, pos.y - trackH / 2.0f });
+                window.draw(fill);
+            }
+            
+            sf::Text pctText{m_font};
+            setupText(pctText, std::to_string(static_cast<int>(m_settings.getVolume())) + "%", 28, (i == m_selectedIndex) ? sf::Color::Yellow : sf::Color::White);
+            UIUtils::centerOrigin(pctText);
+            pctText.setPosition({ trackStartX + trackW + 50.0f, pos.y });
+            window.draw(pctText);
+        }
+        else
+        {
+            std::string text = itemDisplayText(item);
 
-        sf::FloatRect bounds = itemText.getLocalBounds();
-        itemText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
-                             bounds.position.y + bounds.size.y / 2.0f });
-        itemText.setPosition(getItemPosition(i));
-        window.draw(itemText);
+            sf::Text itemText{m_font};
+            setupText(itemText, text, 28,
+                      (i == m_selectedIndex) ? sf::Color::Yellow : sf::Color::White);
+
+            UIUtils::centerOrigin(itemText);
+            itemText.setPosition(getItemPosition(i));
+            window.draw(itemText);
+        }
     }
 }

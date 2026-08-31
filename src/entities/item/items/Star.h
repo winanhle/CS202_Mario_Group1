@@ -23,6 +23,7 @@ public:
 
     void OnInteract(IPlayerManager* player) override
     {
-        player->collectCoin(1);
+        player->activateStar();
+        player->addScore(1000);
     }
 };

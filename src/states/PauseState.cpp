@@ -6,10 +6,15 @@
 #include <SFML/Graphics.hpp>
 
 PauseState::PauseState(std::shared_ptr<ISettingsManager> settings,
-                       ISaveManager* saveManager,IPlayerManager* player)
+                       std::shared_ptr<ISaveManager> saveManager,
+                       IPlayerManager* player1,
+                       IPlayerManager* player2,
+                       std::optional<GameMemento> saveSnapshot)
     : m_settings(std::move(settings))
-    , m_saveManager(saveManager)
-    , m_player(player)
+    , m_saveManager(std::move(saveManager))
+    , m_player1(player1)
+    , m_player2(player2)
+    , m_saveSnapshot(std::move(saveSnapshot))
     , m_menu(*m_settings, /*pauseContext=*/true)
 {
 }
@@ -24,8 +29,10 @@ void PauseState::handleInput(const sf::Event& event)
     {
         // Re-apply key bindings from the latest settings so any rebind made
         // in the pause menu takes effect immediately when the game resumes.
-        if (m_player)
-            m_player->initialize(m_settings.get());
+        if (m_player1)
+            m_player1->initialize(m_settings.get());
+        if (m_player2)
+            m_player2->initialize(m_settings.get());
         auto* manager = getStateManager();
         if (manager)
         {
@@ -44,7 +51,7 @@ void PauseState::handleInput(const sf::Event& event)
         {
             // Pop the pause state, then replace PlayState with the menu
             manager->popState();
-            manager->changeState(std::make_unique<MenuState>(m_settings));
+            manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
         }
         break;
     }
@@ -57,17 +64,27 @@ void PauseState::handleInput(const sf::Event& event)
 
 void PauseState::saveAndQuitToMenu()
 {
-    // Persist the player state (already synced by PlayState before pausing)
+    // Persist the game state Memento snapshot if available
     if (m_saveManager)
     {
-        m_saveManager->saveGame();
+        if (m_saveSnapshot.has_value())
+        {
+            if (!m_saveManager->saveGame(m_saveSnapshot.value()))
+            {
+                std::cerr << "[PauseState] ERROR: Failed to save game on exit!" << std::endl;
+            }
+        }
+        else
+        {
+            std::cerr << "[PauseState] WARNING: Save & Quit called with no active save snapshot." << std::endl;
+        }
     }
 
     auto* manager = getStateManager();
     if (manager)
     {
         manager->popState();
-        manager->changeState(std::make_unique<MenuState>(m_settings));
+        manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
     }
 }
 

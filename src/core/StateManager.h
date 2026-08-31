@@ -5,6 +5,7 @@
 #include <memory>
 #include <set>
 #include <vector>
+#include <SFML/Graphics/RectangleShape.hpp>
 
 namespace sf {
 class RenderWindow;
@@ -86,4 +87,12 @@ private:
     std::vector<GameState::Ptr> m_stateStack;
     std::set<sf::Keyboard::Key> m_heldKeys; // keys currently down, used to skip OS auto-repeat
     std::vector<PendingTransition> m_pendingTransitions;
+
+    // Fade-to-black transition state
+    enum class FadePhase { None, FadeOut, FadeIn };
+    FadePhase m_fadePhase = FadePhase::None;
+    float m_fadeTimer = 0.f;
+    static constexpr float FADE_DURATION = 0.3f;
+    GameState::Ptr m_pendingFadeState;
+    mutable sf::RectangleShape m_fadeRect;
 };

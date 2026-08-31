@@ -19,10 +19,7 @@ private:
     const IPlayerManager* m_targetPlayer  = nullptr;
     const IPlayerManager* m_targetPlayer2 = nullptr; // null trong 1P mode
 
-    float m_deadzoneWidth;
-    float m_viewWidth;
-    float m_viewHeight;
-    float m_lerpSpeedX;
-    float m_lerpSpeedY;
-    float m_mapWidth;
+    float m_viewWidth = 320.0f;
+    float m_viewHeight = 240.0f;
+    float m_mapWidth = 0.0f;
 };

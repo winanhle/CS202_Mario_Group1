@@ -1,5 +1,6 @@
 #include "CharacterSelectState.h"
 #include "ModeSelectState.h"
+#include "MenuState.h"
 #include "../core/StateManager.h"
 #include <SFML/Graphics.hpp>
 #include <array>
@@ -12,11 +13,11 @@ static const sf::Color CARD_SEL  = sf::Color(80, 120, 220, 230);
 static const sf::Color OUTLINE_SEL = sf::Color(160, 200, 255);
 static const sf::Color OUTLINE_IDLE = sf::Color(60,  60, 140);
 
-CharacterSelectState::CharacterSelectState(std::shared_ptr<ISettingsManager> settings, bool loadSave)
-    : m_selectedIndex(0)
-    , m_fontLoaded(false)
+CharacterSelectState::CharacterSelectState(std::shared_ptr<ISettingsManager> settings, std::shared_ptr<ISaveManager> saveManager, bool loadSave)
+    : m_fontLoaded(false)
     , m_preview{sf::Sprite(m_marioTexture), sf::Sprite(m_luigiTexture)}
     , m_settings(std::move(settings))
+    , m_saveManager(std::move(saveManager))
     , m_loadSave(loadSave)
 {
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
@@ -24,16 +25,14 @@ CharacterSelectState::CharacterSelectState(std::shared_ptr<ISettingsManager> set
     // ── Tải texture preview ──────────────────────────────────
     if (m_marioTexture.loadFromFile("assets/texture/hero/mario.png"))
     {
-        // Lấy frame đứng của NormalForm Mario (walkFrame1 = {1,6,15,18})
         m_preview[0].setTexture(m_marioTexture);
-        m_preview[0].setTextureRect(sf::IntRect({1, 6}, {15, 18}));
+        m_preview[0].setTextureRect(sf::IntRect({154, 30}, {16, 28}));
         m_preview[0].setScale({3.f, 3.f});
     }
     if (m_luigiTexture.loadFromFile("assets/texture/hero/luigi.png"))
     {
-        // TODO: đổi thành offset thực tế của luigi.png sau khi đo
         m_preview[1].setTexture(m_luigiTexture);
-        m_preview[1].setTextureRect(sf::IntRect({1, 6}, {15, 18}));
+        m_preview[1].setTextureRect(sf::IntRect({154, 29}, {16, 29}));
         m_preview[1].setScale({3.f, 3.f});
     }
 
@@ -58,9 +57,10 @@ CharacterSelectState::CharacterSelectState(std::shared_ptr<ISettingsManager> set
         m_card[i].setPosition({cx, CARD_Y});
         m_card[i].setOutlineThickness(3.f);
 
-        // Sprite preview (căn giữa thẻ)
-        m_preview[i].setPosition({cx + CARD_W / 2.f - 15.f * 3.f / 2.f,
-                                   CARD_Y + 30.f});
+        // Sprite preview (căn giữa thẻ theo chiều ngang, đặt chân ở cùng vị trí cố định)
+        const auto rect = m_preview[i].getTextureRect();
+        m_preview[i].setOrigin({ rect.size.x / 2.f, static_cast<float>(rect.size.y) });
+        m_preview[i].setPosition({ cx + CARD_W / 2.f, CARD_Y + 120.f });
 
         if (m_fontLoaded)
         {
@@ -103,6 +103,11 @@ CharacterSelectState::CharacterSelectState(std::shared_ptr<ISettingsManager> set
         m_hintText.setPosition({WIN_W / 2.f, 530.f});
     }
 
+    m_nav.setAxis(UINavigator::Axis::Horizontal);
+    m_nav.getHitbox = [this](int i) { return m_card[i].getGlobalBounds(); };
+    m_nav.onActivate = [this](int) { confirm(); };
+    m_nav.onSelectionChanged = [this](int, int) { refreshUI(); };
+
     refreshUI();
 }
 
@@ -110,7 +115,7 @@ void CharacterSelectState::refreshUI()
 {
     for (int i = 0; i < 2; ++i)
     {
-        bool selected = (i == m_selectedIndex);
+        bool selected = (i == m_nav.getSelectedIndex());
         m_card[i].setFillColor(selected ? CARD_SEL : CARD_IDLE);
         m_card[i].setOutlineColor(selected ? OUTLINE_SEL : OUTLINE_IDLE);
         m_charName[i].setFillColor(selected ? sf::Color::Yellow : sf::Color::White);
@@ -119,50 +124,36 @@ void CharacterSelectState::refreshUI()
 
 void CharacterSelectState::handleInput(const sf::Event& event)
 {
-    if (const auto* key = event.getIf<sf::Event::KeyPressed>())
+    if (const auto* resizeEvent = event.getIf<sf::Event::Resized>())
     {
-        switch (key->code)
+        m_windowSize = resizeEvent->size;
+    }
+    else if (const auto* key = event.getIf<sf::Event::KeyPressed>())
+    {
+        if (key->code == sf::Keyboard::Key::Escape)
         {
-        case sf::Keyboard::Key::Left:
-        case sf::Keyboard::Key::A:
-            m_selectedIndex = 0;
-            refreshUI();
-            break;
-
-        case sf::Keyboard::Key::Right:
-        case sf::Keyboard::Key::D:
-            m_selectedIndex = 1;
-            refreshUI();
-            break;
-
-        case sf::Keyboard::Key::Enter:
-            confirm();
-            break;
-
-        case sf::Keyboard::Key::Escape:
             if (auto* mgr = getStateManager())
-                mgr->popState();
-            break;
-
-        default:
-            break;
+                mgr->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
+            return;
         }
     }
+
+    m_nav.handleInput(event, m_windowSize);
 }
 
 void CharacterSelectState::confirm()
 {
-    m_config.player1Character = (m_selectedIndex == 0)
+    m_config.player1Character = (m_nav.getSelectedIndex() == 0)
         ? CharacterType::Mario
         : CharacterType::Luigi;
 
     // Player 2 tự động là nhân vật còn lại
-    m_config.player2Character = (m_selectedIndex == 0)
+    m_config.player2Character = (m_nav.getSelectedIndex() == 0)
         ? CharacterType::Luigi
         : CharacterType::Mario;
 
     if (auto* mgr = getStateManager())
-        mgr->changeState(std::make_unique<ModeSelectState>(m_config, m_settings, m_loadSave));
+        mgr->changeState(std::make_unique<ModeSelectState>(m_config, m_settings, m_saveManager, m_loadSave));
 }
 
 void CharacterSelectState::update(float deltaTime)
@@ -177,6 +168,8 @@ void CharacterSelectState::update(float deltaTime)
 
 void CharacterSelectState::render(sf::RenderWindow& window) const
 {
+    m_windowSize = window.getSize();
+
     // Nền gradient giả (2 hình chữ nhật)
     sf::RectangleShape bg({WIN_W, WIN_H});
     bg.setFillColor(BG_TOP);
@@ -197,7 +190,7 @@ void CharacterSelectState::render(sf::RenderWindow& window) const
         window.draw(m_charDesc[i]);
 
         // Mũi tên chỉ vào thẻ được chọn (nhấp nháy)
-        if (i == m_selectedIndex && m_blinkOn && m_fontLoaded)
+        if (i == m_nav.getSelectedIndex() && m_blinkOn && m_fontLoaded)
         {
             sf::Text arrow(m_font);
             arrow.setString("▼");

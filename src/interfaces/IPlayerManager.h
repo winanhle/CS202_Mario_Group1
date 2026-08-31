@@ -2,8 +2,9 @@
 
 #include <SFML/Graphics/Rect.hpp>
 #include "IMapManager.h"
-class IEnemyManager;
 
+class IEnemyManager;
+class ILiftManager;
 class ISettingsManager;
 
 namespace sf {
@@ -46,6 +47,8 @@ public:
      *        hardcoded defaults
      */
     virtual void initialize(ISettingsManager* settings = nullptr) = 0;
+    virtual void setPlayerIndex(int index) { (void)index; }
+    virtual void setTwoPlayerMode(bool isTwoPlayer) { (void)isTwoPlayer; }
 
     /**
      * @brief Update player logic
@@ -78,6 +81,18 @@ public:
     virtual int getScore() const = 0;
 
     /**
+     * @brief Add score points directly (e.g. from timer bonuses)
+     */
+    virtual void addScore(int points) { (void)points; }
+
+    /**
+     * @brief Get collected coins count
+     * @return Number of coins collected
+     */
+    virtual int getCoins() const { return 0; }
+    virtual void setCoins(int coins) { (void)coins; }
+
+    /**
      * @brief Get remaining lives.
      * @note Ở chế độ 2P, lives được quản lý tập trung bởi GameWorld (shared lives pool).
      *       getLives() trên mỗi player instance không còn có ý nghĩa — dùng GameWorld::getSharedLives() thay thế.
@@ -106,14 +121,38 @@ public:
      */
     virtual void restoreState(int score, int lives, float posX, float posY) = 0;
 
+    /**
+     * @brief Đặt vị trí spawn (và vị trí hiện tại) của player từ map.
+     * @param x World X pixel
+     * @param y World Y pixel
+     * Respawn sau khi chết sẽ về đúng điểm này.
+     */
+    virtual void setSpawnPoint(float x, float y) { (void)x; (void)y; }
+
     // ─── API CHO ENEMY/ITEM MANAGER ───
     virtual sf::FloatRect getHitbox() const = 0;
 
+    /**
+     * @brief Trả về vận tốc dọc (px/s) của player.
+     * Dùng để xác định hướng tiếp cận khi va chạm enemy
+     * (> 0 = đang rơi xuống → có thể stomp dù xuyên sâu trong frame).
+     */
+    virtual float getVelocityY() const { return 0.f; }
+
+    /**
+     * @brief Trả về true nếu player còn i-frames (miễn nhiễm sát thương).
+     * EnemyManager dùng để KHÔNG đánh dấu "đang chồng lên" khi chưa thật sự
+     * tính sát thương — hết i-frames mà vẫn đè lên enemy thì vẫn bị trừ.
+     */
+    virtual bool isInvincible() const { return false; }
+
     // ─── BEHAVIOR ───
     virtual void setMapManager(IMapManager* map) = 0;
+    virtual void setLiftManager(ILiftManager* lifts) { (void)lifts; }
     virtual void takeDamage() = 0;
     virtual void bounce() = 0;
     virtual void collectCoin(int amount) = 0;
+    virtual int consumePendingOneUps() { return 0; }
     virtual void collectPowerUp(int type) = 0;
 
     /**
@@ -140,4 +179,39 @@ public:
      * Được GameWorld gọi khi shared lives pool vẫn còn > 0 sau khi cả 2 player chết.
      */
     virtual void respawn() = 0;
+
+    // ─── STAR ───
+    /**
+     * @brief Kích hoạt StarState (10 giây bất tử + tiêu diệt enemy khi chạm).
+     * Được gọi bởi Star::OnInteract().
+     */
+    virtual void activateStar() = 0;
+
+    /**
+     * @brief Trả về true nếu player đang trong StarState (còn thời gian hiệu lực).
+     * Được EnemyManager kiểm tra để quyết định collision behavior.
+     */
+    virtual bool isStarActive() const = 0;
+
+    /**
+    /**
+     * @brief Bắt đầu animation trượt cột cờ (Flagpole slide).
+     */
+    virtual void startFlagpoleSlide(float poleX) = 0;
+    virtual bool isFlagpoleSliding() const = 0;
+    virtual bool hasFinishedFlagpole() const = 0;
+
+    /**
+     * @brief Called by LiftManager each frame while this player is riding a lift.
+     *
+     * Offsets the player's world position by (dx, dy) without running tile
+     * collision checks.  Also zeroes vertical velocity (prevents gravity from
+     * fighting an upward-moving lift) and marks the player as grounded so
+     * jump is available while standing on the platform.
+     *
+     * @param dx  Horizontal displacement this frame (pixels).
+     * @param dy  Vertical displacement this frame (pixels; negative = upward).
+     */
+    virtual void applyLiftOffset(float dx, float dy) { (void)dx; (void)dy; }
 };
+

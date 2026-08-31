@@ -1,3 +1,4 @@
+#include "../../../interfaces/IPlayerManager.h"
 #include "BlockBehavior.h"
 
 #include <unordered_map>
@@ -7,75 +8,87 @@
 //  m_mapData và m_rawGids (texture) LUÔN đồng bộ (Encapsulation).
 // =============================================================================
 
-void EmptyBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void EmptyBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng
+    (void)map; (void)gx; (void)gy; (void)player; // không phản ứng
 }
 
-void GroundBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void BackgroundBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng
+    (void)map; (void)gx; (void)gy; (void)player; // không phản ứng (giống EMPTY)
 }
 
-void PipeBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void GroundBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng
+    (void)map; (void)gx; (void)gy; (void)player; // không phản ứng
 }
 
-void BrickBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void PipeBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)formType;
-    map.spawnBrickDebris(gx, gy);               // mảnh gạch bay
-    map.setTile(gx, gy, TileType::EMPTY);       // → EMPTY + load texture EMPTY
+    (void)map; (void)gx; (void)gy; (void)player; // không phản ứng
 }
 
-void QuestionCoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void BrickBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)formType;
-    map.spawnCoinPop(gx, gy);                       // pop animation + award coin
-    map.setTile(gx, gy, TileType::SOLID_BRICK);     // → block đã dùng (đổi texture)
+    if (player && player->getFormType() != FormType::Normal) { // Super or Fire
+        map.spawnBrickDebris(gx, gy);
+        map.setTile(gx, gy, TileType::EMPTY);
+        player->addScore(50);
+    }
 }
 
-void QuestionPowerupBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void QuestionCoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    map.spawnItemForFormType(gx, gy, formType); // Mushroom (Normal) / FireFlower (Super/Fire)
-    map.setTile(gx, gy, TileType::SOLID_BRICK); // → block đã dùng (đổi texture)
+    map.spawnCoinPop(gx, gy);
+    if (player) player->collectCoin(1);
+    map.setTile(gx, gy, TileType::SOLID_BRICK);
+}
+
+void QuestionPowerupBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
+{
+    map.spawnItemForFormType(gx, gy, player ? static_cast<int>(player->getFormType()) : 0);
+    map.setTile(gx, gy, TileType::SOLID_BRICK);
 }
 
 // MULTI_COIN: vẫn cho coin trong cửa sổ 3.5s (award lặp lại ở mỗi lần đập),
 // countdown do MapManager::update() xử lý → setTile(SOLID_BRICK) khi hết giờ.
-void MultiCoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void MultiCoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)formType;
-    map.spawnCoinPop(gx, gy);          // pop animation + award coin
-    map.setMultiCoinActive(gx, gy);    // bắt đầu / giữ countdown 3.5s
+    map.spawnCoinPop(gx, gy);
+    if (player) player->collectCoin(1);
+    map.setMultiCoinActive(gx, gy);
 }
 
 // HIDDEN_BLOCK: vô hình + không solid; khi đập → trở thành SOLID_BRICK.
-void HiddenBlockBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void HiddenBlockBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)formType;
+    (void)player;
     map.setTile(gx, gy, TileType::SOLID_BRICK); // → solid + hiện texture block đã dùng
 }
 
-void SolidBrickBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void SolidBrickBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng
+    (void)map; (void)gx; (void)gy; (void)player; // không phản ứng
 }
 
-void DeathZoneBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void DeathZoneBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng
+    (void)map; (void)gx; (void)gy; (void)player; // không phản ứng
 }
 
-void FlagpoleBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void FlagpoleBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng
+    (void)map; (void)gx; (void)gy; (void)player; // không phản ứng
 }
 
-void CoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
+void CoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
 {
-    (void)map; (void)gx; (void)gy; (void)formType; // không phản ứng
+    (void)map; (void)gx; (void)gy; (void)player; // không phản ứng
+}
+
+void FireBarBlockBehavior::onHitFromBelow(MapManager& map, int gx, int gy, IPlayerManager* player) const
+{
+    (void)map; (void)gx; (void)gy; (void)player; // không phản ứng (solid block)
 }
 
 // =============================================================================
@@ -85,6 +98,7 @@ void CoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType)
 const IBlockBehavior& getBlockBehavior(TileType type)
 {
     static const EmptyBehavior          empty;
+    static const BackgroundBehavior    background;
     static const GroundBehavior         ground;
     static const PipeBehavior           pipe;
     static const BrickBehavior          brick;
@@ -96,9 +110,11 @@ const IBlockBehavior& getBlockBehavior(TileType type)
     static const DeathZoneBehavior      death;
     static const FlagpoleBehavior       flag;
     static const CoinBehavior           coin;
+    static const FireBarBlockBehavior   fireBar;
 
     static const std::unordered_map<TileType, const IBlockBehavior*> table{
         {TileType::EMPTY,              &empty},
+        {TileType::BACKGROUND,         &background},
         {TileType::GROUND,             &ground},
         {TileType::PIPE,               &pipe},
         {TileType::BRICK_NORMAL,       &brick},
@@ -110,6 +126,7 @@ const IBlockBehavior& getBlockBehavior(TileType type)
         {TileType::DEATH_ZONE,         &death},
         {TileType::FLAGPOLE,           &flag},
         {TileType::COIN,               &coin},
+        {TileType::FIRE_BAR,           &fireBar},
     };
 
     auto it = table.find(type);

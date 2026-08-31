@@ -1,8 +1,13 @@
 #pragma once
 
+#include <string>
+#include <functional>
+#include "../core/GameConfig.h"
+
 namespace sf {
 class RenderWindow;
 class Event;
+class View;
 }
 
 /**
@@ -68,4 +73,64 @@ public:
      * @return True when time is up (game over condition)
      */
     virtual bool isTimeUp() const = 0;
+
+    /**
+     * @brief Update HUD with current world/level number
+     * @param level Current level number (1-based)
+     */
+    virtual void updateWorld(int level) { (void)level; }
+
+    /**
+     * @brief Reset the countdown timer back to its starting value.
+     *        Called when a new level is loaded.
+     */
+    virtual void resetTimer() {}
+
+    /**
+     * @brief Set the active character type for hero icon display
+     * @param characterType CharacterType enum
+     */
+    virtual void setCharacter(CharacterType characterType) { (void)characterType; }
+
+    /**
+     * @brief Display a transient notification banner on the screen
+     * @param message Text to display
+     * @param duration Duration in seconds to show the toast
+     */
+    virtual void showToast(const std::string& message, float duration = 2.0f) { (void)message; (void)duration; }
+
+    /**
+     * @brief Spawn a floating score popup in world space
+     * @param points Score amount
+     * @param worldX World X position
+     * @param worldY World Y position
+     */
+    virtual void spawnScorePopup(int points, float worldX, float worldY, bool isOneUp = false) { (void)points; (void)worldX; (void)worldY; (void)isOneUp; }
+
+    /**
+     * @brief Render floating score popups.
+     * @param window SFML RenderWindow
+     * @param cameraView Optional pointer to the camera view for crisp world->screen space rendering
+     */
+    virtual void renderPopups(sf::RenderWindow& window, const sf::View* cameraView = nullptr) const { (void)window; (void)cameraView; }
+
+    /**
+     * @brief Start rapid drain of remaining time to convert into score
+     * @param onScoreTick Callback invoked with bonus points awarded per second drained
+     * @param onComplete Callback invoked when countdown tally finishes
+     * @param worldX World X position where accumulating score popup appears
+     * @param worldY World Y position where accumulating score popup appears
+     */
+    virtual void startTimerBonus(std::function<void(int bonus)> onScoreTick, std::function<void()> onComplete = nullptr, float worldX = 0.f, float worldY = 0.f) { (void)onScoreTick; (void)onComplete; (void)worldX; (void)worldY; }
+
+    /**
+     * @brief Check if rapid timer bonus countdown is currently running
+     */
+    virtual bool isTimerBonusActive() const { return false; }
+
+    /**
+     * @brief Get current remaining time in seconds
+     */
+    virtual float getTimeLeft() const { return 0.0f; }
 };
+
