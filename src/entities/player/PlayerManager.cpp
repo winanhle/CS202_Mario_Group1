@@ -416,6 +416,9 @@ void PlayerManager::shoot()
             float spawnY = m_positionY + m_playerSize.y / 2.f;
             m_fireballManager->spawnFireball(spawnX, spawnY, dir, this);
             ff->triggerShootCooldown();
+
+            if (m_soundManager)
+                m_soundManager->playFireball();
         }
     }
 }

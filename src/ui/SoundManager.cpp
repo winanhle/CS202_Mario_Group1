@@ -17,6 +17,9 @@ SoundManager::SoundManager()
     if (!m_coinBuffer.loadFromFile("assets/sound/coin.wav"))
         throw std::runtime_error("Failed to load coin.wav");
 
+    if (!m_fireballBuffer.loadFromFile("assets/sound/fireball.wav"))
+        throw std::runtime_error("Failed to load fireball.wav");
+
     if (!m_flagpoleBuffer.loadFromFile("assets/sound/flagpole.wav"))
         throw std::runtime_error("Failed to load flagpole.wav");
 
@@ -69,6 +72,7 @@ SoundManager::SoundManager()
     m_bumpSound = std::make_unique<sf::Sound>(m_bumpBuffer);
     m_brickSound = std::make_unique<sf::Sound>(m_brickBuffer);
     m_coinSound = std::make_unique<sf::Sound>(m_coinBuffer);
+    m_fireballSound = std::make_unique<sf::Sound>(m_fireballBuffer);
     m_flagpoleSound = std::make_unique<sf::Sound>(m_flagpoleBuffer);
     m_itemSound = std::make_unique<sf::Sound>(m_itemBuffer);
     m_jumpSound = std::make_unique<sf::Sound>(m_jumpBuffer);
@@ -106,6 +110,11 @@ void SoundManager::playBrick()
 void SoundManager::playCoin()
 {
     m_coinSound->play();
+}
+
+void SoundManager::playFireball()
+{
+    m_fireballSound->play();
 }
 
 void SoundManager::playFlagpole()
@@ -198,6 +207,7 @@ void SoundManager::setVolume(float volume)
     m_bumpSound->setVolume(m_volume);
     m_brickSound->setVolume(m_volume);
     m_coinSound->setVolume(m_volume);
+    m_fireballSound->setVolume(m_volume);
     m_flagpoleSound->setVolume(m_volume);
     m_itemSound->setVolume(m_volume);
     m_jumpSound->setVolume(m_volume);
@@ -230,6 +240,7 @@ void SoundManager::stopAll()
     m_bumpSound->stop();
     m_brickSound->stop();
     m_coinSound->stop();
+    m_fireballSound->stop();
     m_flagpoleSound->stop();
     m_itemSound->stop();
     m_jumpSound->stop();

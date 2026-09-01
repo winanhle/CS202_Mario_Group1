@@ -9,6 +9,7 @@ public:
     virtual void playBump() = 0;
     virtual void playBrick() = 0;
     virtual void playCoin() = 0;
+    virtual void playFireball() = 0;
     virtual void playFlagpole() = 0;
     virtual void playItem() = 0;
     virtual void playJump() = 0;

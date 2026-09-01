@@ -14,6 +14,7 @@ private:
     sf::SoundBuffer m_bumpBuffer;
     sf::SoundBuffer m_brickBuffer;
     sf::SoundBuffer m_coinBuffer;
+    sf::SoundBuffer m_fireballBuffer;
     sf::SoundBuffer m_flagpoleBuffer;
     sf::SoundBuffer m_itemBuffer;
     sf::SoundBuffer m_jumpBuffer;
@@ -32,6 +33,7 @@ private:
     std::unique_ptr<sf::Sound> m_bumpSound;
     std::unique_ptr<sf::Sound> m_brickSound;
     std::unique_ptr<sf::Sound> m_coinSound;
+    std::unique_ptr<sf::Sound> m_fireballSound;
     std::unique_ptr<sf::Sound> m_flagpoleSound;
     std::unique_ptr<sf::Sound> m_itemSound;
     std::unique_ptr<sf::Sound> m_jumpSound;
@@ -57,6 +59,7 @@ public:
     void playBump() override;
     void playBrick() override;
     void playCoin() override;
+    void playFireball() override;
     void playFlagpole() override;
     void playItem() override;
     void playJump() override;
