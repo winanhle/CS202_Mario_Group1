@@ -10,14 +10,18 @@
 
 class ISettingsManager;
 class ISaveManager;
+class ISoundManager;
 
 class LevelSelectState : public GameState
 {
 public:
-    explicit LevelSelectState(const GameConfig& config,
-                              std::shared_ptr<ISettingsManager> settings,
-                              std::shared_ptr<ISaveManager> saveManager = nullptr,
-                              bool loadSave = false);
+    explicit LevelSelectState(
+        const GameConfig& config,
+        std::shared_ptr<ISettingsManager> settings,
+        std::shared_ptr<ISaveManager> saveManager = nullptr,
+        bool loadSave = false,
+        std::shared_ptr<ISoundManager> soundManager = nullptr
+    );
     ~LevelSelectState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -55,6 +59,7 @@ private:
     GameConfig m_config;
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager> m_saveManager;
+    std::shared_ptr<ISoundManager> m_soundManager;
     bool m_loadSave = false;
 
     // Stage preview textures

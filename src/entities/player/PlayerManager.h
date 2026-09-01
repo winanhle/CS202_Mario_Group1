@@ -13,6 +13,8 @@
 #include <memory>
 #include <string>
 
+class ISoundManager;
+
 class PlayerManager : public IPlayerManager
 {
 protected:
@@ -42,6 +44,7 @@ protected:
     // ─── dependency ───
     IMapManager*  m_mapManager  = nullptr;
     ILiftManager* m_liftManager = nullptr;
+    ISoundManager* m_soundManager = nullptr;
     bool m_isInvincible = false;
     float m_invincibilityTimer = 0.f;
     bool m_isInitialized       = false;
@@ -151,6 +154,7 @@ public:
     void collectCoin(int amount) override;
     int  consumePendingOneUps() override;
     void setMapManager(IMapManager* map) override;
+    void setSoundManager(ISoundManager* sound) override;
     void setLiftManager(ILiftManager* lifts) override { m_liftManager = lifts; }
 
     /**

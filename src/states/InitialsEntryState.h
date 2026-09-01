@@ -9,6 +9,7 @@
 
 class ISettingsManager;
 class ISaveManager;
+class ISoundManager;
 
 /**
  * @class InitialsEntryState
@@ -17,10 +18,13 @@ class ISaveManager;
 class InitialsEntryState : public GameState
 {
 public:
-    InitialsEntryState(int finalScore,
-                       std::shared_ptr<ISettingsManager> settings,
-                       std::shared_ptr<ISaveManager> saveManager,
-                       const GameConfig& config = GameConfig{});
+    InitialsEntryState(
+        int finalScore,
+        std::shared_ptr<ISettingsManager> settings,
+        std::shared_ptr<ISaveManager> saveManager,
+        const GameConfig& config = GameConfig{},
+        std::shared_ptr<ISoundManager> soundManager = nullptr
+    );
     ~InitialsEntryState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -40,6 +44,7 @@ private:
     int m_score = 0;
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager> m_saveManager;
+    std::shared_ptr<ISoundManager> m_soundManager;
     GameConfig m_config;
 
     sf::Font m_font;

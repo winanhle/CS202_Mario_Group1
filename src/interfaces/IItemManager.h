@@ -4,6 +4,7 @@
 #include <vector>
 
 class IPlayerManager;
+class ISoundManager;
 
 namespace sf {
 class RenderWindow;
@@ -100,4 +101,5 @@ public:
     virtual void spawnStaticCoin(float worldX, float worldY) = 0;
 
     virtual void setMapManager(IMapManager* map) = 0;
+    virtual void setSoundManager(ISoundManager* sound) { (void)sound; }
 };

@@ -5,17 +5,23 @@
 #include "../core/StateManager.h"
 #include "../core/GameConfig.h"
 #include "../interfaces/ISaveManager.h"
+#include "../interfaces/ISoundManager.h"
 #include "PlayState.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
-MenuState::MenuState(std::shared_ptr<ISettingsManager> settings, std::shared_ptr<ISaveManager> saveManager)
+MenuState::MenuState(
+    std::shared_ptr<ISettingsManager> settings,
+    std::shared_ptr<ISaveManager> saveManager,
+    std::shared_ptr<ISoundManager> soundManager
+)
     : m_fontLoaded(false)
     , m_hasSave(false)
     , m_blinkTimer(0.0f)
     , m_showPrompt(true)
     , m_settings(std::move(settings))
     , m_saveManager(std::move(saveManager))
+    , m_soundManager(std::move(soundManager))
     , m_settingsMenu(*m_settings, /*pauseContext=*/false)
     , m_inSettings(false)
 {
@@ -133,7 +139,7 @@ void MenuState::handleInput(const sf::Event& event)
         {
             if (auto* manager = getStateManager())
             {
-                manager->changeState(std::make_unique<LeaderboardState>(m_settings, m_saveManager));
+                manager->changeState(std::make_unique<LeaderboardState>(m_settings, m_saveManager, m_soundManager));
             }
         }
         else if (keyEvent->code == sf::Keyboard::Key::Escape)
@@ -202,7 +208,7 @@ void MenuState::startGame(bool loadSave)
             {
                 if (auto memento = m_saveManager->loadGame())
                 {
-                    manager->changeState(std::make_unique<PlayState>(memento->config, m_settings, m_saveManager, loadSave));
+                    manager->changeState(std::make_unique<PlayState>(memento->config, m_settings, m_saveManager, loadSave, m_soundManager));
                 }
                 else
                 {
@@ -212,7 +218,7 @@ void MenuState::startGame(bool loadSave)
         }
         else
         {
-            manager->changeState(std::make_unique<CharacterSelectState>(m_settings, m_saveManager, loadSave));
+            manager->changeState(std::make_unique<CharacterSelectState>(m_settings, m_saveManager, loadSave, m_soundManager));
         }
     }
 }

@@ -2,6 +2,7 @@
 #include "../states/MenuState.h"
 #include "../ui/SettingsManager.h"
 #include "../ui/SaveManager.h"
+#include "../ui/SoundManager.h"
 
 Game::Game()
     : m_window(std::make_unique<sf::RenderWindow>(
@@ -10,8 +11,10 @@ Game::Game()
     ))
     , m_settings(std::make_shared<SettingsManager>())
     , m_saveManager(std::make_shared<SaveManager>())
+    , m_soundManager(std::make_shared<SoundManager>())
 {
     m_settings->initialize();
+    m_soundManager->setVolume(m_settings->getVolume());
     m_saveManager->initialize();
     m_window->setFramerateLimit(static_cast<unsigned int>(FRAME_RATE));
 
@@ -20,7 +23,7 @@ Game::Game()
         m_window->setIcon(icon.getSize(), icon.getPixelsPtr());
     }
 
-    m_stateManager.changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
+    m_stateManager.changeState(std::make_unique<MenuState>(m_settings, m_saveManager, m_soundManager));
 }
 
 void Game::run()

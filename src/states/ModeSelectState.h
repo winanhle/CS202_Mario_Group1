@@ -15,14 +15,18 @@
  */
 class ISettingsManager;
 class ISaveManager;
+class ISoundManager;
 
 class ModeSelectState : public GameState
 {
 public:
-    explicit ModeSelectState(const GameConfig& config,
-                             std::shared_ptr<ISettingsManager> settings,
-                             std::shared_ptr<ISaveManager> saveManager,
-                             bool loadSave);
+    explicit ModeSelectState(
+        const GameConfig& config,
+        std::shared_ptr<ISettingsManager> settings,
+        std::shared_ptr<ISaveManager> saveManager,
+        bool loadSave,
+        std::shared_ptr<ISoundManager> soundManager = nullptr
+    );
     ~ModeSelectState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -58,6 +62,7 @@ private:
 
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager> m_saveManager;
+    std::shared_ptr<ISoundManager> m_soundManager;
     bool m_loadSave;
     mutable sf::Vector2u m_windowSize{800u, 600u};
 };

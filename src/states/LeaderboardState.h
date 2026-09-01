@@ -8,6 +8,7 @@
 
 class ISettingsManager;
 class ISaveManager;
+class ISoundManager;
 
 /**
  * @class LeaderboardState
@@ -16,9 +17,12 @@ class ISaveManager;
 class LeaderboardState : public GameState
 {
 public:
-    LeaderboardState(std::shared_ptr<ISettingsManager> settings,
-                     std::shared_ptr<ISaveManager> saveManager = nullptr,
-                     const GameConfig& config = GameConfig{});
+    LeaderboardState(
+        std::shared_ptr<ISettingsManager> settings,
+        std::shared_ptr<ISaveManager> saveManager = nullptr,
+        std::shared_ptr<ISoundManager> soundManager = nullptr,
+        const GameConfig& config = GameConfig{}
+    );
     ~LeaderboardState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -30,6 +34,7 @@ private:
 
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager> m_saveManager;
+    std::shared_ptr<ISoundManager> m_soundManager;
     GameConfig m_config;
 
     sf::Font m_font;

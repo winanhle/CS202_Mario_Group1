@@ -10,6 +10,7 @@
 
 class ISettingsManager;
 class ISaveManager;
+class ISoundManager;
 
 /**
  * @class WinState
@@ -23,11 +24,14 @@ class ISaveManager;
 class WinState : public GameState
 {
 public:
-    explicit WinState(std::shared_ptr<ISettingsManager> settings,
-                      std::shared_ptr<ISaveManager> saveManager,
-                      const GameConfig& config,
-                      int baseScore,
-                      int livesRemaining);
+    explicit WinState(
+        std::shared_ptr<ISettingsManager> settings,
+        std::shared_ptr<ISaveManager> saveManager,
+        const GameConfig& config,
+        int baseScore,
+        int livesRemaining,
+        std::shared_ptr<ISoundManager> soundManager = nullptr
+    );
     ~WinState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -42,6 +46,8 @@ private:
 
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager> m_saveManager;
+    std::shared_ptr<ISoundManager> m_soundManager;
+    bool m_winSoundPlayed = false;
     GameConfig m_config;
 
     int m_baseScore = 0;

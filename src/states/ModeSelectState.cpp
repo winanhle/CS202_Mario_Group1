@@ -3,6 +3,7 @@
 #include "LevelSelectState.h"
 #include "CharacterSelectState.h"
 #include "../core/StateManager.h"
+#include "../interfaces/ISoundManager.h"
 #include <SFML/Graphics.hpp>
 
 // ─── Màu sắc ───────────────────────────────────────────────
@@ -13,14 +14,18 @@ static const sf::Color MS_CARD_SEL  = sf::Color(60, 160,  60, 230);
 static const sf::Color MS_OUT_SEL   = sf::Color(130, 230, 130);
 static const sf::Color MS_OUT_IDLE  = sf::Color(40,  90,  40);
 
-ModeSelectState::ModeSelectState(const GameConfig& config,
-                                 std::shared_ptr<ISettingsManager> settings,
-                                 std::shared_ptr<ISaveManager> saveManager,
-                                 bool loadSave)
+ModeSelectState::ModeSelectState(
+    const GameConfig& config,
+    std::shared_ptr<ISettingsManager> settings,
+    std::shared_ptr<ISaveManager> saveManager,
+    bool loadSave,
+    std::shared_ptr<ISoundManager> soundManager
+)
     : m_config(config)
     , m_fontLoaded(false)
     , m_settings(std::move(settings))
     , m_saveManager(std::move(saveManager))
+    , m_soundManager(std::move(soundManager))
     , m_loadSave(loadSave)
 {
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
@@ -132,7 +137,7 @@ void ModeSelectState::handleInput(const sf::Event& event)
         if (key->code == sf::Keyboard::Key::Escape)
         {
             if (auto* mgr = getStateManager())
-                mgr->changeState(std::make_unique<CharacterSelectState>(m_settings, m_saveManager, m_loadSave));
+                mgr->changeState(std::make_unique<CharacterSelectState>(m_settings, m_saveManager, m_loadSave, m_soundManager));
             return;
         }
     }
@@ -147,7 +152,7 @@ void ModeSelectState::confirm()
         : GameMode::TwoPlayer;
 
     if (auto* mgr = getStateManager())
-        mgr->changeState(std::make_unique<LevelSelectState>(m_config, m_settings, m_saveManager, m_loadSave));
+        mgr->changeState(std::make_unique<LevelSelectState>(m_config, m_settings, m_saveManager, m_loadSave, m_soundManager));
 }
 
 void ModeSelectState::update(float deltaTime)

@@ -1,5 +1,6 @@
 #include "MapManager.h"
 #include "block/BlockBehavior.h"
+#include "../../interfaces/ISoundManager.h"
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -901,7 +902,7 @@ bool MapManager::isSolidFromBelow(float x, float y) const {
 }
 
 // =============================================================================
-//  TILE WRITE — INTERNAL (game logic, no undo) & IMapContext PUBLIC
+//  TILE WRITE — INTERNAL & IMapContext PUBLIC
 // =============================================================================
 
 void MapManager::setTileInternal(int gx, int gy, TileType type) {
@@ -928,10 +929,32 @@ void MapManager::setTileInternal(int gx, int gy, TileType type) {
     }
 }
 
-// IMapContext::setTile — called by block behaviors.
-// Delegates to setTileInternal (game logic, no undo recording).
-void MapManager::setTile(int gx, int gy, TileType type) {
-    setTileInternal(gx, gy, type);
+// =============================================================================
+//  SOUND FACADE
+// =============================================================================
+
+void MapManager::playBumpSound()
+{
+    if (m_soundManager)
+        m_soundManager->playBump();
+}
+
+void MapManager::playBrickSound()
+{
+    if (m_soundManager)
+        m_soundManager->playBrick();
+}
+
+void MapManager::playCoinSound()
+{
+    if (m_soundManager)
+        m_soundManager->playCoin();
+}
+
+void MapManager::playItemSound()
+{
+    if (m_soundManager)
+        m_soundManager->playItem();
 }
 
 // =============================================================================
@@ -1073,6 +1096,9 @@ void MapManager::spawnBrickDebris(int gx, int gy) {
 
 void MapManager::triggerFlagSlide(int poleGridX) {
     if (m_flagAnim.active) return;
+
+    if (m_soundManager)
+        m_soundManager->playFlagpole();
 
     // Auto-detect flagpole shaft column if poleGridX was offset (if called on the flag graphic column)
     int actualPoleX = poleGridX;

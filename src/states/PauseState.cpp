@@ -3,15 +3,20 @@
 #include "../core/StateManager.h"
 #include "../interfaces/ISaveManager.h"
 #include "../interfaces/IPlayerManager.h"
+#include "../interfaces/ISoundManager.h"
 #include <SFML/Graphics.hpp>
 
-PauseState::PauseState(std::shared_ptr<ISettingsManager> settings,
-                       std::shared_ptr<ISaveManager> saveManager,
-                       IPlayerManager* player1,
-                       IPlayerManager* player2,
-                       std::optional<GameMemento> saveSnapshot)
+PauseState::PauseState(
+    std::shared_ptr<ISettingsManager> settings,
+    std::shared_ptr<ISaveManager> saveManager,
+    IPlayerManager* player1,
+    IPlayerManager* player2,
+    std::optional<GameMemento> saveSnapshot,
+    std::shared_ptr<ISoundManager> soundManager
+)
     : m_settings(std::move(settings))
     , m_saveManager(std::move(saveManager))
+    , m_soundManager(std::move(soundManager))
     , m_player1(player1)
     , m_player2(player2)
     , m_saveSnapshot(std::move(saveSnapshot))
@@ -51,7 +56,7 @@ void PauseState::handleInput(const sf::Event& event)
         {
             // Pop the pause state, then replace PlayState with the menu
             manager->popState();
-            manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
+            manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager, m_soundManager));
         }
         break;
     }
@@ -84,7 +89,7 @@ void PauseState::saveAndQuitToMenu()
     if (manager)
     {
         manager->popState();
-        manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
+        manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager, m_soundManager));
     }
 }
 

@@ -1,6 +1,7 @@
 #include "ItemManager.h"
 
 #include "../../interfaces/IPlayerManager.h"
+#include "../../interfaces/ISoundManager.h"
 
 #include "items/Coin.h"
 #include "items/Mushroom.h"
@@ -233,6 +234,9 @@ void ItemManager::spawnMushroom(float worldX, float worldY)
     m_items.push_back(
         std::make_unique<Mushroom>(worldX, worldY, m_mushroomTexture)
     );
+
+    if (m_soundManager)
+        m_soundManager->playItem();
 }
 
 void ItemManager::spawnFireFlower(float worldX, float worldY)
@@ -246,6 +250,9 @@ void ItemManager::spawnFireFlower(float worldX, float worldY)
     m_items.push_back(
         std::make_unique<FireFlower>(worldX, worldY, flowerFrames)
     );
+
+    if (m_soundManager)
+        m_soundManager->playItem();
 }
 
 void ItemManager::spawnStar(float worldX, float worldY)
@@ -253,6 +260,9 @@ void ItemManager::spawnStar(float worldX, float worldY)
     m_items.push_back(
         std::make_unique<Star>(worldX, worldY, m_starTexture)
     );
+
+    if (m_soundManager)
+        m_soundManager->playItem();
 }
 
 void ItemManager::spawnStaticCoin(float worldX, float worldY)

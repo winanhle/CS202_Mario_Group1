@@ -2,6 +2,7 @@
 #include "EnemyFactory.h"
 #include "enemies/BossFireBall.h"
 #include "../../interfaces/IPlayerManager.h"
+#include "../../interfaces/ISoundManager.h"
 #include <iostream>
 #include <SFML/Graphics.hpp>
 
@@ -166,6 +167,8 @@ void EnemyManager::resolvePlayerCollision(Enemy& enemy, IPlayerManager* player, 
             enemy.onStomp();
             player->addScore(100);
             player->bounce();
+            if (m_soundManager)
+                m_soundManager->playStomp();
         }
         else if (!wasOverlapping || !player->isInvincible())
         {
@@ -203,6 +206,8 @@ bool EnemyManager::takeDamageFromFireball(const sf::FloatRect& fireballHitbox, I
         {
             enemy->onStomp();
             if (owner) owner->addScore(100);
+            if (m_soundManager)
+                m_soundManager->playStomp();
             return true;
         }
     }

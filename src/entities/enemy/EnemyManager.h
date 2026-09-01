@@ -11,6 +11,7 @@
 #include <vector>
 
 class IPlayerManager;
+class ISoundManager;
 
 namespace sf {
 class RenderWindow;
@@ -21,6 +22,7 @@ class EnemyManager : public IEnemyManager
     IPlayerManager* m_player = nullptr;
     IPlayerManager* m_player2 = nullptr;
     IMapManager* m_mapManager = nullptr;
+    ISoundManager* m_soundManager = nullptr;
     std::vector<std::unique_ptr<Enemy>> m_enemies;
     std::unique_ptr<IEnemyFactory> m_enemyFactory;
 
@@ -47,6 +49,8 @@ public:
     void setPlayerManager2(IPlayerManager* player) override { m_player2 = player; }
 
     void setMapManager(IMapManager* map) override { m_mapManager = map; }
+
+    void setSoundManager(ISoundManager* sound) override { m_soundManager = sound; }
 
     bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox, IPlayerManager* owner = nullptr) override;
 

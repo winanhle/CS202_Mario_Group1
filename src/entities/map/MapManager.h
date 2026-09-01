@@ -20,6 +20,8 @@
 #include "MapData.h"
 #include "MapEdit.h"
 
+class ISoundManager;
+
 // ─── Animation Structs ────────────────────────────────────────────────────────
 
 /**
@@ -110,6 +112,7 @@ private:
     // ─── Injected dependencies ────────────────────────────────────────────────
     IItemManager*  m_itemManager  = nullptr;
     IEnemyManager* m_enemyManager = nullptr;
+    ISoundManager* m_soundManager = nullptr;
 
     // ─── Parsed object layer data ─────────────────────────────────────────────
     MapObjectData m_objectData;
@@ -235,6 +238,15 @@ public:
     void requestWarp(const std::string& targetMap, float targetX = -1.f, float targetY = -1.f) override;
 
     // ─── Flag API ─────────────────────────────────────────────────────────────
+    // ─── Sound dependency ─────────────────────────────────────────────────────
+    void setSoundManager(ISoundManager* soundManager) { m_soundManager = soundManager; }
+
+    // Sound facade used by BlockBehavior strategies.
+    void playBumpSound();
+    void playBrickSound();
+    void playCoinSound();
+    void playItemSound();
+
     void triggerFlagSlide(int poleGridX) override;
     bool isFlagSliding() const override { return m_flagAnim.active; }
     bool hasFlagSlideFinished() const override { return m_flagAnim.finished; }

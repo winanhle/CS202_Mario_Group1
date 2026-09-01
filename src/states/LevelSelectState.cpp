@@ -4,6 +4,8 @@
 #include "MapEditorState.h"
 #include "../interfaces/ISaveManager.h"
 #include "../core/StateManager.h"
+#include "../interfaces/ISoundManager.h"
+#include <filesystem>
 #include <iostream>
 #include <algorithm>
 #include <cmath>
@@ -63,13 +65,17 @@ namespace {
     static constexpr sf::Color TEXT_BTN_IDLE(150, 180, 220);
 }
 
-LevelSelectState::LevelSelectState(const GameConfig& config,
-                                   std::shared_ptr<ISettingsManager> settings,
-                                   std::shared_ptr<ISaveManager> saveManager,
-                                   bool loadSave)
+LevelSelectState::LevelSelectState(
+    const GameConfig& config,
+    std::shared_ptr<ISettingsManager> settings,
+    std::shared_ptr<ISaveManager> saveManager,
+    bool loadSave,
+    std::shared_ptr<ISoundManager> soundManager
+)
     : m_config(config),
       m_settings(std::move(settings)),
       m_saveManager(std::move(saveManager)),
+      m_soundManager(std::move(soundManager)),
       m_loadSave(loadSave)
 {
     if (m_font.openFromFile(FONT_PATH)) {
@@ -142,7 +148,7 @@ void LevelSelectState::confirmSelection()
 
         m_config.customMapPath = m_levels[m_selectedIndex].path;
         if (auto* mgr = getStateManager()) {
-            mgr->changeState(std::make_unique<PlayState>(m_config, m_settings, m_saveManager, m_loadSave));
+            mgr->changeState(std::make_unique<PlayState>(m_config, m_settings, m_saveManager, m_loadSave, m_soundManager));
         }
     }
 }
@@ -211,7 +217,7 @@ void LevelSelectState::handleInput(const sf::Event& event)
         }
         if (keyEvent->code == sf::Keyboard::Key::Escape) {
             if (auto* mgr = getStateManager())
-                mgr->changeState(std::make_unique<ModeSelectState>(m_config, m_settings, m_saveManager, m_loadSave));
+                mgr->changeState(std::make_unique<ModeSelectState>(m_config, m_settings, m_saveManager, m_loadSave, m_soundManager));
         }
     }
     else if (const auto* mouseMoved = event.getIf<sf::Event::MouseMoved>()) {

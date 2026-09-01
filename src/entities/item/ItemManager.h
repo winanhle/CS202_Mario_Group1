@@ -7,6 +7,7 @@
 #include <vector>
 
 class IPlayerManager;
+class ISoundManager;
 
 namespace sf {
 class RenderWindow;
@@ -18,6 +19,7 @@ private:
     IPlayerManager* m_player  = nullptr;
     IPlayerManager* m_player2 = nullptr;
     IMapManager* m_mapManager = nullptr;
+    ISoundManager* m_soundManager = nullptr;
     std::vector<std::unique_ptr<Item>> m_items;
     std::array<sf::Texture, 4> m_coinTextures;
     std::array<sf::Texture, 4> m_fireFlowerTextures;
@@ -39,6 +41,11 @@ public:
     void setPlayerManager(IPlayerManager* player) override
     {
         m_player = player;
+    }
+
+    void setSoundManager(ISoundManager* sound) override
+    {
+        m_soundManager = sound;
     }
 
     void setMapManager(IMapManager* map) override {
