@@ -44,8 +44,10 @@ struct BrickDebris {
  */
 struct CoinPopAnim {
     sf::Vector2f pos;
-    float        velY;      // pixels/s, negative = moving up
-    float        life;      // remaining lifetime in seconds
+    float        velY;       // pixels/s, negative = moving up
+    float        life;       // remaining lifetime in seconds
+    float        animTimer = 0.f;
+    int          frameIndex = 0;
 };
 
 /**
@@ -129,6 +131,8 @@ private:
 
     // ─── Tileset sprite-sheet rendering ──────────────────────────────────────
     bool m_textureLoaded = false;                   // true once at least one tileset texture loaded successfully
+    std::array<sf::Texture, 4> m_coinTextures;
+    bool m_coinTexturesLoaded = false;
 
     // ─── TSX metadata ─────────────────────────────────────────────────────────
     std::string m_tsxRelativePath; // relative path used in the TMX <tileset source="...">

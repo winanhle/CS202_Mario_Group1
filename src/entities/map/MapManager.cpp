@@ -16,7 +16,20 @@ static constexpr int   GID_FLAGPOLE_SHAFT    = 1043;
 static constexpr int   GID_FLAGPOLE_BASE     = 2667;
 static constexpr float FLAG_SLIDE_SPEED      = 90.f;
 
-MapManager::MapManager() {}
+MapManager::MapManager() {
+    const std::array<std::string, 4> coinPaths = {
+        "assets/texture/item/Coin.PNG",
+        "assets/texture/item/Coin1.PNG",
+        "assets/texture/item/Coin2.PNG",
+        "assets/texture/item/Coin3.PNG"
+    };
+    m_coinTexturesLoaded = true;
+    for (size_t i = 0; i < 4; ++i) {
+        if (!m_coinTextures[i].loadFromFile(coinPaths[i])) {
+            m_coinTexturesLoaded = false;
+        }
+    }
+}
 
 void MapManager::initialize() {
     m_mapData.clear();
@@ -705,6 +718,12 @@ void MapManager::update(float deltaTime) {
         c.velY += COINPOP_GRAVITY * deltaTime;
         c.pos.y += c.velY * deltaTime;
         c.life  -= deltaTime;
+        c.animTimer += deltaTime;
+        constexpr float FRAME_DURATION = 0.08f;
+        while (c.animTimer >= FRAME_DURATION) {
+            c.animTimer -= FRAME_DURATION;
+            c.frameIndex = (c.frameIndex + 1) % 4;
+        }
     }
     m_coinPopAnims.erase(
         std::remove_if(m_coinPopAnims.begin(), m_coinPopAnims.end(),
@@ -823,10 +842,23 @@ void MapManager::render(sf::RenderWindow& window) const {
     for (const auto& coin : m_coinPopAnims) {
         float alpha = std::max(0.f, coin.life / COINPOP_LIFE);
         uint8_t a = static_cast<uint8_t>(alpha * 255.f);
-        sf::RectangleShape coinShape(sf::Vector2f(8.f, 8.f));
-        coinShape.setPosition(coin.pos);
-        coinShape.setFillColor(sf::Color(255, 215, 0, a));
-        window.draw(coinShape);
+        if (m_coinTexturesLoaded) {
+            sf::Sprite coinSprite(m_coinTextures[coin.frameIndex % 4]);
+            sf::Vector2u texSize = m_coinTextures[coin.frameIndex % 4].getSize();
+            if (texSize.x > 0 && texSize.y > 0) {
+                float scaleX = (float)m_tileSize / (float)texSize.x;
+                float scaleY = (float)m_tileSize / (float)texSize.y;
+                coinSprite.setScale({scaleX, scaleY});
+            }
+            coinSprite.setColor(sf::Color(255, 255, 255, a));
+            coinSprite.setPosition(coin.pos);
+            window.draw(coinSprite);
+        } else {
+            sf::RectangleShape coinShape(sf::Vector2f(8.f, 8.f));
+            coinShape.setPosition(coin.pos);
+            coinShape.setFillColor(sf::Color(255, 215, 0, a));
+            window.draw(coinShape);
+        }
     }
 }
 
@@ -1010,11 +1042,13 @@ WarpRequest MapManager::consumePendingWarp() {
 void MapManager::spawnCoinPop(int gx, int gy) {
     CoinPopAnim c;
     c.pos  = {
-        (float)gx * m_tileSize + m_tileSize / 2.f - 4.f,
-        (float)gy * m_tileSize - (float)m_tileSize
+        (float)gx * m_tileSize,
+        (float)(gy - 1) * m_tileSize
     };
     c.velY = COINPOP_INIT_VY;
     c.life = COINPOP_LIFE;
+    c.animTimer = 0.f;
+    c.frameIndex = 0;
     m_coinPopAnims.push_back(c);
 
     if (m_itemManager)
