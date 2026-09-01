@@ -16,6 +16,8 @@
 #include "block/IBlockBehavior.h"
 #include "MapData.h"
 
+class ISoundManager;
+
 // ─── Animation Structs ────────────────────────────────────────────────────────
 
 /**
@@ -75,6 +77,7 @@ private:
     
     // ─── Injected dependency ─────────────────────────────────────────────────
     IItemManager* m_itemManager = nullptr;
+    ISoundManager* m_soundManager = nullptr;
 
     // ─── Parsed object layer data ─────────────────────────────────────────────
     MapObjectData m_objectData;
@@ -165,6 +168,15 @@ public:
     // ─── IMapManager new API ─────────────────────────────────────────────────
     void onHitFromBelow(int tileGridX, int tileGridY, int formType) override;
     void setItemManager(IItemManager* itemManager) override { m_itemManager = itemManager; }
+
+    // ─── Sound dependency ─────────────────────────────────────────────────────
+    void setSoundManager(ISoundManager* soundManager) { m_soundManager = soundManager; }
+
+    // Sound facade used by BlockBehavior strategies.
+    void playBumpSound();
+    void playBrickSound();
+    void playCoinSound();
+    void playItemSound();
 
     void triggerFlagSlide(int poleGridX) override;
     bool isFlagSliding() const override { return m_flagAnim.active; }

@@ -18,6 +18,7 @@
 #include "../entities/firebar/FireBarManager.h"
 #include "../ui/HUDManager.h"
 #include "../ui/SaveManager.h"
+#include "../ui/SoundManager.h"
 #include <SFML/Graphics.hpp>
 #include <memory>
 
@@ -39,8 +40,16 @@ void PlayState::setup(const GameConfig& config)
     m_config = config;
     m_gameWorld = std::make_unique<GameWorld>();
 
+    // ── Shared sound manager ─────────────────────────────────────
+    // Keep one SoundManager alive for the whole PlayState and inject the same
+    // interface into gameplay systems.
+    if (!m_soundManager)
+        m_soundManager = std::make_shared<SoundManager>();
+
     // ── Map / Camera ─────────────────────────────────────────────
-    m_gameWorld->setMapManager(std::make_shared<MapManager>());
+    auto mapManager = std::make_shared<MapManager>();
+    mapManager->setSoundManager(m_soundManager.get());
+    m_gameWorld->setMapManager(mapManager);
     m_gameWorld->setCameraManager(std::make_shared<CameraManager>());
 
     // ── Player 1 ─────────────────────────────────────────────────
@@ -61,7 +70,9 @@ void PlayState::setup(const GameConfig& config)
     }
 
     // ── Enemies / Items / Lifts / FireBars / HUD / Save ───────────
-    m_gameWorld->setEnemyManager(std::make_shared<EnemyManager>());
+    auto enemyManager = std::make_shared<EnemyManager>();
+    enemyManager->setSoundManager(m_soundManager.get());
+    m_gameWorld->setEnemyManager(enemyManager);
     m_gameWorld->setItemManager(std::make_shared<ItemManager>());
     m_gameWorld->setLiftManager(std::make_shared<LiftManager>());
     m_gameWorld->setFireBarManager(std::make_shared<FireBarManager>());

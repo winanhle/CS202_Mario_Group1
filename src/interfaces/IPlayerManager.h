@@ -6,6 +6,7 @@
 class IEnemyManager;
 class ILiftManager;
 class ISettingsManager;
+class ISoundManager;
 
 namespace sf {
 class RenderWindow;
@@ -148,6 +149,7 @@ public:
 
     // ─── BEHAVIOR ───
     virtual void setMapManager(IMapManager* map) = 0;
+    virtual void setSoundManager(ISoundManager* sound) { (void)sound; }
     virtual void setLiftManager(ILiftManager* lifts) { (void)lifts; }
     virtual void takeDamage() = 0;
     virtual void bounce() = 0;

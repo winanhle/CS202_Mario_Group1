@@ -30,6 +30,7 @@ void PipeBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType)
 void BrickBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
 {
     (void)formType;
+    map.playBrickSound();                       // brick hit sound
     map.spawnBrickDebris(gx, gy);               // mảnh gạch bay
     map.setTile(gx, gy, TileType::EMPTY);       // → EMPTY + load texture EMPTY
 }
@@ -37,12 +38,16 @@ void BrickBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType
 void QuestionCoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
 {
     (void)formType;
+    map.playBumpSound();                            // block bump sound
+    map.playCoinSound();                            // coin sound
     map.spawnCoinPop(gx, gy);                       // pop animation + award coin
     map.setTile(gx, gy, TileType::SOLID_BRICK);     // → block đã dùng (đổi texture)
 }
 
 void QuestionPowerupBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
 {
+    map.playBumpSound();                         // block bump sound
+    map.playItemSound();                         // item spawn sound
     map.spawnItemForFormType(gx, gy, formType); // Mushroom (Normal) / FireFlower (Super/Fire)
     map.setTile(gx, gy, TileType::SOLID_BRICK); // → block đã dùng (đổi texture)
 }
@@ -52,6 +57,8 @@ void QuestionPowerupBehavior::onHitFromBelow(MapManager& map, int gx, int gy, in
 void MultiCoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
 {
     (void)formType;
+    map.playBumpSound();               // block bump sound
+    map.playCoinSound();               // coin sound
     map.spawnCoinPop(gx, gy);          // pop animation + award coin
     map.setMultiCoinActive(gx, gy);    // bắt đầu / giữ countdown 3.5s
 }
@@ -60,6 +67,7 @@ void MultiCoinBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int form
 void HiddenBlockBehavior::onHitFromBelow(MapManager& map, int gx, int gy, int formType) const
 {
     (void)formType;
+    map.playBumpSound();
     map.setTile(gx, gy, TileType::SOLID_BRICK); // → solid + hiện texture block đã dùng
 }
 

@@ -3,6 +3,7 @@
 #include "input/Command.h"
 #include "input/PlayerInputHandler.h"
 #include "../../interfaces/ISettingsManager.h"
+#include "../../interfaces/ISoundManager.h"
 #include "forms/FireForm.h"
 #include "../../entities/map/MapManager.h"
 #include <algorithm>
@@ -296,6 +297,9 @@ void PlayerManager::collectPowerUp(int type)
     auto t = static_cast<PowerUpType>(type);
     if (auto newForm = m_currentForm->evolve(t)) {
         setForm(std::move(newForm));
+
+        if (m_soundManager)
+            m_soundManager->playPowerUp();
     }
 }
 
@@ -356,6 +360,11 @@ void PlayerManager::setMapManager(IMapManager* map)
         m_fireballManager->setMapManager(map);
 }
 
+void PlayerManager::setSoundManager(ISoundManager* sound)
+{
+    m_soundManager = sound;
+}
+
 // ==================== DIE / FORM-TYPE ====================
 
 void PlayerManager::die()
@@ -403,6 +412,9 @@ void PlayerManager::jump() {
         m_isGrounded = false;
         m_isJumping = true;
         m_jumpHoldTimer = 0.f; // bắt đầu cửa sổ giữ nút để nhảy cao hơn
+
+        if (m_soundManager)
+            m_soundManager->playJump();
     }
 }
 
@@ -635,6 +647,9 @@ void PlayerManager::startFlagpoleSlide(float poleX)
 
     m_isFlagpoleSliding = true;
     m_hasFinishedFlagpole = false;
+
+    if (m_soundManager)
+        m_soundManager->playFlagpole();
     m_isGrounded = false; // Start sliding down from current air position
     m_flagpoleFinishTimer = 0.f;
     m_positionX = poleX - 4.f; // Align character nicely with the flagpole column
@@ -698,6 +713,9 @@ void PlayerManager::addScore(int points) {
 void PlayerManager::collectCoin(int amount) {
     m_coins += amount;
     m_score += amount * 200;
+
+    if (m_soundManager)
+        m_soundManager->playCoin();
     while (m_coins >= 100) {
         m_coins -= 100;
         m_pendingOneUps++;

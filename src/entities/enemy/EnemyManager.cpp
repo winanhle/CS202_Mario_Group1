@@ -5,6 +5,7 @@
 #include "enemies/Boss.h"
 #include "enemies/BossFireball.h"
 #include "../../interfaces/IPlayerManager.h"
+#include "../../interfaces/ISoundManager.h"
 #include <iostream>
 #include <SFML/Graphics.hpp>
 
@@ -189,6 +190,8 @@ void EnemyManager::resolvePlayerCollision(Enemy& enemy, IPlayerManager* player, 
         if (isStomp && !wasOverlapping)
         {
             enemy.onStomp();
+            if (m_soundManager)
+                m_soundManager->playStomp();
         }
         else if (!wasOverlapping || !player->isInvincible())
         {
@@ -225,6 +228,8 @@ bool EnemyManager::takeDamageFromFireball(const sf::FloatRect& fireballHitbox)
         if (enemy->getHitbox().findIntersection(fireballHitbox))
         {
             enemy->onStomp(); // bị cầu lửa tiêu diệt (giống bị stomp)
+            if (m_soundManager)
+                m_soundManager->playStomp();
             return true;
         }
     }

@@ -3,6 +3,7 @@
 #include <SFML/Graphics/Rect.hpp>
 #include <vector>
 class IPlayerManager;
+class ISoundManager;
 struct EntitySpawnData;
 
 namespace sf {
@@ -53,6 +54,7 @@ public:
     virtual void setPlayerManager(IPlayerManager* player) = 0;
     virtual void setPlayerManager2(IPlayerManager* player) = 0;
     virtual void setMapManager(IMapManager* map) = 0;
+    virtual void setSoundManager(ISoundManager* sound) = 0;
 
     /**
      * @brief Enemy bị cầu lửa của player trúng.

@@ -1,5 +1,6 @@
 #include "MapManager.h"
 #include "block/BlockBehavior.h"
+#include "../../interfaces/ISoundManager.h"
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -764,6 +765,34 @@ void MapManager::setTile(int gx, int gy, TileType type) {
 }
 
 // =============================================================================
+//  SOUND FACADE
+// =============================================================================
+
+void MapManager::playBumpSound()
+{
+    if (m_soundManager)
+        m_soundManager->playBump();
+}
+
+void MapManager::playBrickSound()
+{
+    if (m_soundManager)
+        m_soundManager->playBrick();
+}
+
+void MapManager::playCoinSound()
+{
+    if (m_soundManager)
+        m_soundManager->playCoin();
+}
+
+void MapManager::playItemSound()
+{
+    if (m_soundManager)
+        m_soundManager->playItem();
+}
+
+// =============================================================================
 //  ON HIT FROM BELOW  (main dispatcher — Strategy Pattern)
 // =============================================================================
 
@@ -861,6 +890,9 @@ void MapManager::spawnBrickDebris(int gx, int gy) {
 
 void MapManager::triggerFlagSlide(int poleGridX) {
     if (m_flagAnim.active) return;
+
+    if (m_soundManager)
+        m_soundManager->playFlagpole();
 
     int topY = -1;
     int bottomY = -1;
