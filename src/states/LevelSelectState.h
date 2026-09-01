@@ -28,10 +28,8 @@ private:
     struct LevelItem {
         std::string path;
         std::string title;
-        std::string subtitle;
-        std::string tag;
-        bool isCampaign = false;
         bool isLocked = false;
+        int stageNum = 0; // 1, 2, 3, or 0 (editor)
     };
 
     struct StarParticle {
@@ -42,9 +40,9 @@ private:
         float phase = 0.0f;
     };
 
-    void discoverMaps();
+    void initLevels();
     void confirmSelection();
-    sf::FloatRect getBoxBounds(size_t slotOnPage) const;
+    sf::FloatRect getBoxBounds(size_t index) const;
     sf::Vector2f toViewCoords(sf::Vector2i pixelPos) const;
 
     sf::Font m_font;
@@ -52,8 +50,6 @@ private:
     
     std::vector<LevelItem> m_levels;
     int m_selectedIndex = 0;
-    size_t m_currentPage = 0;
-    static constexpr size_t PAGE_SIZE = 6;
     
     mutable sf::Vector2u m_windowSize{ 800, 600 };
     GameConfig m_config;
@@ -61,19 +57,15 @@ private:
     std::shared_ptr<ISaveManager> m_saveManager;
     bool m_loadSave = false;
 
-    // Visual assets
-    sf::Texture m_heroTexture;
-    std::optional<sf::Sprite> m_heroSprite;
-    bool m_heroLoaded = false;
-
-    sf::Texture m_mushroomTexture;
-    std::optional<sf::Sprite> m_mushroomSprite;
-    bool m_mushroomLoaded = false;
-
-    sf::Texture m_starTexture;
-    std::optional<sf::Sprite> m_starSprite;
-    bool m_starLoaded = false;
+    // Stage preview textures
+    sf::Texture m_texStage1;
+    sf::Texture m_texStage2;
+    sf::Texture m_texStage3;
+    bool m_tex1Loaded = false;
+    bool m_tex2Loaded = false;
+    bool m_tex3Loaded = false;
 
     std::vector<StarParticle> m_stars;
     float m_animTimer = 0.0f;
 };
+

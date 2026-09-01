@@ -4,17 +4,13 @@
 #include "MapEditorState.h"
 #include "../interfaces/ISaveManager.h"
 #include "../core/StateManager.h"
-#include <filesystem>
 #include <iostream>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 
-namespace fs = std::filesystem;
-
 namespace {
     static constexpr const char* FONT_PATH = "assets/fonts/SuperMario256.ttf";
-    static constexpr const char* MAPS_DIR = "assets/map";
 
     static constexpr float WIN_W = 800.0f;
     static constexpr float WIN_H = 600.0f;
@@ -49,18 +45,6 @@ namespace {
     static constexpr sf::Color BOX_LOCKED_BG(18, 20, 30, 210);
     static constexpr sf::Color BOX_LOCKED_OUTLINE(45, 50, 70, 180);
 
-    // Tag Badges
-    static constexpr sf::Color TAG_CAMPAIGN_BG(200, 140, 30, 220);
-    static constexpr sf::Color TAG_CAMPAIGN_OUTLINE(255, 215, 100, 180);
-    static constexpr sf::Color TAG_CUSTOM_BG(45, 120, 190, 200);
-    static constexpr sf::Color TAG_CUSTOM_OUTLINE(140, 215, 255, 180);
-    static constexpr sf::Color TAG_BONUS_BG(140, 45, 190, 200);
-    static constexpr sf::Color TAG_BONUS_OUTLINE(220, 150, 255, 180);
-    static constexpr sf::Color TAG_DEBUG_BG(70, 85, 110, 200);
-    static constexpr sf::Color TAG_DEBUG_OUTLINE(150, 175, 205, 180);
-    static constexpr sf::Color TAG_LOCKED_BG(45, 50, 65, 180);
-    static constexpr sf::Color TAG_LOCKED_OUTLINE(70, 75, 95, 150);
-
     // UI Accents & Text
     static constexpr sf::Color SEP_LINE_COLOR(55, 75, 125, 140);
     static constexpr sf::Color BTN_LOCKED_BG(120, 25, 25, 200);
@@ -72,32 +56,11 @@ namespace {
     static constexpr sf::Color FOOTER_OUTLINE(45, 70, 130, 180);
     static constexpr sf::Color FOOTER_TEXT(180, 205, 235);
     static constexpr sf::Color HEADER_TITLE_COLOR(255, 225, 60);
-    static constexpr sf::Color CAPSULE_BG(25, 38, 75, 200);
-    static constexpr sf::Color CAPSULE_OUTLINE(80, 140, 240, 180);
-    static constexpr sf::Color CAPSULE_TEXT(200, 230, 255);
+
     static constexpr sf::Color TEXT_TITLE_SEL(255, 235, 60);
     static constexpr sf::Color TEXT_TITLE_LOCKED(110, 115, 130);
-    static constexpr sf::Color TEXT_SUB_SEL(215, 235, 255);
-    static constexpr sf::Color TEXT_SUB_IDLE(160, 185, 220);
     static constexpr sf::Color TEXT_BTN_LOCKED(255, 180, 180);
     static constexpr sf::Color TEXT_BTN_IDLE(150, 180, 220);
-    static constexpr sf::Color PAGE_HINT_COLOR(255, 230, 100);
-
-    struct StageMetadata {
-        const char* stem;
-        const char* title;
-        const char* subtitle;
-        const char* tag;
-        int requiredUnlockStage;
-    };
-
-    static constexpr StageMetadata KNOWN_STAGES[] = {
-        { "stage1",        "STAGE 1",     "Grassland Hills\nGoombas & Pipes",   "WORLD 1-1", 1 },
-        { "stage1_hidden", "BONUS VAULT", "Secret Underground\nCoin Trove Cavern", "BONUS", 1 },
-        { "stage2",        "STAGE 2",     "Underground Cavern\nMoving Lifts",    "WORLD 1-2", 2 },
-        { "stage3",        "STAGE 3",     "Castle Battlements\nFirebars & Heights", "WORLD 1-3", 3 },
-        { "map_test",      "TEST MAP",    "Sandbox Playground\nMechanics Testing", "DEBUG", 0 }
-    };
 }
 
 LevelSelectState::LevelSelectState(const GameConfig& config,
@@ -112,125 +75,57 @@ LevelSelectState::LevelSelectState(const GameConfig& config,
     if (m_font.openFromFile(FONT_PATH)) {
         m_fontLoaded = true;
     } else {
-        std::cerr << "[LevelSelectState] ERROR: Failed to load font: " << FONT_PATH << std::endl;
+        std::cerr << "[LevelSelectState] Warning: Failed to load font: " << FONT_PATH << std::endl;
     }
 
-    // Load hero sprite preview
-    const char* heroPath = (m_config.player1Character == CharacterType::Luigi)
-        ? "assets/texture/hero/luigi.png"
-        : "assets/texture/hero/mario.png";
-    if (m_heroTexture.loadFromFile(heroPath)) {
-        m_heroLoaded = true;
-        m_heroSprite.emplace(m_heroTexture);
-        if (m_config.player1Character == CharacterType::Luigi) {
-            m_heroSprite->setTextureRect(sf::IntRect({154, 29}, {16, 29}));
-        } else {
-            m_heroSprite->setTextureRect(sf::IntRect({154, 30}, {16, 28}));
-        }
-        m_heroSprite->setScale({1.4f, 1.4f});
+    // Load Stage Preview Tileset Images
+    if (m_texStage1.loadFromFile("assets/tileset/world1_1.png")) {
+        m_texStage1.setSmooth(false);
+        m_tex1Loaded = true;
+    }
+    if (m_texStage2.loadFromFile("assets/tileset/world1_3.png")) {
+        m_texStage2.setSmooth(false);
+        m_tex2Loaded = true;
+    }
+    if (m_texStage3.loadFromFile("assets/tileset/world1_4.png")) {
+        m_texStage3.setSmooth(false);
+        m_tex3Loaded = true;
     }
 
-    // Load mushroom and star icons
-    if (m_mushroomTexture.loadFromFile("assets/texture/item/Mushroom.PNG")) {
-        m_mushroomLoaded = true;
-        m_mushroomSprite.emplace(m_mushroomTexture);
-        m_mushroomSprite->setScale({0.65f, 0.65f});
-    }
-
-    if (m_starTexture.loadFromFile("assets/texture/item/Star.PNG")) {
-        m_starLoaded = true;
-        m_starSprite.emplace(m_starTexture);
-        m_starSprite->setScale({0.65f, 0.65f});
-    }
-
-    // Initialize background starfield particles
+    // Star background particles
     m_stars.resize(40);
     for (auto& star : m_stars) {
         star.x = static_cast<float>(std::rand() % static_cast<int>(WIN_W));
         star.y = static_cast<float>(std::rand() % static_cast<int>(WIN_H));
-        star.speed = 8.0f + static_cast<float>(std::rand() % 25);
-        star.size = 1.0f + static_cast<float>(std::rand() % 3) * 0.5f;
-        star.phase = static_cast<float>(std::rand() % 100) * 0.1f;
+        star.speed = 8.0f + static_cast<float>(std::rand() % 15);
+        star.size = 1.0f + static_cast<float>(std::rand() % 2);
+        star.phase = static_cast<float>(std::rand() % 100) / 10.0f;
     }
 
-    discoverMaps();
+    initLevels();
 }
 
-void LevelSelectState::discoverMaps()
+void LevelSelectState::initLevels()
 {
     m_levels.clear();
 
     int maxUnlockedStage = 1;
     if (m_saveManager) {
         maxUnlockedStage = m_saveManager->getMaxUnlockedStage();
+        if (maxUnlockedStage < 1) maxUnlockedStage = 1;
     }
 
-    // 1. Official Campaign Entry
-    m_levels.push_back({
-        "",
-        "CAMPAIGN",
-        "World 1-1 onwards\nFull story mode",
-        "STORY",
-        true,
-        false
-    });
+    // 1. Stage 1 (Overworld)
+    m_levels.push_back({ "assets/map/stage1.tmx", "STAGE 1", false, 1 });
 
-    // 2. Map Editor Entry (beside Campaign)
-    m_levels.push_back({
-        "__EDITOR__",
-        "MAP EDITOR",
-        "Custom Level Builder\nDesign & play custom maps",
-        "EDITOR",
-        false,
-        false
-    });
+    // 2. Stage 2 (Underground)
+    m_levels.push_back({ "assets/map/stage2.tmx", "STAGE 2", (maxUnlockedStage < 2), 2 });
 
-    if (!fs::exists(MAPS_DIR)) {
-        return;
-    }
+    // 3. Stage 3 (Castle)
+    m_levels.push_back({ "assets/map/stage3.tmx", "STAGE 3", (maxUnlockedStage < 3), 3 });
 
-    // 3. Discover .tmx files in assets/map/
-    std::vector<std::string> discovered;
-    for (const auto& entry : fs::directory_iterator(MAPS_DIR)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".tmx") {
-            std::string stem = entry.path().stem().string();
-            if (stem == "editor_temp" || stem == "custom_temp") continue;
-            discovered.push_back(entry.path().string());
-        }
-    }
-
-    std::sort(discovered.begin(), discovered.end());
-
-    for (const auto& p : discovered) {
-        std::string filename = fs::path(p).stem().string();
-        std::string title = filename;
-        std::string subtitle = "Custom Stage Map";
-        std::string tag = "MAP";
-        bool locked = false;
-
-        bool matched = false;
-        for (const auto& meta : KNOWN_STAGES) {
-            if (filename == meta.stem) {
-                title = meta.title;
-                subtitle = meta.subtitle;
-                tag = meta.tag;
-                if (meta.requiredUnlockStage > 0) {
-                    locked = (meta.requiredUnlockStage > maxUnlockedStage);
-                }
-                matched = true;
-                break;
-            }
-        }
-
-        if (!matched && filename.find("stage") == 0) {
-            try {
-                int stageNum = std::stoi(filename.substr(5));
-                locked = (stageNum > maxUnlockedStage);
-            } catch (...) {}
-        }
-
-        m_levels.push_back({ p, title, subtitle, tag, false, locked });
-    }
+    // 4. Map Editor (directly below Stage 1)
+    m_levels.push_back({ "__EDITOR__", "MAP EDITOR", false, 0 });
 }
 
 void LevelSelectState::confirmSelection()
@@ -252,15 +147,23 @@ void LevelSelectState::confirmSelection()
     }
 }
 
-sf::FloatRect LevelSelectState::getBoxBounds(size_t slotOnPage) const
+sf::FloatRect LevelSelectState::getBoxBounds(size_t index) const
 {
-    if (slotOnPage >= PAGE_SIZE) return sf::FloatRect({0.f, 0.f}, {0.f, 0.f});
+    if (index >= m_levels.size()) return sf::FloatRect({0.f, 0.f}, {0.f, 0.f});
 
-    size_t col = slotOnPage % COLS;
-    size_t row = slotOnPage / COLS;
+    float x = 0.f;
+    float y = 0.f;
 
-    float x = GRID_START_X + static_cast<float>(col) * (BOX_W + COL_GAP);
-    float y = GRID_START_Y + static_cast<float>(row) * (BOX_H + ROW_GAP);
+    if (index < 3) {
+        // Row 0: 3 columns (Stage 1 at col 0, Stage 2 at col 1, Stage 3 at col 2)
+        x = GRID_START_X + static_cast<float>(index) * (BOX_W + COL_GAP);
+        y = GRID_START_Y;
+    } else {
+        // Row 1: Map Editor placed in lower-left, directly below Stage 1 (col 0)
+        x = GRID_START_X + 0.0f * (BOX_W + COL_GAP);
+        y = GRID_START_Y + (BOX_H + ROW_GAP);
+    }
+
     return sf::FloatRect({x, y}, {BOX_W, BOX_H});
 }
 
@@ -286,31 +189,25 @@ void LevelSelectState::handleInput(const sf::Event& event)
         int total = static_cast<int>(m_levels.size());
         if (total > 0) {
             if (keyEvent->code == sf::Keyboard::Key::A || keyEvent->code == sf::Keyboard::Key::Left) {
-                m_selectedIndex = (m_selectedIndex - 1 + total) % total;
+                if (m_selectedIndex == 0) m_selectedIndex = 2;
+                else if (m_selectedIndex == 1) m_selectedIndex = 0;
+                else if (m_selectedIndex == 2) m_selectedIndex = 1;
+                else if (m_selectedIndex == 3) m_selectedIndex = 2;
             } else if (keyEvent->code == sf::Keyboard::Key::D || keyEvent->code == sf::Keyboard::Key::Right) {
-                m_selectedIndex = (m_selectedIndex + 1) % total;
+                if (m_selectedIndex == 0) m_selectedIndex = 1;
+                else if (m_selectedIndex == 1) m_selectedIndex = 2;
+                else if (m_selectedIndex == 2) m_selectedIndex = 3;
+                else if (m_selectedIndex == 3) m_selectedIndex = 0;
             } else if (keyEvent->code == sf::Keyboard::Key::W || keyEvent->code == sf::Keyboard::Key::Up) {
-                if (m_selectedIndex - static_cast<int>(COLS) >= 0) {
-                    m_selectedIndex -= static_cast<int>(COLS);
-                } else {
-                    int target = m_selectedIndex + static_cast<int>(COLS);
-                    if (target < total) m_selectedIndex = target;
-                }
+                if (m_selectedIndex == 3) m_selectedIndex = 0; // directly above to Stage 1
+                else m_selectedIndex = 3;
             } else if (keyEvent->code == sf::Keyboard::Key::S || keyEvent->code == sf::Keyboard::Key::Down) {
-                if (m_selectedIndex + static_cast<int>(COLS) < total) {
-                    m_selectedIndex += static_cast<int>(COLS);
-                } else {
-                    int target = m_selectedIndex - static_cast<int>(COLS);
-                    if (target >= 0) m_selectedIndex = target;
-                }
-            } else if (keyEvent->code == sf::Keyboard::Key::PageUp) {
-                m_selectedIndex = std::max(0, m_selectedIndex - static_cast<int>(PAGE_SIZE));
-            } else if (keyEvent->code == sf::Keyboard::Key::PageDown) {
-                m_selectedIndex = std::min(total - 1, m_selectedIndex + static_cast<int>(PAGE_SIZE));
+                if (m_selectedIndex == 0) m_selectedIndex = 3; // directly below Stage 1 to Map Editor
+                else if (m_selectedIndex == 1 || m_selectedIndex == 2) m_selectedIndex = 3;
+                else if (m_selectedIndex == 3) m_selectedIndex = 0;
             } else if (keyEvent->code == sf::Keyboard::Key::Enter || keyEvent->code == sf::Keyboard::Key::Space) {
                 confirmSelection();
             }
-            m_currentPage = static_cast<size_t>(m_selectedIndex) / PAGE_SIZE;
         }
         if (keyEvent->code == sf::Keyboard::Key::Escape) {
             if (auto* mgr = getStateManager())
@@ -319,11 +216,9 @@ void LevelSelectState::handleInput(const sf::Event& event)
     }
     else if (const auto* mouseMoved = event.getIf<sf::Event::MouseMoved>()) {
         sf::Vector2f mouse = toViewCoords(mouseMoved->position);
-        size_t startIdx = m_currentPage * PAGE_SIZE;
-        size_t endIdx = std::min(startIdx + PAGE_SIZE, m_levels.size());
 
-        for (size_t i = startIdx; i < endIdx; ++i) {
-            sf::FloatRect bounds = getBoxBounds(i - startIdx);
+        for (size_t i = 0; i < m_levels.size(); ++i) {
+            sf::FloatRect bounds = getBoxBounds(i);
             if (bounds.contains(mouse)) {
                 m_selectedIndex = static_cast<int>(i);
                 break;
@@ -334,11 +229,8 @@ void LevelSelectState::handleInput(const sf::Event& event)
         if (mousePressed->button == sf::Mouse::Button::Left) {
             sf::Vector2f mouse = toViewCoords(mousePressed->position);
 
-            size_t startIdx = m_currentPage * PAGE_SIZE;
-            size_t endIdx = std::min(startIdx + PAGE_SIZE, m_levels.size());
-
-            for (size_t i = startIdx; i < endIdx; ++i) {
-                sf::FloatRect bounds = getBoxBounds(i - startIdx);
+            for (size_t i = 0; i < m_levels.size(); ++i) {
+                sf::FloatRect bounds = getBoxBounds(i);
                 if (bounds.contains(mouse)) {
                     m_selectedIndex = static_cast<int>(i);
                     confirmSelection();
@@ -366,11 +258,11 @@ void LevelSelectState::render(sf::RenderWindow& window) const
 {
     m_windowSize = window.getSize();
 
-    // Ensure render uses standard 800x600 view
+    // Ensure standard 800x600 view
     sf::View defaultView({ WIN_W / 2.f, WIN_H / 2.f }, { WIN_W, WIN_H });
     window.setView(defaultView);
 
-    // 1. Draw dynamic midnight gradient background
+    // 1. Midnight gradient background
     sf::VertexArray bg(sf::PrimitiveType::TriangleStrip, 4);
     bg[0].position = {0.f, 0.f};
     bg[0].color = BG_TOP;
@@ -382,7 +274,7 @@ void LevelSelectState::render(sf::RenderWindow& window) const
     bg[3].color = BG_BOT;
     window.draw(bg);
 
-    // 2. Draw star particles
+    // 2. Star particles
     for (const auto& star : m_stars) {
         float alpha = 130.0f + 100.0f * std::sin(m_animTimer * 2.5f + star.phase);
         alpha = std::clamp(alpha, 30.0f, 255.0f);
@@ -394,44 +286,15 @@ void LevelSelectState::render(sf::RenderWindow& window) const
 
     if (!m_fontLoaded) return;
 
-    // 3. Draw Header Title
+    // 3. Header Title
     sf::Text title(m_font, "SELECT STAGE", 26);
     title.setFillColor(HEADER_TITLE_COLOR);
     title.setOutlineColor(sf::Color::Black);
     title.setOutlineThickness(2.5f);
-    title.setPosition({WIN_W / 2.f - title.getGlobalBounds().size.x / 2.f, 25.0f});
+    title.setPosition({WIN_W / 2.f - title.getGlobalBounds().size.x / 2.f, 40.0f});
     window.draw(title);
 
-    // 4. Draw Selected Configuration Capsule Badge
-    const float BADGE_W = 340.0f;
-    const float BADGE_H = 34.0f;
-    const float BADGE_X = WIN_W / 2.f - BADGE_W / 2.f;
-    const float BADGE_Y = 68.0f;
-
-    sf::RectangleShape badge({BADGE_W, BADGE_H});
-    badge.setFillColor(CAPSULE_BG);
-    badge.setOutlineColor(CAPSULE_OUTLINE);
-    badge.setOutlineThickness(1.5f);
-    badge.setPosition({BADGE_X, BADGE_Y});
-    window.draw(badge);
-
-    if (m_heroLoaded && m_heroSprite.has_value()) {
-        sf::RenderStates states;
-        states.transform.translate({BADGE_X + 10.0f, BADGE_Y - 2.0f});
-        window.draw(m_heroSprite.value(), states);
-    }
-
-    std::string configText = (m_config.player1Character == CharacterType::Luigi ? "LUIGI" : "MARIO");
-    configText += "  |  ";
-    configText += (m_config.mode == GameMode::TwoPlayer ? "2 PLAYERS" : "1 PLAYER");
-    sf::Text cfg(m_font, configText, 11);
-    cfg.setFillColor(CAPSULE_TEXT);
-    cfg.setOutlineColor(sf::Color::Black);
-    cfg.setOutlineThickness(1.0f);
-    cfg.setPosition({BADGE_X + 46.0f, BADGE_Y + 9.0f});
-    window.draw(cfg);
-
-    // 5. Draw Main Stage Browser Bezel Panel
+    // 4. Main Stage Browser Bezel Panel
     sf::RectangleShape panel({PANEL_W, PANEL_H});
     panel.setFillColor(PANEL_BG);
     panel.setOutlineColor(PANEL_OUTLINE);
@@ -439,25 +302,11 @@ void LevelSelectState::render(sf::RenderWindow& window) const
     panel.setPosition({PANEL_X, PANEL_Y});
     window.draw(panel);
 
-    if (m_levels.empty()) {
-        sf::Text noMaps(m_font, "NO MAPS AVAILABLE", 16);
-        noMaps.setFillColor(sf::Color::Red);
-        noMaps.setPosition({WIN_W / 2.f - noMaps.getGlobalBounds().size.x / 2.f, 250.0f});
-        window.draw(noMaps);
-        return;
-    }
-
-    // Multi-page calculation
-    size_t totalPages = (m_levels.size() + PAGE_SIZE - 1) / PAGE_SIZE;
-    size_t m_startIndex = m_currentPage * PAGE_SIZE;
-    size_t endIndex = std::min(m_startIndex + PAGE_SIZE, m_levels.size());
-
-    // 6. Render Grid Boxes for current page
-    for (size_t i = m_startIndex; i < endIndex; ++i) {
+    // 5. Render 4 Stage Boxes
+    for (size_t i = 0; i < m_levels.size(); ++i) {
         const auto& item = m_levels[i];
         bool isSelected = (static_cast<int>(i) == m_selectedIndex);
-        size_t slot = i - m_startIndex;
-        sf::FloatRect bounds = getBoxBounds(slot);
+        sf::FloatRect bounds = getBoxBounds(i);
         float bx = bounds.position.x;
         float by = bounds.position.y;
 
@@ -481,62 +330,7 @@ void LevelSelectState::render(sf::RenderWindow& window) const
         }
         window.draw(box);
 
-        // Icon (top-left inside box)
-        float iconX = bx + 12.0f;
-        float iconY = by + 10.0f;
-        if (!item.isLocked) {
-            if (item.isCampaign && m_mushroomLoaded && m_mushroomSprite.has_value()) {
-                sf::RenderStates states;
-                states.transform.translate({iconX, iconY});
-                window.draw(m_mushroomSprite.value(), states);
-            } else if (m_starLoaded && m_starSprite.has_value()) {
-                sf::RenderStates states;
-                states.transform.translate({iconX, iconY});
-                window.draw(m_starSprite.value(), states);
-            }
-        }
-
-        // Tag Badge (top-right inside box)
-        const float TAG_W = 68.0f;
-        const float TAG_H = 18.0f;
-        const float TAG_X = bx + BOX_W - TAG_W - 10.0f;
-        const float TAG_Y = by + 10.0f;
-
-        sf::RectangleShape tagRect({TAG_W, TAG_H});
-        tagRect.setPosition({TAG_X, TAG_Y});
-        if (item.isLocked) {
-            tagRect.setFillColor(TAG_LOCKED_BG);
-            tagRect.setOutlineColor(TAG_LOCKED_OUTLINE);
-        } else if (item.isCampaign) {
-            tagRect.setFillColor(TAG_CAMPAIGN_BG);
-            tagRect.setOutlineColor(TAG_CAMPAIGN_OUTLINE);
-        } else if (item.tag == "BONUS") {
-            tagRect.setFillColor(TAG_BONUS_BG);
-            tagRect.setOutlineColor(TAG_BONUS_OUTLINE);
-        } else if (item.tag == "DEBUG") {
-            tagRect.setFillColor(TAG_DEBUG_BG);
-            tagRect.setOutlineColor(TAG_DEBUG_OUTLINE);
-        } else {
-            tagRect.setFillColor(TAG_CUSTOM_BG);
-            tagRect.setOutlineColor(TAG_CUSTOM_OUTLINE);
-        }
-        tagRect.setOutlineThickness(1.0f);
-        window.draw(tagRect);
-
-        sf::Text tagText(m_font, item.tag, 7);
-        tagText.setFillColor(item.isLocked ? sf::Color(140, 145, 160) : sf::Color::White);
-        tagText.setOutlineColor(sf::Color::Black);
-        tagText.setOutlineThickness(1.0f);
-        tagText.setPosition({TAG_X + TAG_W / 2.f - tagText.getGlobalBounds().size.x / 2.f, TAG_Y + 3.0f});
-        window.draw(tagText);
-
-        // Header separator line
-        sf::RectangleShape line({BOX_W - 20.0f, 1.0f});
-        line.setPosition({bx + 10.0f, by + 34.0f});
-        line.setFillColor(SEP_LINE_COLOR);
-        window.draw(line);
-
-        // Title text
+        // Title text (Centered in top header area)
         sf::Text optTitle(m_font, item.title, 11);
         optTitle.setOutlineThickness(1.0f);
         optTitle.setOutlineColor(sf::Color::Black);
@@ -547,23 +341,127 @@ void LevelSelectState::render(sf::RenderWindow& window) const
         } else {
             optTitle.setFillColor(sf::Color::White);
         }
-        optTitle.setPosition({bx + 12.0f, by + 44.0f});
+        float titleX = bx + BOX_W / 2.f - optTitle.getGlobalBounds().size.x / 2.f;
+        optTitle.setPosition({titleX, by + 10.0f});
         window.draw(optTitle);
 
-        // Subtitle description text
-        if (!item.isLocked) {
-            sf::Text optSub(m_font, item.subtitle, 8);
-            optSub.setLineSpacing(1.3f);
-            optSub.setFillColor(isSelected ? TEXT_SUB_SEL : TEXT_SUB_IDLE);
-            optSub.setPosition({bx + 12.0f, by + 68.0f});
-            window.draw(optSub);
+        // Header separator line
+        sf::RectangleShape line({BOX_W - 20.0f, 1.0f});
+        line.setPosition({bx + 10.0f, by + 30.0f});
+        line.setFillColor(SEP_LINE_COLOR);
+        window.draw(line);
+
+        // Level Representation Image Preview (Center)
+        const float PREVIEW_W = BOX_W - 20.0f; // 196px
+        const float PREVIEW_H = 96.0f;
+        const float PREVIEW_X = bx + 10.0f;
+        const float PREVIEW_Y = by + 36.0f;
+
+        sf::RectangleShape previewFrame({PREVIEW_W, PREVIEW_H});
+        previewFrame.setPosition({PREVIEW_X, PREVIEW_Y});
+        previewFrame.setFillColor(sf::Color(10, 12, 18));
+        previewFrame.setOutlineColor(isSelected ? sf::Color(100, 180, 255) : sf::Color(45, 60, 95));
+        previewFrame.setOutlineThickness(1.0f);
+        window.draw(previewFrame);
+
+        if (item.stageNum == 1 && m_tex1Loaded) {
+            sf::Sprite sprite(m_texStage1);
+            sprite.setTextureRect(sf::IntRect({ 0, 0 }, { 320, 160 }));
+            sprite.setScale({ PREVIEW_W / 320.f, PREVIEW_H / 160.f });
+            sprite.setPosition({ PREVIEW_X, PREVIEW_Y });
+            window.draw(sprite);
+        } else if (item.stageNum == 2 && m_tex2Loaded) {
+            sf::Sprite sprite(m_texStage2);
+            sprite.setTextureRect(sf::IntRect({ 0, 0 }, { 320, 160 }));
+            sprite.setScale({ PREVIEW_W / 320.f, PREVIEW_H / 160.f });
+            sprite.setPosition({ PREVIEW_X, PREVIEW_Y });
+            window.draw(sprite);
+        } else if (item.stageNum == 3 && m_tex3Loaded) {
+            sf::Sprite sprite(m_texStage3);
+            sprite.setTextureRect(sf::IntRect({ 0, 0 }, { 320, 160 }));
+            sprite.setScale({ PREVIEW_W / 320.f, PREVIEW_H / 160.f });
+            sprite.setPosition({ PREVIEW_X, PREVIEW_Y });
+            window.draw(sprite);
+        } else if (item.stageNum == 0) {
+            // Map Editor Canvas Preview
+            sf::RectangleShape edBg({ PREVIEW_W, PREVIEW_H });
+            edBg.setPosition({ PREVIEW_X, PREVIEW_Y });
+            edBg.setFillColor(sf::Color(26, 30, 40));
+            window.draw(edBg);
+
+            // Miniature grid lines
+            sf::VertexArray gridLines(sf::PrimitiveType::Lines);
+            for (float gx = PREVIEW_X; gx <= PREVIEW_X + PREVIEW_W; gx += 14.f) {
+                gridLines.append(sf::Vertex{ sf::Vector2f{ gx, PREVIEW_Y }, sf::Color(45, 52, 68) });
+                gridLines.append(sf::Vertex{ sf::Vector2f{ gx, PREVIEW_Y + PREVIEW_H }, sf::Color(45, 52, 68) });
+            }
+            for (float gy = PREVIEW_Y; gy <= PREVIEW_Y + PREVIEW_H; gy += 14.f) {
+                gridLines.append(sf::Vertex{ sf::Vector2f{ PREVIEW_X, gy }, sf::Color(45, 52, 68) });
+                gridLines.append(sf::Vertex{ sf::Vector2f{ PREVIEW_X + PREVIEW_W, gy }, sf::Color(45, 52, 68) });
+            }
+            window.draw(gridLines);
+
+            // Sample blocks
+            sf::RectangleShape gBlock({ 20.f, 20.f });
+            gBlock.setFillColor(sf::Color(190, 115, 55));
+            gBlock.setOutlineColor(sf::Color::White);
+            gBlock.setOutlineThickness(0.5f);
+            gBlock.setPosition({ PREVIEW_X + 22.f, PREVIEW_Y + 54.f });
+            window.draw(gBlock);
+
+            sf::RectangleShape qBlock({ 20.f, 20.f });
+            qBlock.setFillColor(sf::Color(255, 200, 0));
+            qBlock.setOutlineColor(sf::Color::White);
+            qBlock.setOutlineThickness(0.5f);
+            qBlock.setPosition({ PREVIEW_X + 50.f, PREVIEW_Y + 24.f });
+            window.draw(qBlock);
+
+            sf::RectangleShape pBlock({ 20.f, 32.f });
+            pBlock.setFillColor(sf::Color(40, 180, 40));
+            pBlock.setOutlineColor(sf::Color::White);
+            pBlock.setOutlineThickness(0.5f);
+            pBlock.setPosition({ PREVIEW_X + 80.f, PREVIEW_Y + 42.f });
+            window.draw(pBlock);
+
+            sf::RectangleShape spawnBadge({ 72.f, 15.f });
+            spawnBadge.setPosition({ PREVIEW_X + 114.f, PREVIEW_Y + 28.f });
+            spawnBadge.setFillColor(sf::Color(0, 200, 240, 210));
+            spawnBadge.setOutlineColor(sf::Color::White);
+            spawnBadge.setOutlineThickness(0.5f);
+            window.draw(spawnBadge);
+
+            sf::Text spawnText(m_font, "Spawn", 7);
+            spawnText.setFillColor(sf::Color::Black);
+            spawnText.setPosition({ PREVIEW_X + 130.f, PREVIEW_Y + 30.f });
+            window.draw(spawnText);
         }
 
-        // Bottom Action Bar / Status Badge
+        // Locked Overlay
+        if (item.isLocked) {
+            sf::RectangleShape lockOverlay({PREVIEW_W, PREVIEW_H});
+            lockOverlay.setPosition({PREVIEW_X, PREVIEW_Y});
+            lockOverlay.setFillColor(sf::Color(0, 0, 0, 190));
+            window.draw(lockOverlay);
+
+            sf::RectangleShape lockBadge({72.f, 20.f});
+            lockBadge.setPosition({PREVIEW_X + PREVIEW_W / 2.f - 36.f, PREVIEW_Y + PREVIEW_H / 2.f - 10.f});
+            lockBadge.setFillColor(sf::Color(140, 30, 30, 230));
+            lockBadge.setOutlineColor(sf::Color(220, 70, 70));
+            lockBadge.setOutlineThickness(1.f);
+            window.draw(lockBadge);
+
+            sf::Text lockText(m_font, "LOCKED", 7);
+            lockText.setFillColor(sf::Color::White);
+            lockText.setPosition({PREVIEW_X + PREVIEW_W / 2.f - lockText.getGlobalBounds().size.x / 2.f,
+                                  PREVIEW_Y + PREVIEW_H / 2.f - 6.f});
+            window.draw(lockText);
+        }
+
+        // Bottom Action Button
         const float BTN_W = BOX_W - 20.0f;
-        const float BTN_H = 22.0f;
+        const float BTN_H = 26.0f;
         const float BTN_X = bx + 10.0f;
-        const float BTN_Y = by + BOX_H - 30.0f;
+        const float BTN_Y = by + BOX_H - 34.0f;
 
         sf::RectangleShape btn({BTN_W, BTN_H});
         btn.setPosition({BTN_X, BTN_Y});
@@ -574,11 +472,11 @@ void LevelSelectState::render(sf::RenderWindow& window) const
             btn.setOutlineThickness(1.0f);
             window.draw(btn);
 
-            sf::Text status(m_font, "LOCKED", 9);
+            sf::Text status(m_font, "LOCKED", 8);
             status.setFillColor(TEXT_BTN_LOCKED);
             status.setOutlineColor(sf::Color::Black);
             status.setOutlineThickness(1.0f);
-            status.setPosition({BTN_X + BTN_W / 2.f - status.getGlobalBounds().size.x / 2.f, BTN_Y + 4.0f});
+            status.setPosition({BTN_X + BTN_W / 2.f - status.getGlobalBounds().size.x / 2.f, BTN_Y + 6.0f});
             window.draw(status);
         } else if (isSelected) {
             float btnPulse = 180.0f + 75.0f * std::sin(m_animTimer * 6.0f);
@@ -587,11 +485,12 @@ void LevelSelectState::render(sf::RenderWindow& window) const
             btn.setOutlineThickness(1.5f);
             window.draw(btn);
 
-            sf::Text status(m_font, "> PLAY <", 8);
+            std::string btnStr = (item.stageNum == 0 ? "> BUILD <" : "> PLAY <");
+            sf::Text status(m_font, btnStr, 8);
             status.setFillColor(sf::Color::White);
             status.setOutlineColor(sf::Color::Black);
             status.setOutlineThickness(1.0f);
-            status.setPosition({BTN_X + BTN_W / 2.f - status.getGlobalBounds().size.x / 2.f, BTN_Y + 5.0f});
+            status.setPosition({BTN_X + BTN_W / 2.f - status.getGlobalBounds().size.x / 2.f, BTN_Y + 6.0f});
             window.draw(status);
         } else {
             btn.setFillColor(BTN_IDLE_BG);
@@ -599,25 +498,15 @@ void LevelSelectState::render(sf::RenderWindow& window) const
             btn.setOutlineThickness(1.0f);
             window.draw(btn);
 
-            sf::Text status(m_font, "SELECT", 8);
+            std::string btnStr = (item.stageNum == 0 ? "EDIT" : "SELECT");
+            sf::Text status(m_font, btnStr, 8);
             status.setFillColor(TEXT_BTN_IDLE);
-            status.setPosition({BTN_X + BTN_W / 2.f - status.getGlobalBounds().size.x / 2.f, BTN_Y + 5.0f});
+            status.setPosition({BTN_X + BTN_W / 2.f - status.getGlobalBounds().size.x / 2.f, BTN_Y + 6.0f});
             window.draw(status);
         }
     }
 
-    // 7. Page indicators (if more than 1 page)
-    if (totalPages > 1) {
-        std::string pageStr = "PAGE " + std::to_string(m_currentPage + 1) + " / " + std::to_string(totalPages);
-        sf::Text pageText(m_font, pageStr, 9);
-        pageText.setFillColor(PAGE_HINT_COLOR);
-        pageText.setOutlineColor(sf::Color::Black);
-        pageText.setOutlineThickness(1.0f);
-        pageText.setPosition({WIN_W / 2.f - pageText.getGlobalBounds().size.x / 2.f, PANEL_Y + PANEL_H - 16.0f});
-        window.draw(pageText);
-    }
-
-    // 8. Bottom Navigation Bar Footer
+    // 6. Bottom Navigation Bar Footer
     sf::RectangleShape footer({WIN_W, 46.0f});
     footer.setFillColor(FOOTER_BG);
     footer.setOutlineColor(FOOTER_OUTLINE);
@@ -625,7 +514,7 @@ void LevelSelectState::render(sf::RenderWindow& window) const
     footer.setPosition({0.f, 554.0f});
     window.draw(footer);
 
-    sf::Text hint(m_font, "WASD / ARROWS: Navigate   ENTER / CLICK: Play   ESC: Back", 10);
+    sf::Text hint(m_font, "WASD / ARROWS: Navigate   ENTER / CLICK: Select   ESC: Back", 10);
     hint.setFillColor(FOOTER_TEXT);
     hint.setPosition({WIN_W / 2.f - hint.getGlobalBounds().size.x / 2.f, 569.0f});
     window.draw(hint);
