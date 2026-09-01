@@ -6,6 +6,7 @@
 
 class ISettingsManager;
 class ISaveManager;
+class ISoundManager;
 
 /**
  * @class Game
@@ -14,6 +15,7 @@ class ISaveManager;
  * Responsibilities:
  * - Owns the SFML render window
  * - Owns the StateManager
+ * - Owns and injects shared managers (Settings, SaveManager, SoundManager)
  * - Implements the main game loop
  * - Handles frame timing
  */
@@ -58,4 +60,6 @@ private:
     std::shared_ptr<ISettingsManager> m_settings;
     // Shared save manager instance, injected into every state that needs it
     std::shared_ptr<ISaveManager> m_saveManager;
+    // Shared sound manager instance, injected into every state that needs it
+    std::shared_ptr<ISoundManager> m_soundManager;
 };

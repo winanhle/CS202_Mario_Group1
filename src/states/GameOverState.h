@@ -10,6 +10,7 @@
 
 class ISettingsManager;
 class ISaveManager;
+class ISoundManager;
 
 /**
  * @class GameOverState
@@ -24,9 +25,12 @@ class ISaveManager;
 class GameOverState : public GameState
 {
 public:
-    explicit GameOverState(std::shared_ptr<ISettingsManager> settings,
-                           std::shared_ptr<ISaveManager> saveManager,
-                           const GameConfig& config = GameConfig{});
+    explicit GameOverState(
+        std::shared_ptr<ISettingsManager> settings,
+        std::shared_ptr<ISaveManager> saveManager,
+        const GameConfig& config = GameConfig{},
+        std::shared_ptr<ISoundManager> soundManager = nullptr
+    );
     ~GameOverState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -43,6 +47,7 @@ private:
 
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager> m_saveManager;
+    std::shared_ptr<ISoundManager> m_soundManager;
     GameConfig m_config;
 
     sf::Font m_font;

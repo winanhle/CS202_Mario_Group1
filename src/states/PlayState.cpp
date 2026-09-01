@@ -121,9 +121,16 @@ GameMemento PlayState::captureLevelStartMemento() const
 // ──────────────────────────────────────────────────────────────────
 // Constructor nhận config từ ModeSelectState
 // ──────────────────────────────────────────────────────────────────
-PlayState::PlayState(const GameConfig& config, std::shared_ptr<ISettingsManager> settings, std::shared_ptr<ISaveManager> saveManager, bool loadSave)
+PlayState::PlayState(
+    const GameConfig& config,
+    std::shared_ptr<ISettingsManager> settings,
+    std::shared_ptr<ISaveManager> saveManager,
+    bool loadSave,
+    std::shared_ptr<ISoundManager> soundManager
+)
     : m_settings(std::move(settings))
     , m_saveManager(std::move(saveManager))
+    , m_soundManager(std::move(soundManager))
     , m_loadSave(loadSave)
 {
     setup(config);
@@ -166,7 +173,7 @@ void PlayState::handleInput(const sf::Event& event)
                     m_settings, m_saveManager,
                     m_gameWorld->getPlayerManager(),
                     m_gameWorld->getPlayerManager2(),
-                    memento));
+                    memento, m_soundManager));
             }
             return; // don't forward the pause key to the game world
         }
@@ -189,7 +196,7 @@ void PlayState::update(float deltaTime)
 
             int finalScore = m_gameWorld->getTotalScore();
             int livesLeft  = m_gameWorld->getSharedLives();
-            auto winState  = std::make_unique<WinState>(m_settings, m_saveManager, m_config, finalScore, livesLeft);
+            auto winState  = std::make_unique<WinState>(m_settings, m_saveManager, m_config, finalScore, livesLeft, m_soundManager);
             manager->changeState(std::move(winState));
         }
     }
@@ -233,7 +240,7 @@ void PlayState::update(float deltaTime)
             m_gameWorld->deleteSaveData();
 
             int finalScore = m_gameWorld->getTotalScore();
-            auto gameOverState = std::make_unique<GameOverState>(m_settings, m_saveManager, m_config);
+            auto gameOverState = std::make_unique<GameOverState>(m_settings, m_saveManager, m_config, m_soundManager);
             gameOverState->setFinalScore(finalScore);
             manager->changeState(std::move(gameOverState));
         }

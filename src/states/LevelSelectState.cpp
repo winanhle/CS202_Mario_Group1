@@ -2,6 +2,7 @@
 #include "PlayState.h"
 #include "ModeSelectState.h"
 #include "../core/StateManager.h"
+#include "../interfaces/ISoundManager.h"
 #include <filesystem>
 #include <iostream>
 #include <algorithm>
@@ -39,13 +40,17 @@ namespace {
     static constexpr sf::Color TAG_BONUS_BG(140, 45, 190, 200);
 }
 
-LevelSelectState::LevelSelectState(const GameConfig& config,
-                                   std::shared_ptr<ISettingsManager> settings,
-                                   std::shared_ptr<ISaveManager> saveManager,
-                                   bool loadSave)
+LevelSelectState::LevelSelectState(
+    const GameConfig& config,
+    std::shared_ptr<ISettingsManager> settings,
+    std::shared_ptr<ISaveManager> saveManager,
+    bool loadSave,
+    std::shared_ptr<ISoundManager> soundManager
+)
     : m_config(config),
       m_settings(std::move(settings)),
       m_saveManager(std::move(saveManager)),
+      m_soundManager(std::move(soundManager)),
       m_loadSave(loadSave)
 {
     if (m_font.openFromFile(FONT_PATH)) {
@@ -159,7 +164,7 @@ void LevelSelectState::confirmSelection()
     if (m_selectedIndex >= 0 && m_selectedIndex < static_cast<int>(m_levels.size())) {
         m_config.customMapPath = m_levels[m_selectedIndex].path;
         if (auto* mgr = getStateManager()) {
-            mgr->changeState(std::make_unique<PlayState>(m_config, m_settings, m_saveManager, m_loadSave));
+            mgr->changeState(std::make_unique<PlayState>(m_config, m_settings, m_saveManager, m_loadSave, m_soundManager));
         }
     }
 }
@@ -208,7 +213,7 @@ void LevelSelectState::handleInput(const sf::Event& event)
             confirmSelection();
         } else if (keyEvent->code == sf::Keyboard::Key::Escape) {
             if (auto* mgr = getStateManager())
-                mgr->changeState(std::make_unique<ModeSelectState>(m_config, m_settings, m_saveManager, m_loadSave));
+                mgr->changeState(std::make_unique<ModeSelectState>(m_config, m_settings, m_saveManager, m_loadSave, m_soundManager));
         }
     }
 

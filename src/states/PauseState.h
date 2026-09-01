@@ -9,6 +9,7 @@
 class ISettingsManager;
 class ISaveManager;
 class IPlayerManager;
+class ISoundManager;
 
 /**
  * @class PauseState
@@ -24,11 +25,14 @@ class IPlayerManager;
 class PauseState : public GameState
 {
 public:
-    explicit PauseState(std::shared_ptr<ISettingsManager> settings,
-                        std::shared_ptr<ISaveManager> saveManager,
-                        IPlayerManager* player1,
-                        IPlayerManager* player2 = nullptr,
-                        std::optional<GameMemento> saveSnapshot = std::nullopt);
+    explicit PauseState(
+        std::shared_ptr<ISettingsManager> settings,
+        std::shared_ptr<ISaveManager> saveManager,
+        IPlayerManager* player1,
+        IPlayerManager* player2 = nullptr,
+        std::optional<GameMemento> saveSnapshot = std::nullopt,
+        std::shared_ptr<ISoundManager> soundManager = nullptr
+    );
     ~PauseState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -40,6 +44,7 @@ private:
 
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager> m_saveManager;
+    std::shared_ptr<ISoundManager> m_soundManager;
     IPlayerManager* m_player1;   // non-owning; owned by GameWorld
     IPlayerManager* m_player2;   // non-owning; owned by GameWorld
     std::optional<GameMemento> m_saveSnapshot;

@@ -9,6 +9,7 @@
 
 class ISettingsManager;
 class ISaveManager;
+class ISoundManager;
 
 /**
  * @class MenuState
@@ -22,7 +23,11 @@ class ISaveManager;
 class MenuState : public GameState
 {
 public:
-    explicit MenuState(std::shared_ptr<ISettingsManager> settings, std::shared_ptr<ISaveManager> saveManager = nullptr);
+    explicit MenuState(
+        std::shared_ptr<ISettingsManager> settings,
+        std::shared_ptr<ISaveManager> saveManager = nullptr,
+        std::shared_ptr<ISoundManager> soundManager = nullptr
+    );
     ~MenuState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -50,6 +55,7 @@ private:
     // initialized first (m_settingsMenu is constructed with *m_settings)
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager> m_saveManager;
+    std::shared_ptr<ISoundManager> m_soundManager;
     SettingsMenu m_settingsMenu;
     bool m_inSettings = false;
     

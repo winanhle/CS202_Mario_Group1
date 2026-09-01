@@ -2,6 +2,7 @@
 #include "LeaderboardState.h"
 #include "../core/StateManager.h"
 #include "../interfaces/ISaveManager.h"
+#include "../interfaces/ISoundManager.h"
 #include <algorithm>
 #include <iostream>
 
@@ -13,13 +14,17 @@ static constexpr sf::Color BOX_INACTIVE_COLOR{ 25, 25, 25, 200 };
 static constexpr sf::Color OUTLINE_ACTIVE_COLOR{ 255, 215, 0 };
 static constexpr sf::Color OUTLINE_INACTIVE_COLOR{ 80, 80, 80 };
 
-InitialsEntryState::InitialsEntryState(int finalScore,
-                                       std::shared_ptr<ISettingsManager> settings,
-                                       std::shared_ptr<ISaveManager> saveManager,
-                                       const GameConfig& config)
+InitialsEntryState::InitialsEntryState(
+    int finalScore,
+    std::shared_ptr<ISettingsManager> settings,
+    std::shared_ptr<ISaveManager> saveManager,
+    const GameConfig& config,
+    std::shared_ptr<ISoundManager> soundManager
+)
     : m_score(finalScore)
     , m_settings(std::move(settings))
     , m_saveManager(std::move(saveManager))
+    , m_soundManager(std::move(soundManager))
     , m_config(config)
     , m_slots{
         SlotVisual{ sf::RectangleShape(), sf::Text(m_font) },
@@ -181,7 +186,7 @@ void InitialsEntryState::submitScore()
 
     if (auto* manager = getStateManager())
     {
-        manager->changeState(std::make_unique<LeaderboardState>(m_settings, m_saveManager, m_config));
+        manager->changeState(std::make_unique<LeaderboardState>(m_settings, m_saveManager, m_soundManager, m_config));
     }
 }
 

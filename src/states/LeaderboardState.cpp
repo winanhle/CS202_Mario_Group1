@@ -2,6 +2,7 @@
 #include "MenuState.h"
 #include "../core/StateManager.h"
 #include "../interfaces/ISaveManager.h"
+#include "../interfaces/ISoundManager.h"
 #include <iomanip>
 #include <sstream>
 #include <iostream>
@@ -12,11 +13,15 @@ static constexpr sf::Color BRONZE_COLOR{ 215, 140, 60 };
 static constexpr sf::Color WHITE_COLOR{ 240, 240, 240 };
 static constexpr sf::Color GRAY_COLOR{ 160, 160, 160 };
 
-LeaderboardState::LeaderboardState(std::shared_ptr<ISettingsManager> settings,
-                                   std::shared_ptr<ISaveManager> saveManager,
-                                   const GameConfig& config)
+LeaderboardState::LeaderboardState(
+    std::shared_ptr<ISettingsManager> settings,
+    std::shared_ptr<ISaveManager> saveManager,
+    std::shared_ptr<ISoundManager> soundManager,
+    const GameConfig& config
+)
     : m_settings(std::move(settings))
     , m_saveManager(std::move(saveManager))
+    , m_soundManager(std::move(soundManager))
     , m_config(config)
 {
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
@@ -139,7 +144,7 @@ void LeaderboardState::returnToMenu()
 {
     if (auto* manager = getStateManager())
     {
-        manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager));
+        manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager, m_soundManager));
     }
 }
 
