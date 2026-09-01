@@ -114,6 +114,11 @@ public:
      */
     virtual void editTile(int gx, int gy, TileType newType) = 0;
 
+    /**
+     * @brief Set tile at grid coordinates with an explicit raw GID (for multi-tileset editor placement).
+     */
+    virtual void editTileWithGid(int gx, int gy, TileType newType, int rawGid) = 0;
+
     /** Undo the last editTile() call. Returns false if the undo stack is empty. */
     virtual bool undoEdit() = 0;
 
@@ -132,4 +137,15 @@ public:
 
     /** Remove enemy spawn entry by index (editor use). */
     virtual void removeEnemySpawn(int index) = 0;
+
+    /**
+     * @brief Initialize a blank map with given dimensions (editor use).
+     *        Clears all tile data, resets object data, sets a default PlayerSpawn.
+     */
+    virtual void initBlank(int width, int height) = 0;
+
+    /**
+     * @brief Directly set the player spawn position in world pixels (editor use).
+     */
+    virtual void setPlayerSpawnPos(float x, float y) = 0;
 };

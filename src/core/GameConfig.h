@@ -27,4 +27,5 @@ struct GameConfig {
     GameMode      mode             = GameMode::SinglePlayer;
     
     std::string customMapPath = ""; // Empty means normal progression
+    bool fromEditor = false;         // True when launched from MapEditorState
 };

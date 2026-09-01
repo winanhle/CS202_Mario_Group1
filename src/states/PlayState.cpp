@@ -3,6 +3,7 @@
 #include "GameOverState.h"
 #include "WinState.h"
 #include "IntermissionState.h"
+#include "MapEditorState.h"
 #include "../core/StateManager.h"
 #include "../core/GameConfig.h"
 #include "../world/GameWorld.h"
@@ -150,6 +151,12 @@ void PlayState::handleInput(const sf::Event& event)
             auto* manager = getStateManager();
             if (manager)
             {
+                if (m_config.fromEditor)
+                {
+                    manager->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager));
+                    return;
+                }
+
                 // Create a level-start Memento snapshot via Originator (GameWorld)
                 // so the pause menu can persist it if the player picks "Save & Quit".
                 // We use level start values to prevent farming lives/coins mid-level.
@@ -177,6 +184,12 @@ void PlayState::update(float deltaTime)
         auto* manager = getStateManager();
         if (manager)
         {
+            if (m_config.fromEditor)
+            {
+                manager->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager));
+                return;
+            }
+
             if (m_saveManager)
             {
                 m_saveManager->unlockStage(m_gameWorld->getTotalStages()); // All campaign stages unlocked permanently
@@ -196,6 +209,12 @@ void PlayState::update(float deltaTime)
         auto* manager = getStateManager();
         if (manager)
         {
+            if (m_config.fromEditor)
+            {
+                manager->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager));
+                return;
+            }
+
             int cur = m_gameWorld->getCurrentStageNumber();
             int next = m_gameWorld->getNextStageNumber();
             int lives = m_gameWorld->getSharedLives();
@@ -231,6 +250,12 @@ void PlayState::update(float deltaTime)
         auto* manager = getStateManager();
         if (manager)
         {
+            if (m_config.fromEditor)
+            {
+                manager->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager));
+                return;
+            }
+
             // Delete save file — the player lost, no game to continue
             m_gameWorld->deleteSaveData();
 

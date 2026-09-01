@@ -15,6 +15,21 @@ FireBar::FireBar(float cx, float cy,
       m_angle(initialAngle),
       m_sprite(texture)
 {
+    constexpr float DEG_TO_RAD = 3.14159265359f / 180.f;
+    constexpr float TWO_PI = 6.28318530718f;
+
+    // If speed is provided in degrees/sec (> 2*PI, e.g. 60, 90, 180), convert to rad/s
+    if (std::abs(m_speed) > TWO_PI)
+    {
+        m_speed *= DEG_TO_RAD;
+    }
+
+    // If initial angle is provided in degrees (> 2*PI), convert to radians
+    if (std::abs(m_angle) > TWO_PI)
+    {
+        m_angle *= DEG_TO_RAD;
+    }
+
     m_sprite.setTextureRect(FireballSprite::FlyFrames[0]);
     m_sprite.setOrigin({
         FireballSprite::FlyFrames[0].size.x / 2.f,

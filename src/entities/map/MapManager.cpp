@@ -94,7 +94,10 @@ bool MapManager::parseTilesetElement(tinyxml2::XMLElement* root, const std::stri
     root->QueryIntAttribute("columns", &columns);
     m_tilesetFirstGid = firstGid;
     m_tilesetColumns  = columns;
-    m_tilesets.push_back(LoadedTileset{firstGid, columns});
+
+    LoadedTileset ts;
+    ts.firstGid = firstGid;
+    ts.columns  = columns;
 
     // ── Load the sprite-sheet image declared in <image source="..."/> ─────────
     auto* imgEl = root->FirstChildElement("image");
@@ -102,18 +105,33 @@ bool MapManager::parseTilesetElement(tinyxml2::XMLElement* root, const std::stri
         const char* imgSrc = imgEl->Attribute("source");
         if (imgSrc) {
             std::string imgPath = resolvePath(baseDir, imgSrc);
-            if (!m_textureLoaded) {
-                if (m_tilesetTexture.loadFromFile(imgPath)) {
-                    m_tilesetTexture.setSmooth(false);
-                    m_tileSprite.emplace(m_tilesetTexture);
-                    m_textureLoaded = true;
-                    std::cout << "[MapManager] Tileset texture loaded: " << imgPath << std::endl;
-                } else {
-                    std::cerr << "[MapManager] Failed to load tileset image: " << imgPath << std::endl;
+            auto tex = std::make_shared<sf::Texture>();
+            bool loaded = tex->loadFromFile(imgPath);
+            if (!loaded) {
+                // Fallbacks: check in assets/tileset or try world1_1.png
+                std::string fallback1 = resolvePath("assets/tileset", imgSrc);
+                loaded = tex->loadFromFile(fallback1);
+                if (!loaded) {
+                    std::string fallback2 = resolvePath(baseDir, "world1_1.png");
+                    loaded = tex->loadFromFile(fallback2);
                 }
+                if (loaded) {
+                    std::cout << "[MapManager] Loaded fallback image for: " << imgPath << std::endl;
+                }
+            }
+
+            if (loaded) {
+                tex->setSmooth(false);
+                ts.sprite.emplace(*tex);
+                ts.texture = tex;
+                m_textureLoaded = true;
+                std::cout << "[MapManager] Tileset texture loaded (firstgid=" << firstGid << "): " << imgPath << std::endl;
+            } else {
+                std::cerr << "[MapManager] Failed to load tileset image: " << imgPath << std::endl;
             }
         }
     }
+    m_tilesets.push_back(std::move(ts));
 
     // Iterate over every <tile> element
     for (auto* tileEl = root->FirstChildElement("tile"); tileEl;
@@ -382,9 +400,36 @@ bool MapManager::loadMapTMX(const std::string& tmxPath) {
     }
 
     // ── Parse object groups (enemy spawns, player spawn, lifts, firebars) ─
-    // Note: FireBar spawns come ONLY from object groups now.
-    // The tile-scan loop was removed to prevent duplicate FireBar spawns.
     parseObjectGroups(mapEl);
+
+    // ── Scan tile map for FIRE_BAR tiles (e.g. stage3 / world1_4) ─────────────
+    for (int r = 0; r < mapHeight; ++r) {
+        for (int c = 0; c < mapWidth; ++c) {
+            if (m_mapData[r][c] == TileType::FIRE_BAR) {
+                float cx = static_cast<float>(c) * m_tileSize + m_tileSize / 2.f;
+                float cy = static_cast<float>(r) * m_tileSize + m_tileSize / 2.f;
+                // Avoid duplicate spawn if an object-group FireBar already covers this tile
+                bool alreadyExists = false;
+                for (const auto& existing : m_objectData.fireBarSpawns) {
+                    if (std::abs(existing.x - cx) < static_cast<float>(m_tileSize) &&
+                        std::abs(existing.y - cy) < static_cast<float>(m_tileSize)) {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+                if (!alreadyExists) {
+                    FireBarSpawnData fb;
+                    fb.x = cx;
+                    fb.y = cy;
+                    fb.fireCount = 6;
+                    fb.speed = 90.f;
+                    fb.clockwise = true;
+                    fb.initialAngle = 0.f;
+                    m_objectData.fireBarSpawns.push_back(fb);
+                }
+            }
+        }
+    }
 
     std::cout << "[MapManager] TMX loaded: " << tmxPath
               << "  (" << (m_mapData.empty() ? 0 : m_mapData[0].size())
@@ -716,55 +761,14 @@ void MapManager::render(sf::RenderWindow& window) const {
                         else bgGid = m_tilesetFirstGid;
                     }
                     if (bgGid > 0) {
-                        const LoadedTileset* tsBg = nullptr;
-                        for (const auto& candidate : m_tilesets) {
-                            if (bgGid >= candidate.firstGid) {
-                                if (!tsBg || candidate.firstGid > tsBg->firstGid) {
-                                    tsBg = &candidate;
-                                }
-                            }
-                        }
-                        int colsBg = tsBg ? tsBg->columns : m_tilesetColumns;
-                        int fgidBg = tsBg ? tsBg->firstGid : m_tilesetFirstGid;
-                        if (colsBg > 0) {
-                            int localIdBg = bgGid - fgidBg;
-                            int tileColBg = localIdBg % colsBg;
-                            int tileRowBg = localIdBg / colsBg;
-                            m_tileSprite->setTextureRect(sf::IntRect(
-                                {tileColBg * m_tileSize, tileRowBg * m_tileSize},
-                                {m_tileSize, m_tileSize}));
-                            m_tileSprite->setPosition({worldX, originalWorldY});
-                            window.draw(*m_tileSprite);
-                        }
+                        drawTileGid(bgGid, {worldX, originalWorldY}, window);
                     }
                 }
 
                 int gid = m_rawGids[y][x];
                 if (gid > 0) {
-                    // Find the best matching tileset for this GID
-                    const LoadedTileset* ts = nullptr;
-                    for (const auto& candidate : m_tilesets) {
-                        if (gid >= candidate.firstGid) {
-                            if (!ts || candidate.firstGid > ts->firstGid) {
-                                ts = &candidate;
-                            }
-                        }
-                    }
-
-                    int cols = ts ? ts->columns : m_tilesetColumns;
-                    int fgid = ts ? ts->firstGid : m_tilesetFirstGid;
-
-                    if (cols > 0) {
-                        int localId  = gid - fgid;
-                        int tileCol  = localId % cols;
-                        int tileRow  = localId / cols;
-                        m_tileSprite->setTextureRect(sf::IntRect(
-                            {tileCol * m_tileSize, tileRow * m_tileSize},
-                            {m_tileSize, m_tileSize}));
-                        m_tileSprite->setPosition({worldX, worldY});
-                        window.draw(*m_tileSprite);
-                        continue;
-                    }
+                    drawTileGid(gid, {worldX, worldY}, window);
+                    continue;
                 }
             }
 
@@ -826,7 +830,7 @@ void MapManager::render(sf::RenderWindow& window) const {
 }
 
 void MapManager::drawTileGid(int gid, sf::Vector2f position, sf::RenderWindow& window) const {
-    if (gid <= 0 || !m_tileSprite) return;
+    if (gid <= 0) return;
 
     const LoadedTileset* ts = nullptr;
     for (const auto& candidate : m_tilesets) {
@@ -836,18 +840,16 @@ void MapManager::drawTileGid(int gid, sf::Vector2f position, sf::RenderWindow& w
             }
         }
     }
-    int cols = ts ? ts->columns : m_tilesetColumns;
-    int fgid = ts ? ts->firstGid : m_tilesetFirstGid;
 
-    if (cols > 0) {
-        int localId = gid - fgid;
-        int tileCol = localId % cols;
-        int tileRow = localId / cols;
-        m_tileSprite->setTextureRect(sf::IntRect(
+    if (ts && ts->sprite.has_value() && ts->columns > 0) {
+        int localId = gid - ts->firstGid;
+        int tileCol = localId % ts->columns;
+        int tileRow = localId / ts->columns;
+        ts->sprite->setTextureRect(sf::IntRect(
             {tileCol * m_tileSize, tileRow * m_tileSize},
             {m_tileSize, m_tileSize}));
-        m_tileSprite->setPosition(position);
-        window.draw(*m_tileSprite);
+        ts->sprite->setPosition(position);
+        window.draw(*ts->sprite);
     }
 }
 
@@ -1179,6 +1181,26 @@ void MapManager::editTile(int gx, int gy, TileType newType) {
     setTileInternal(gx, gy, newType);
 }
 
+void MapManager::editTileWithGid(int gx, int gy, TileType newType, int rawGid) {
+    if (gy < 0 || gy >= (int)m_mapData.size() ||
+        gx < 0 || gx >= (int)m_mapData[0].size()) return;
+
+    // Record undo entry before mutating
+    TileEdit edit;
+    edit.gx      = gx;
+    edit.gy      = gy;
+    edit.oldType = m_mapData[gy][gx];
+    edit.oldGid  = m_rawGids[gy][gx];
+    edit.newType = newType;
+    edit.newGid  = rawGid;
+
+    m_undoStack.push_back(edit);
+    m_redoStack.clear(); // branching edit invalidates redo history
+
+    m_mapData[gy][gx] = newType;
+    m_rawGids[gy][gx] = rawGid;
+}
+
 bool MapManager::undoEdit() {
     if (m_undoStack.empty()) return false;
 
@@ -1226,11 +1248,10 @@ bool MapManager::saveToTMX(const std::string& path) const {
         << " tileheight=\"" << m_tileSize << "\""
         << " infinite=\"0\">\n";
 
-    // ── <tileset> reference ────────────────────────────────────────────────
-    if (!m_tsxRelativePath.empty()) {
-        out << " <tileset firstgid=\"" << m_tilesetFirstGid
-            << "\" source=\"" << m_tsxRelativePath << "\"/>\n";
-    }
+    // ── <tileset> references ───────────────────────────────────────────────
+    out << " <tileset firstgid=\"1\" source=\"../tileset/world1_1.tsx\"/>\n";
+    out << " <tileset firstgid=\"7001\" source=\"../tileset/world1_3.tsx\"/>\n";
+    out << " <tileset firstgid=\"10001\" source=\"../tileset/world1_4.tsx\"/>\n";
 
     // ── <layer> with merged GID grid in CSV encoding ───────────────────────
     out << " <layer id=\"1\" name=\"Terrain\""
@@ -1316,4 +1337,50 @@ void MapManager::addEnemySpawn(const EntitySpawnData& spawn) {
 void MapManager::removeEnemySpawn(int index) {
     if (index < 0 || index >= (int)m_objectData.enemySpawns.size()) return;
     m_objectData.enemySpawns.erase(m_objectData.enemySpawns.begin() + index);
+}
+
+// =============================================================================
+//  MAP EDITOR — BLANK MAP INITIALIZATION & PLAYER SPAWN
+// =============================================================================
+
+void MapManager::initBlank(int width, int height) {
+    // Clear everything (mirrors initialize() but sets up sized grids)
+    m_mapData.assign(height, std::vector<TileType>(width, TileType::EMPTY));
+    m_rawGids.assign(height, std::vector<int>(width, 0));
+    m_bgGids.assign(height, std::vector<int>(width, 0));
+    m_objectData = MapObjectData{};
+    m_multiCoinStates.clear();
+    m_brickDebris.clear();
+    m_coinPopAnims.clear();
+    m_blockBumpAnims.clear();
+    m_tilesets.clear();
+    m_gidTypeMap.clear();
+    m_typeToGid.clear();
+    m_pendingWarp.reset();
+    m_undoStack.clear();
+    m_redoStack.clear();
+    m_textureLoaded = false;
+    m_tileSize = 16;
+
+    // Default player spawn at grid (2, 12) → world pixel (40, 200)
+    m_objectData.playerSpawn.x     = 2 * 16 + 8;  // 40
+    m_objectData.playerSpawn.y     = 12 * 16 + 8; // 200
+    m_objectData.playerSpawn.found = true;
+
+    // Load all 3 tilesets so the editor has texture rects and GID maps for all themes
+    loadTileset("assets/tileset/world1_1.tsx", 1);
+    loadTileset("assets/tileset/world1_3.tsx", 7001);
+    loadTileset("assets/tileset/world1_4.tsx", 10001);
+
+    m_tsxRelativePath  = "../tileset/world1_1.tsx";
+    m_tilesetFirstGid  = 1;
+    m_tilesetColumns   = 0;
+
+    std::cout << "[MapManager] initBlank: " << width << "x" << height << " map created with 3 tilesets.\n";
+}
+
+void MapManager::setPlayerSpawnPos(float x, float y) {
+    m_objectData.playerSpawn.x     = x;
+    m_objectData.playerSpawn.y     = y;
+    m_objectData.playerSpawn.found = true;
 }

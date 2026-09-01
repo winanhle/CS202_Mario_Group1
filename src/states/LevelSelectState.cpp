@@ -1,6 +1,7 @@
 #include "LevelSelectState.h"
 #include "PlayState.h"
 #include "ModeSelectState.h"
+#include "MapEditorState.h"
 #include "../interfaces/ISaveManager.h"
 #include "../core/StateManager.h"
 #include <filesystem>
@@ -174,14 +175,26 @@ void LevelSelectState::discoverMaps()
         false
     });
 
+    // 2. Map Editor Entry (beside Campaign)
+    m_levels.push_back({
+        "__EDITOR__",
+        "MAP EDITOR",
+        "Custom Level Builder\nDesign & play custom maps",
+        "EDITOR",
+        false,
+        false
+    });
+
     if (!fs::exists(MAPS_DIR)) {
         return;
     }
 
-    // 2. Discover .tmx files in assets/map/
+    // 3. Discover .tmx files in assets/map/
     std::vector<std::string> discovered;
     for (const auto& entry : fs::directory_iterator(MAPS_DIR)) {
         if (entry.is_regular_file() && entry.path().extension() == ".tmx") {
+            std::string stem = entry.path().stem().string();
+            if (stem == "editor_temp" || stem == "custom_temp") continue;
             discovered.push_back(entry.path().string());
         }
     }
@@ -224,6 +237,14 @@ void LevelSelectState::confirmSelection()
 {
     if (m_selectedIndex >= 0 && m_selectedIndex < static_cast<int>(m_levels.size())) {
         if (m_levels[m_selectedIndex].isLocked) return;
+
+        if (m_levels[m_selectedIndex].path == "__EDITOR__") {
+            if (auto* mgr = getStateManager()) {
+                mgr->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager));
+            }
+            return;
+        }
+
         m_config.customMapPath = m_levels[m_selectedIndex].path;
         if (auto* mgr = getStateManager()) {
             mgr->changeState(std::make_unique<PlayState>(m_config, m_settings, m_saveManager, m_loadSave));

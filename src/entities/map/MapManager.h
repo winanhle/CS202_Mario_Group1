@@ -125,9 +125,7 @@ private:
     FlagSlideAnim               m_flagAnim;
 
     // ─── Tileset sprite-sheet rendering ──────────────────────────────────────
-    sf::Texture                  m_tilesetTexture;  // PNG loaded from the TSX <image> node
-    mutable std::optional<sf::Sprite> m_tileSprite; // absent until texture is ready (SFML 3 has no default ctor)
-    bool m_textureLoaded = false;                   // true once the texture loaded successfully
+    bool m_textureLoaded = false;                   // true once at least one tileset texture loaded successfully
 
     // ─── TSX metadata ─────────────────────────────────────────────────────────
     std::string m_tsxRelativePath; // relative path used in the TMX <tileset source="...">
@@ -175,6 +173,8 @@ private:
     struct LoadedTileset {
         int firstGid = 1;
         int columns  = 0;
+        std::shared_ptr<sf::Texture> texture;
+        mutable std::optional<sf::Sprite> sprite;
     };
     std::vector<LoadedTileset> m_tilesets;
 
@@ -241,9 +241,12 @@ public:
 
     // ─── Map Editor API (IMapManager) ─────────────────────────────────────────
     void editTile(int gx, int gy, TileType newType) override;
+    void editTileWithGid(int gx, int gy, TileType newType, int rawGid) override;
     bool undoEdit() override;
     bool redoEdit() override;
     bool saveToTMX(const std::string& path) const override;
     void addEnemySpawn(const EntitySpawnData& spawn) override;
     void removeEnemySpawn(int index) override;
+    void initBlank(int width, int height) override;
+    void setPlayerSpawnPos(float x, float y) override;
 };
