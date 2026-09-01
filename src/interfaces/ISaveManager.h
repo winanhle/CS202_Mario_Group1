@@ -66,5 +66,9 @@ public:
     virtual void saveHighScores(const std::vector<ScoreEntry>& entries) = 0;
     virtual bool isHighScore(int score) const = 0;
     virtual void addHighScore(const std::string& initials, int score) = 0;
+
+    // --- STAGE PROGRESSION ---
+    virtual int getMaxUnlockedStage() const = 0;
+    virtual void unlockStage(int stageNumber) = 0;
 };
 

@@ -18,8 +18,10 @@ class IEnemyManager;
  * Fireball chỉ giữ NON-OWNING pointer tới texture của FireballManager
  * (manager owns texture + vector<Fireball> by value).
  */
+class IPlayerManager;
 class Fireball
 {
+    IPlayerManager* m_owner = nullptr;
     // ── Physics ──────────────────────────────────────────────
     sf::Vector2f m_position;
     sf::Vector2f m_velocity;       // vx = SPEED * direction, vy = 0 ban đầu
@@ -44,7 +46,7 @@ class Fireball
 
 public:
     // Constructor nhận texture từ FireballManager
-    Fireball(float x, float y, int direction, const sf::Texture& texture);
+    Fireball(float x, float y, int direction, const sf::Texture& texture, IPlayerManager* owner = nullptr);
 
     void update(float dt, const IMapManager& map, IEnemyManager& enemies);
     void render(sf::RenderWindow& window) const;

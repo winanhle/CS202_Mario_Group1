@@ -36,8 +36,8 @@ void FireballManager::render(sf::RenderWindow& window) const
         fb.render(window);
 }
 
-void FireballManager::spawnFireball(float x, float y, int direction)
+void FireballManager::spawnFireball(float x, float y, int direction, IPlayerManager* owner)
 {
     // emplace_back construct Fireball in-place trong vector, tránh copy thừa.
-    m_fireballs.emplace_back(x, y, direction, m_fireballTexture);
+    m_fireballs.emplace_back(x, y, direction, m_fireballTexture, owner);
 }

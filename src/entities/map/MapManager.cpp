@@ -162,6 +162,12 @@ bool MapManager::parseTilesetElement(tinyxml2::XMLElement* root, const std::stri
             }
         }
 
+        // Ensure flag cloth graphic is classified as BACKGROUND, not FLAGPOLE,
+        // so that flagpole collision is anchored strictly to the flagpole shaft column.
+        if (gid == GID_FLAGPOLE_FLAG || localId == 830 || localId == 643) {
+            resolved = TileType::BACKGROUND;
+        }
+
         if (found && resolved != TileType::EMPTY) {
             m_gidTypeMap[gid] = resolved;
         }
@@ -788,36 +794,12 @@ void MapManager::render(sf::RenderWindow& window) const {
     }
 
     // ── Flag slide animation ──────────────────────────────────────────────────
-    if (m_flagAnim.active && m_tileSprite) {
-        const LoadedTileset* ts = nullptr;
-        for (const auto& candidate : m_tilesets) {
-            if (GID_FLAGPOLE_FLAG >= candidate.firstGid) {
-                if (!ts || candidate.firstGid > ts->firstGid) {
-                    ts = &candidate;
-                }
-            }
+    if (m_flagAnim.active) {
+        if (m_flagAnim.flagGid > 0) {
+            drawTileGid(m_flagAnim.flagGid, m_flagAnim.pos, window);
         }
-        int cols = ts ? ts->columns : m_tilesetColumns;
-        int fgid = ts ? ts->firstGid : m_tilesetFirstGid;
-
-        if (cols > 0) {
-            int localId = GID_FLAGPOLE_FLAG - fgid;
-            int tileCol = localId % cols;
-            int tileRow = localId / cols;
-            m_tileSprite->setTextureRect(sf::IntRect(
-                {tileCol * m_tileSize, tileRow * m_tileSize},
-                {m_tileSize, m_tileSize}));
-            m_tileSprite->setPosition(m_flagAnim.pos);
-            window.draw(*m_tileSprite);
-
-            int localIdAttach = GID_FLAGPOLE_ATTACH - fgid;
-            int tileColAttach = localIdAttach % cols;
-            int tileRowAttach = localIdAttach / cols;
-            m_tileSprite->setTextureRect(sf::IntRect(
-                {tileColAttach * m_tileSize, tileRowAttach * m_tileSize},
-                {m_tileSize, m_tileSize}));
-            m_tileSprite->setPosition({m_flagAnim.pos.x + (float)m_tileSize, m_flagAnim.pos.y});
-            window.draw(*m_tileSprite);
+        if (m_flagAnim.attachGid > 0) {
+            drawTileGid(m_flagAnim.attachGid, {m_flagAnim.pos.x + static_cast<float>(m_tileSize), m_flagAnim.pos.y}, window);
         }
     }
 
@@ -840,6 +822,32 @@ void MapManager::render(sf::RenderWindow& window) const {
         coinShape.setPosition(coin.pos);
         coinShape.setFillColor(sf::Color(255, 215, 0, a));
         window.draw(coinShape);
+    }
+}
+
+void MapManager::drawTileGid(int gid, sf::Vector2f position, sf::RenderWindow& window) const {
+    if (gid <= 0 || !m_tileSprite) return;
+
+    const LoadedTileset* ts = nullptr;
+    for (const auto& candidate : m_tilesets) {
+        if (gid >= candidate.firstGid) {
+            if (!ts || candidate.firstGid > ts->firstGid) {
+                ts = &candidate;
+            }
+        }
+    }
+    int cols = ts ? ts->columns : m_tilesetColumns;
+    int fgid = ts ? ts->firstGid : m_tilesetFirstGid;
+
+    if (cols > 0) {
+        int localId = gid - fgid;
+        int tileCol = localId % cols;
+        int tileRow = localId / cols;
+        m_tileSprite->setTextureRect(sf::IntRect(
+            {tileCol * m_tileSize, tileRow * m_tileSize},
+            {m_tileSize, m_tileSize}));
+        m_tileSprite->setPosition(position);
+        window.draw(*m_tileSprite);
     }
 }
 
@@ -1064,41 +1072,87 @@ void MapManager::spawnBrickDebris(int gx, int gy) {
 void MapManager::triggerFlagSlide(int poleGridX) {
     if (m_flagAnim.active) return;
 
+    // Auto-detect flagpole shaft column if poleGridX was offset (if called on the flag graphic column)
+    int actualPoleX = poleGridX;
+    auto isPoleColumn = [this](int gx) {
+        if (gx < 0 || m_mapData.empty() || gx >= (int)m_mapData[0].size()) return false;
+        int poleCount = 0;
+        for (int gy = 0; gy < (int)m_mapData.size(); ++gy) {
+            if (m_mapData[gy][gx] == TileType::FLAGPOLE) ++poleCount;
+        }
+        return poleCount >= 2;
+    };
+
+    if (!isPoleColumn(actualPoleX)) {
+        if (isPoleColumn(actualPoleX + 1)) actualPoleX = actualPoleX + 1;
+        else if (isPoleColumn(actualPoleX - 1)) actualPoleX = actualPoleX - 1;
+    }
+    poleGridX = actualPoleX;
+
     int topY = -1, bottomY = -1;
 
-    for (int gy = 0; gy < (int)m_rawGids.size(); ++gy) {
-        if (poleGridX >= 0 && poleGridX < (int)m_rawGids[gy].size()) {
-            int gid = m_rawGids[gy][poleGridX];
-            if (gid == GID_FLAGPOLE_TOP_BALL) {
-                topY = gy + 1;
-            } else if (gid == GID_FLAGPOLE_BASE ||
-                       (topY != -1 && m_mapData[gy][poleGridX] == TileType::GROUND)) {
-                bottomY = gy - 1;
-                break;
+    for (int gy = 0; gy < (int)m_mapData.size(); ++gy) {
+        if (poleGridX >= 0 && poleGridX < (int)m_mapData[gy].size()) {
+            if (m_mapData[gy][poleGridX] == TileType::FLAGPOLE) {
+                if (topY == -1) topY = gy;
+                bottomY = gy;
             }
         }
     }
 
-    if (topY == -1) topY = 5;
+    if (topY == -1) topY = 3;
     if (bottomY == -1) bottomY = 12;
 
+    // Slide starts from the row below the ball top
+    int startSlideY = topY;
+    if (topY + 1 <= bottomY) {
+        startSlideY = topY + 1;
+    }
+
     int flagCol = poleGridX - 1;
-    if (topY >= 0 && topY < (int)m_rawGids.size() &&
+    int flagGid = 0;
+    int attachGid = 0;
+
+    if (startSlideY >= 0 && startSlideY < (int)m_rawGids.size() &&
         flagCol >= 0 && flagCol < (int)m_rawGids[0].size()) {
-        int skyGid = (topY > 0) ? m_rawGids[topY - 1][flagCol] : 1;
+
+        flagGid = m_rawGids[startSlideY][flagCol];
+        attachGid = m_rawGids[startSlideY][poleGridX];
+
+        // Find tileset columns to compute pure clean shaft GID (2 rows below attach point)
+        const LoadedTileset* ts = nullptr;
+        for (const auto& cand : m_tilesets) {
+            if (attachGid >= cand.firstGid && (!ts || cand.firstGid > ts->firstGid)) {
+                ts = &cand;
+            }
+        }
+        int cols = ts ? ts->columns : m_tilesetColumns;
+        int cleanShaftGid = (cols > 0) ? (attachGid + cols * 2) : 1254;
+
+        // Clear static flag column, replacing only actual flag cloth tiles with sky GID
+        int skyGid = (startSlideY > 0) ? m_rawGids[startSlideY - 1][flagCol] : 1;
         if (skyGid == 0) skyGid = 1;
-        m_rawGids[topY][flagCol] = skyGid;
-        m_mapData[topY][flagCol] = TileType::EMPTY;
-        if (m_rawGids[topY][poleGridX] == GID_FLAGPOLE_ATTACH) {
-            m_rawGids[topY][poleGridX] = GID_FLAGPOLE_SHAFT;
+        for (int gy = std::max(0, topY); gy <= std::min((int)m_rawGids.size() - 1, topY + 3); ++gy) {
+            int currentGid = m_rawGids[gy][flagCol];
+            if (currentGid == flagGid || currentGid == GID_FLAGPOLE_FLAG || currentGid == 644 || currentGid == 831) {
+                m_rawGids[gy][flagCol] = skyGid;
+                m_mapData[gy][flagCol] = TileType::EMPTY;
+            }
+        }
+
+        // Replace entire pole shaft between top ball and base with pristine clean shaft tile
+        for (int gy = startSlideY; gy < bottomY && gy < (int)m_rawGids.size(); ++gy) {
+            m_rawGids[gy][poleGridX] = cleanShaftGid;
         }
     }
 
-    m_flagAnim.pos      = { (float)flagCol * (float)m_tileSize, (float)topY * (float)m_tileSize };
-    m_flagAnim.targetY  = (float)bottomY * (float)m_tileSize;
-    m_flagAnim.speed    = FLAG_SLIDE_SPEED;
-    m_flagAnim.active   = true;
-    m_flagAnim.finished = false;
+    m_flagAnim.flagGid   = (flagGid > 0) ? flagGid : GID_FLAGPOLE_FLAG;
+    m_flagAnim.attachGid = (attachGid > 0) ? attachGid : GID_FLAGPOLE_ATTACH;
+    m_flagAnim.pos       = { (float)flagCol * (float)m_tileSize, (float)startSlideY * (float)m_tileSize };
+    m_flagAnim.targetY   = (float)bottomY * (float)m_tileSize;
+    m_flagAnim.speed     = FLAG_SLIDE_SPEED;
+    m_flagAnim.active    = true;
+    m_flagAnim.finished  = false;
 }
 
 // =============================================================================

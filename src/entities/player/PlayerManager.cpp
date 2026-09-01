@@ -399,7 +399,7 @@ void PlayerManager::shoot()
             int dir = m_facingDirection;
             float spawnX = m_positionX + m_playerSize.x / 2.f;
             float spawnY = m_positionY + m_playerSize.y / 2.f;
-            m_fireballManager->spawnFireball(spawnX, spawnY, dir);
+            m_fireballManager->spawnFireball(spawnX, spawnY, dir, this);
             ff->triggerShootCooldown();
         }
     }

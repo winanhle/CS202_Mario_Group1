@@ -95,6 +95,7 @@ public:
 
     int getCurrentStageNumber() const;
     int getNextStageNumber() const;
+    int getTotalStages() const;
 
     /**
      * @brief Returns combined score of all active players.
@@ -133,7 +134,7 @@ public:
     void restoreFromMemento(const GameMemento& memento);
 
     void setInitialStage(int stageNumber);
-    void setCustomMapPath(const std::string& path) { m_customMapPath = path; }
+    void setCustomMapPath(const std::string& path);
 
     // ─── sau initialize, inject dependency ───
     void injectDependencies();

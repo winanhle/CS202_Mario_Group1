@@ -28,13 +28,14 @@ namespace {
 SaveManager::SaveManager()
     : m_hasSave(false)
 {
+    loadProgression();
 }
 
 void SaveManager::initialize()
 {
     // Check if a save file already exists
-    std::ifstream file(getSaveFilePath());
-    m_hasSave = file.good();
+    m_hasSave = std::filesystem::exists(getSaveFilePath());
+    loadProgression();
     if (m_hasSave)
     {
         std::cout << "[SaveManager] Save file found: " << getSaveFilePath() << std::endl;
@@ -175,6 +176,54 @@ std::string SaveManager::getSaveFilePath() const
 std::string SaveManager::getHighScoresFilePath() const
 {
     return SCORES_FILE;
+}
+
+std::string SaveManager::getProgressionFilePath() const
+{
+    return PROGRESSION_FILE;
+}
+
+void SaveManager::loadProgression()
+{
+    std::ifstream file(getProgressionFilePath());
+    if (file.is_open())
+    {
+        int stage = 1;
+        if (file >> stage)
+        {
+            m_maxUnlockedStage = std::max(1, stage);
+        }
+        file.close();
+    }
+}
+
+int SaveManager::getMaxUnlockedStage() const
+{
+    return m_maxUnlockedStage;
+}
+
+void SaveManager::unlockStage(int stageNumber)
+{
+    if (stageNumber <= 0) return;
+    if (stageNumber > m_maxUnlockedStage)
+    {
+        int previousMax = m_maxUnlockedStage;
+        m_maxUnlockedStage = stageNumber;
+        std::ofstream file(getProgressionFilePath());
+        if (file.is_open())
+        {
+            file << m_maxUnlockedStage << "\n";
+            file.close();
+            std::cout << "[SaveManager] Stage progression updated! Max unlocked stage: "
+                      << m_maxUnlockedStage << std::endl;
+        }
+        else
+        {
+            std::cerr << "[SaveManager] ERROR: Could not open progression file for writing: "
+                      << getProgressionFilePath() << std::endl;
+            m_maxUnlockedStage = previousMax; // Rollback in-memory cache if file write failed
+        }
+    }
 }
 
 std::vector<ScoreEntry> SaveManager::loadHighScores() const

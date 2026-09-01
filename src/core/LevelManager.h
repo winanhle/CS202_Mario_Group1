@@ -48,6 +48,9 @@ public:
     /// Set the current level by index (0-based internal)
     void setCurrentLevel(int index);
 
+    /// Set the current level by matching map file path or filename
+    bool setLevelByPath(const std::string& path);
+
 private:
     std::vector<std::string> m_levelPaths;  // ordered list of .tmx file paths
     int m_currentIndex = 0;

@@ -109,3 +109,16 @@ void LevelManager::setCurrentLevel(int index) {
         m_currentIndex = index;
     }
 }
+
+bool LevelManager::setLevelByPath(const std::string& path) {
+    if (path.empty()) return false;
+    std::string targetFilename = fs::path(path).filename().string();
+    for (size_t i = 0; i < m_levelPaths.size(); ++i) {
+        std::string levelFilename = fs::path(m_levelPaths[i]).filename().string();
+        if (levelFilename == targetFilename) {
+            m_currentIndex = static_cast<int>(i);
+            return true;
+        }
+    }
+    return false;
+}

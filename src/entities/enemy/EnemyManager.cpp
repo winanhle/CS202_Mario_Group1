@@ -192,7 +192,7 @@ int EnemyManager::getEnemyCount() const
     return static_cast<int>(m_enemies.size());
 }
 
-bool EnemyManager::takeDamageFromFireball(const sf::FloatRect& fireballHitbox)
+bool EnemyManager::takeDamageFromFireball(const sf::FloatRect& fireballHitbox, IPlayerManager* owner)
 {
     for (auto& enemy : m_enemies)
     {
@@ -201,7 +201,8 @@ bool EnemyManager::takeDamageFromFireball(const sf::FloatRect& fireballHitbox)
 
         if (enemy->getHitbox().findIntersection(fireballHitbox))
         {
-            enemy->onStomp(); // bị cầu lửa tiêu diệt (giống bị stomp)
+            enemy->onStomp();
+            if (owner) owner->addScore(100);
             return true;
         }
     }

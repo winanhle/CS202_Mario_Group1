@@ -31,6 +31,7 @@ private:
         std::string subtitle;
         std::string tag;
         bool isCampaign = false;
+        bool isLocked = false;
     };
 
     struct StarParticle {
@@ -43,16 +44,18 @@ private:
 
     void discoverMaps();
     void confirmSelection();
-    void updateScrollWindow();
-    sf::FloatRect getCardBounds(size_t visibleSlot) const;
+    sf::FloatRect getBoxBounds(size_t slotOnPage) const;
+    sf::Vector2f toViewCoords(sf::Vector2i pixelPos) const;
 
     sf::Font m_font;
     bool m_fontLoaded = false;
     
     std::vector<LevelItem> m_levels;
     int m_selectedIndex = 0;
-    size_t m_startIndex = 0;
+    size_t m_currentPage = 0;
+    static constexpr size_t PAGE_SIZE = 6;
     
+    mutable sf::Vector2u m_windowSize{ 800, 600 };
     GameConfig m_config;
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager> m_saveManager;

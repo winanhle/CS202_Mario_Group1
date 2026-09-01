@@ -177,7 +177,12 @@ void PlayState::update(float deltaTime)
         auto* manager = getStateManager();
         if (manager)
         {
-            // Game completed successfully: clear save file
+            if (m_saveManager)
+            {
+                m_saveManager->unlockStage(m_gameWorld->getTotalStages()); // All campaign stages unlocked permanently
+            }
+
+            // Game completed successfully: clear in-progress run save file
             m_gameWorld->deleteSaveData();
 
             int finalScore = m_gameWorld->getTotalScore();
@@ -194,6 +199,12 @@ void PlayState::update(float deltaTime)
             int cur = m_gameWorld->getCurrentStageNumber();
             int next = m_gameWorld->getNextStageNumber();
             int lives = m_gameWorld->getSharedLives();
+
+            if (m_saveManager)
+            {
+                m_saveManager->unlockStage(next); // Permanently unlock next stage
+            }
+
             auto intermission = std::make_unique<IntermissionState>(
                 m_config, cur, next, lives,
                 [this]() {

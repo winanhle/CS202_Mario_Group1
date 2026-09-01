@@ -26,7 +26,8 @@ public:
     void update(float dt);
     void render(sf::RenderWindow& window) const;
 
-    void spawnFireball(float x, float y, int direction /* -1 hoặc +1 */);
+    // Goi tu PlayerManager::shoot()
+    void spawnFireball(float x, float y, int direction, class IPlayerManager* owner = nullptr);
     void clear() { m_fireballs.clear(); }
 
     void setMapManager(IMapManager* map)        { m_mapManager   = map; }

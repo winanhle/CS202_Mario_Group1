@@ -31,12 +31,20 @@ public:
     bool isHighScore(int score) const override;
     void addHighScore(const std::string& initials, int score) override;
 
+    // Stage progression management
+    int getMaxUnlockedStage() const override;
+    void unlockStage(int stageNumber) override;
+
 private:
     std::string getSaveFilePath() const;
     std::string getHighScoresFilePath() const;
+    std::string getProgressionFilePath() const;
+    void loadProgression();
 
     static constexpr const char* SAVE_FILE = "mario_save.dat";
     static constexpr const char* SCORES_FILE = "scores.dat";
+    static constexpr const char* PROGRESSION_FILE = "progression.dat";
 
     bool m_hasSave = false;
+    int m_maxUnlockedStage = 1;
 };

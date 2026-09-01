@@ -3,8 +3,9 @@
 #include "../../interfaces/IMapManager.h"
 #include "../../interfaces/IEnemyManager.h"
 
-Fireball::Fireball(float x, float y, int direction, const sf::Texture& texture)
-    : m_position(x, y),
+Fireball::Fireball(float x, float y, int direction, const sf::Texture& texture, IPlayerManager* owner)
+    : m_owner(owner),
+      m_position(x, y),
       m_velocity(SPEED * static_cast<float>(direction), 0.f),
       m_texture(&texture),
       m_sprite(texture)
@@ -102,7 +103,7 @@ void Fireball::handleTileCollision(const IMapManager& map, float dt)
 
 void Fireball::handleEnemyCollision(IEnemyManager& enemies)
 {
-    if (enemies.takeDamageFromFireball(getHitbox()))
+    if (enemies.takeDamageFromFireball(getHitbox(), m_owner))
     {
         m_state = FireballState::Exploding; // trúng enemy → nổ
         m_currentFrame = 0;

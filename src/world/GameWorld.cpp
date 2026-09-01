@@ -25,6 +25,11 @@ void GameWorld::initialize()
     // Khám phá tất cả stageN.tmx trong assets/map → thứ tự chơi.
     m_levelManager.discoverLevels("assets/map/");
 
+    if (!m_customMapPath.empty())
+    {
+        m_levelManager.setLevelByPath(m_customMapPath);
+    }
+
     if (m_mapManager)
         m_mapManager->initialize();
 
@@ -199,9 +204,9 @@ float GameWorld::getFlagpoleTileX(const sf::FloatRect& box) const
     const int y0 = static_cast<int>(box.position.y) / tileSize;
     const int y1 = static_cast<int>(box.position.y + box.size.y - 1.f) / tileSize;
 
-    for (int gy = y0; gy <= y1; ++gy)
+    for (int gx = x1; gx >= x0; --gx)
     {
-        for (int gx = x0; gx <= x1; ++gx)
+        for (int gy = y0; gy <= y1; ++gy)
         {
             const float cx = static_cast<float>(gx) * tileSize + tileSize / 2.f;
             const float cy = static_cast<float>(gy) * tileSize + tileSize / 2.f;
@@ -595,6 +600,15 @@ void GameWorld::advanceStage()
     loadCurrentLevel();
 }
 
+void GameWorld::setCustomMapPath(const std::string& path)
+{
+    m_customMapPath = path;
+    if (!m_customMapPath.empty())
+    {
+        m_levelManager.setLevelByPath(m_customMapPath);
+    }
+}
+
 void GameWorld::setStage(int stageNumber)
 {
     m_isStageClear = false;
@@ -602,6 +616,7 @@ void GameWorld::setStage(int stageNumber)
     if (stageNumber < 1)
         stageNumber = 1;
     m_levelManager.setCurrentLevel(stageNumber - 1);
+    m_customMapPath = "";
     loadCurrentLevel();
 }
 
@@ -613,6 +628,11 @@ int GameWorld::getCurrentStageNumber() const
 int GameWorld::getNextStageNumber() const
 {
     return m_levelManager.getCurrentLevelNumber() + 1;
+}
+
+int GameWorld::getTotalStages() const
+{
+    return m_levelManager.getTotalLevels();
 }
 
 int GameWorld::getTotalScore() const

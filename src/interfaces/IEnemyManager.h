@@ -59,7 +59,7 @@ public:
      * @param fireballHitbox Hitbox cầu lửa hiện tại.
      * @return true nếu có ít nhất 1 enemy bị tiêu diệt (cầu lửa nên nổ).
      */
-    virtual bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox) = 0;
+    virtual bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox, class IPlayerManager* owner = nullptr) = 0;
 
     /**
      * @brief Spawn enemies from parsed TMX map object data.

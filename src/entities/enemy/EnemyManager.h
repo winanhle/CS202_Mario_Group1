@@ -48,7 +48,7 @@ public:
 
     void setMapManager(IMapManager* map) override { m_mapManager = map; }
 
-    bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox) override;
+    bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox, IPlayerManager* owner = nullptr) override;
 
     void spawnFromMapData(const std::vector<EntitySpawnData>& spawns) override;
 

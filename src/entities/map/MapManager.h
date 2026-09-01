@@ -56,6 +56,8 @@ struct FlagSlideAnim {
     float        speed    = 90.f;
     bool         active   = false;
     bool         finished = false;
+    int          flagGid  = 0;
+    int          attachGid = 0;
 };
 
 /**
@@ -159,6 +161,8 @@ private:
     static TileType stringToTileType(const std::string& s);
     // Resolves a path relative to a base directory
     static std::string resolvePath(const std::string& baseDir, const std::string& relativePath);
+    // Zero-overhead helper to draw an arbitrary tile GID at world position
+    void drawTileGid(int gid, sf::Vector2f position, sf::RenderWindow& window) const;
 
     // Parses <objectgroup> layers from TMX for enemy/player spawn points
     void parseObjectGroups(tinyxml2::XMLElement* mapElement);
