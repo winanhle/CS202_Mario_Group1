@@ -47,6 +47,8 @@ void PlayState::setup(const GameConfig& config)
     if (!m_soundManager)
         m_soundManager = std::make_shared<SoundManager>();
 
+    m_gameWorld->setSoundManager(m_soundManager);
+
     // ── Map / Camera ─────────────────────────────────────────────
     auto mapManager = std::make_shared<MapManager>();
     mapManager->setSoundManager(m_soundManager.get());
@@ -55,6 +57,7 @@ void PlayState::setup(const GameConfig& config)
 
     // ── Player 1 ─────────────────────────────────────────────────
     auto p1 = makePlayer(config.player1Character);
+    p1->setSoundManager(m_soundManager.get());
     if (config.mode == GameMode::SinglePlayer)
         p1->setKeyBinding(KeyBindingPresets::singlePlayer());
     else
@@ -66,6 +69,7 @@ void PlayState::setup(const GameConfig& config)
     if (config.mode == GameMode::TwoPlayer)
     {
         auto p2 = makePlayer(config.player2Character);
+        p2->setSoundManager(m_soundManager.get());
         p2->setKeyBinding(KeyBindingPresets::player2TwoPlayer());
         m_gameWorld->setPlayerManager2(p2);
     }
@@ -74,7 +78,9 @@ void PlayState::setup(const GameConfig& config)
     auto enemyManager = std::make_shared<EnemyManager>();
     enemyManager->setSoundManager(m_soundManager.get());
     m_gameWorld->setEnemyManager(enemyManager);
-    m_gameWorld->setItemManager(std::make_shared<ItemManager>());
+    auto itemManager = std::make_shared<ItemManager>();
+    itemManager->setSoundManager(m_soundManager.get());
+    m_gameWorld->setItemManager(itemManager);
     m_gameWorld->setLiftManager(std::make_shared<LiftManager>());
     m_gameWorld->setFireBarManager(std::make_shared<FireBarManager>());
     auto hud = std::make_shared<HUDManager>();

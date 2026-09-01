@@ -54,6 +54,7 @@ void PipeExitBehavior::onStandingOn(IMapContext& ctx, int gx, int gy, IPlayerMan
 // - Normal Mario: diệt enemy trên gạch -> nảy lên nửa ô (spawnBlockBump) và giữ nguyên BRICK_EMPTY.
 void BrickEmptyBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
+    ctx.playBrickSound();
     ctx.killEnemiesAboveTile(gx, gy); // diệt enemy đứng trên gạch vỡ/bị nảy
     if (player && player->getFormType() != FormType::Normal) {
         ctx.spawnBrickDebris(gx, gy);
@@ -68,6 +69,7 @@ void BrickEmptyBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlaye
 // - Khi đập: diệt enemy trên gạch -> nảy lên nửa ô và biến thành QUESTION_USED.
 void BrickSolidBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
+    ctx.playBrickSound();
     ctx.killEnemiesAboveTile(gx, gy); // diệt enemy đứng trên gạch
     ctx.spawnBlockBump(gx, gy, TileType::QUESTION_USED);
     if (player) player->addScore(50);
@@ -77,6 +79,7 @@ void BrickSolidBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlaye
 // - Diệt enemy trên block -> nảy lên nửa ô -> spawn coin pop -> chuyển thành QUESTION_USED.
 void QuestionCoinBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
+    ctx.playBumpSound();
     ctx.killEnemiesAboveTile(gx, gy);
     ctx.spawnCoinPop(gx, gy);
     if (player) player->collectCoin(1);
@@ -87,6 +90,7 @@ void QuestionCoinBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPla
 // - Diệt enemy trên block -> spawn item -> nảy lên nửa ô -> chuyển thành QUESTION_USED.
 void QuestionPowerupBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
+    ctx.playBumpSound();
     ctx.killEnemiesAboveTile(gx, gy);
     ctx.spawnItemForFormType(gx, gy, player ? static_cast<int>(player->getFormType()) : 0);
     ctx.spawnBlockBump(gx, gy, TileType::QUESTION_USED); // nảy lên nửa ô và thành QUESTION_USED
@@ -96,6 +100,7 @@ void QuestionPowerupBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, I
 // - Vẫn cho coin và nảy lên trong cửa sổ 3.5s; countdown do MapManager::update() xử lý.
 void MultiCoinBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
+    ctx.playBumpSound();
     ctx.killEnemiesAboveTile(gx, gy);
     ctx.spawnCoinPop(gx, gy);
     if (player) player->collectCoin(1);
@@ -107,6 +112,7 @@ void MultiCoinBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayer
 // - Frame 2 của MULTI_COIN khi đang hoạt động, có cùng hành vi khi bị đập tiếp
 void MultiCoin2Behavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
+    ctx.playBumpSound();
     ctx.killEnemiesAboveTile(gx, gy);
     ctx.spawnCoinPop(gx, gy);
     if (player) player->collectCoin(1);
@@ -114,23 +120,27 @@ void MultiCoin2Behavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlaye
     ctx.setMultiCoinActive(gx, gy);
 }
 
-// HIDDEN_BLOCK: vô hình + không solid; khi đập → nảy lên và trở thành SOLID_BRICK.
+// HIDDEN_BLOCK: vô hình + không solid; khi đập → nảy lên và trở thành QUESTION_USED.
 void HiddenBlockBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
-    (void)player;
+    ctx.playBumpSound();
     ctx.killEnemiesAboveTile(gx, gy);
-    ctx.spawnBlockBump(gx, gy, TileType::SOLID_BRICK);
+    ctx.spawnCoinPop(gx, gy);
+    if (player) player->collectCoin(1);
+    ctx.spawnBlockBump(gx, gy, TileType::QUESTION_USED);
 }
 
 void SolidBrickBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
-    (void)ctx; (void)gx; (void)gy; (void)player; // không phản ứng
+    (void)player; (void)gx; (void)gy;
+    ctx.playBrickSound();
 }
 
 // QUESTION_USED: ? block đã cạn — không phản ứng, giống SOLID_BRICK.
 void QuestionUsedBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
 {
-    (void)ctx; (void)gx; (void)gy; (void)player; // không phản ứng
+    (void)player; (void)gx; (void)gy;
+    ctx.playBumpSound();
 }
 
 void DeathZoneBehavior::onHitFromBelow(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const

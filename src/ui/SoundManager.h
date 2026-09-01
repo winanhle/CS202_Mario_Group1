@@ -17,6 +17,7 @@ private:
     sf::SoundBuffer m_flagpoleBuffer;
     sf::SoundBuffer m_itemBuffer;
     sf::SoundBuffer m_jumpBuffer;
+    sf::SoundBuffer m_jumpSmallBuffer;
     sf::SoundBuffer m_powerupBuffer;
     sf::SoundBuffer m_stompBuffer;
 
@@ -34,6 +35,7 @@ private:
     std::unique_ptr<sf::Sound> m_flagpoleSound;
     std::unique_ptr<sf::Sound> m_itemSound;
     std::unique_ptr<sf::Sound> m_jumpSound;
+    std::unique_ptr<sf::Sound> m_jumpSmallSound;
     std::unique_ptr<sf::Sound> m_powerupSound;
     std::unique_ptr<sf::Sound> m_stompSound;
 
@@ -58,6 +60,7 @@ public:
     void playFlagpole() override;
     void playItem() override;
     void playJump() override;
+    void playJumpSmall() override;
     void playPowerUp() override;
     void playStomp() override;
 

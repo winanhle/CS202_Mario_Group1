@@ -12,6 +12,7 @@ public:
     virtual void playFlagpole() = 0;
     virtual void playItem() = 0;
     virtual void playJump() = 0;
+    virtual void playJumpSmall() = 0;
     virtual void playPowerUp() = 0;
     virtual void playStomp() = 0;
 

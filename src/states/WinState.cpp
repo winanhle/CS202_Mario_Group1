@@ -145,6 +145,7 @@ WinState::WinState(
         UIUtils::centerOrigin(m_titleText);
         m_titleText.setPosition({ WIN_W / 2.0f, 60.0f });
 
+        std::string subtitle;
         if (m_config.mode == GameMode::TwoPlayer)
         {
             subtitle = "PEACH IS RESCUED! THANK YOU HEROES!";
@@ -176,6 +177,7 @@ WinState::WinState(
         UIUtils::centerOrigin(m_scoreLabelText);
         m_scoreLabelText.setPosition({ WIN_W / 2.0f, 240.0f });
 
+        int livesBonus = std::max(0, m_livesRemaining) * LIVES_BONUS_MULTIPLIER;
         m_livesBonusText.setFont(m_font);
         m_livesBonusText.setString(
             "LIVES BONUS (" +

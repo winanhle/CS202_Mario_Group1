@@ -8,8 +8,8 @@ SoundManager::SoundManager()
     // GAME SOUNDS
     // =========================
 
-    if (!m_bumpBuffer.loadFromFile("assets/sound/bump.wav"))
-        throw std::runtime_error("Failed to load bump.wav");
+    if (!m_bumpBuffer.loadFromFile("assets/sound/ui/bump.wav"))
+        throw std::runtime_error("Failed to load ui/bump.wav");
 
     if (!m_brickBuffer.loadFromFile("assets/sound/brick.wav"))
         throw std::runtime_error("Failed to load brick.wav");
@@ -25,6 +25,9 @@ SoundManager::SoundManager()
 
     if (!m_jumpBuffer.loadFromFile("assets/sound/jump.wav"))
         throw std::runtime_error("Failed to load jump.wav");
+
+    if (!m_jumpSmallBuffer.loadFromFile("assets/sound/jumpsmall.wav"))
+        throw std::runtime_error("Failed to load jumpsmall.wav");
 
     if (!m_powerupBuffer.loadFromFile("assets/sound/powerup.wav"))
         throw std::runtime_error("Failed to load powerup.wav");
@@ -69,6 +72,7 @@ SoundManager::SoundManager()
     m_flagpoleSound = std::make_unique<sf::Sound>(m_flagpoleBuffer);
     m_itemSound = std::make_unique<sf::Sound>(m_itemBuffer);
     m_jumpSound = std::make_unique<sf::Sound>(m_jumpBuffer);
+    m_jumpSmallSound = std::make_unique<sf::Sound>(m_jumpSmallBuffer);
     m_powerupSound = std::make_unique<sf::Sound>(m_powerupBuffer);
     m_stompSound = std::make_unique<sf::Sound>(m_stompBuffer);
 
@@ -117,6 +121,11 @@ void SoundManager::playItem()
 void SoundManager::playJump()
 {
     m_jumpSound->play();
+}
+
+void SoundManager::playJumpSmall()
+{
+    m_jumpSmallSound->play();
 }
 
 void SoundManager::playPowerUp()
@@ -192,6 +201,7 @@ void SoundManager::setVolume(float volume)
     m_flagpoleSound->setVolume(m_volume);
     m_itemSound->setVolume(m_volume);
     m_jumpSound->setVolume(m_volume);
+    m_jumpSmallSound->setVolume(m_volume);
     m_powerupSound->setVolume(m_volume);
     m_stompSound->setVolume(m_volume);
 
@@ -223,6 +233,7 @@ void SoundManager::stopAll()
     m_flagpoleSound->stop();
     m_itemSound->stop();
     m_jumpSound->stop();
+    m_jumpSmallSound->stop();
     m_powerupSound->stop();
     m_stompSound->stop();
 

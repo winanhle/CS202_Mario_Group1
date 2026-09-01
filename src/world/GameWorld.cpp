@@ -812,9 +812,27 @@ void GameWorld::injectDependencies()
         m_fireBarManager->setPlayerManager(m_playerManager.get());
         m_fireBarManager->setPlayerManager2(m_playerManager2.get());
     }
+
+    // SoundManager injection
+    if (m_soundManager)
+    {
+        if (m_playerManager)
+            m_playerManager->setSoundManager(m_soundManager.get());
+        if (m_playerManager2)
+            m_playerManager2->setSoundManager(m_soundManager.get());
+        if (m_enemyManager)
+            m_enemyManager->setSoundManager(m_soundManager.get());
+        if (m_itemManager)
+            m_itemManager->setSoundManager(m_soundManager.get());
+    }
 }
 
 // ==================== EXTENSION POINTS ====================
+
+void GameWorld::setSoundManager(std::shared_ptr<ISoundManager> soundManager)
+{
+    m_soundManager = soundManager;
+}
 
 void GameWorld::setMapManager(std::shared_ptr<IMapManager> mapManager)
 {

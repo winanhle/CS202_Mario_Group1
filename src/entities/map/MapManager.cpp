@@ -929,6 +929,10 @@ void MapManager::setTileInternal(int gx, int gy, TileType type) {
     }
 }
 
+void MapManager::setTile(int gx, int gy, TileType type) {
+    setTileInternal(gx, gy, type);
+}
+
 // =============================================================================
 //  SOUND FACADE
 // =============================================================================

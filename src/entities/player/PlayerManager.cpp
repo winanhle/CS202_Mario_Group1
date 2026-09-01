@@ -241,6 +241,12 @@ void PlayerManager::update(float deltaTime)
         gravity *= (1.f - m_jumpHoldBoost);
         m_jumpHoldTimer += deltaTime;
         if (m_jumpHoldTimer > m_jumpHoldGrace) m_jumpHoldTimer = m_jumpHoldGrace;
+
+        if (m_jumpHoldTimer >= 0.08f && !m_jumpSoundPlayedBig) {
+            m_jumpSoundPlayedBig = true;
+            if (m_soundManager)
+                m_soundManager->playJump();
+        }
     }
     m_velocityY += gravity * deltaTime;
 
@@ -302,10 +308,10 @@ void PlayerManager::collectPowerUp(int type)
     auto t = static_cast<PowerUpType>(type);
     if (auto newForm = m_currentForm->evolve(t)) {
         setForm(std::move(newForm));
-
-        if (m_soundManager)
-            m_soundManager->playPowerUp();
     }
+
+    if (m_soundManager)
+        m_soundManager->playItem();
 }
 
 bool PlayerManager::isAlive() const
@@ -422,9 +428,16 @@ void PlayerManager::jump() {
         m_isGrounded = false;
         m_isJumping = true;
         m_jumpHoldTimer = 0.f; // bắt đầu cửa sổ giữ nút để nhảy cao hơn
+        m_jumpSoundPlayedBig = false;
 
-        if (m_soundManager)
-            m_soundManager->playJump();
+        if (m_soundManager) {
+            if (getFormType() != FormType::Normal) {
+                m_soundManager->playJump();
+                m_jumpSoundPlayedBig = true;
+            } else {
+                m_soundManager->playJumpSmall();
+            }
+        }
     }
 }
 
@@ -711,6 +724,8 @@ void PlayerManager::takeDamage()
 void PlayerManager::activateStar()
 {
     m_starState = std::make_unique<StarState>();
+    if (m_soundManager)
+        m_soundManager->playItem();
 }
 
 bool PlayerManager::isStarActive() const

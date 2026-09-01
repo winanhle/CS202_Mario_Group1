@@ -14,6 +14,7 @@ class IHUDManager;
 class ISaveManager;
 class ICameraManager;
 class ISettingsManager;
+class ISoundManager;
 class ILiftManager;
 class IFireBarManager;
 
@@ -157,6 +158,7 @@ public:
     void setCameraManager(std::shared_ptr<ICameraManager> cameraManager);
     void setLiftManager(std::shared_ptr<ILiftManager> liftManager);
     void setFireBarManager(std::shared_ptr<IFireBarManager> fireBarManager);
+    void setSoundManager(std::shared_ptr<ISoundManager> soundManager);
 
     /**
      * @brief Set the shared settings manager (injected from Game)
@@ -190,6 +192,7 @@ private:
     std::shared_ptr<ILiftManager>     m_liftManager;
     std::shared_ptr<IFireBarManager>  m_fireBarManager;
     std::shared_ptr<ISettingsManager> m_settings;
+    std::shared_ptr<ISoundManager>    m_soundManager;
 
     // --- Shared lives pool (1P & 2P) ---
     static constexpr int INITIAL_LIVES = 3;

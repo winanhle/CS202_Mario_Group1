@@ -93,7 +93,7 @@ struct FireBarSpawnData {
     float x = 0.f;            // Center X in world pixels
     float y = 0.f;            // Center Y in world pixels
     int fireCount = 6;        // Number of fireballs (default 6)
-    float speed = 3.0f;       // Angular velocity (rad/s)
+    float speed = 5.0f;       // Angular velocity (rad/s)
     bool clockwise = true;    // Rotation direction (true = clockwise, false = counter-clockwise)
     float initialAngle = 0.f; // Starting angle in radians
 };

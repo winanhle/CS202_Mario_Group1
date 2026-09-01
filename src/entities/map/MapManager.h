@@ -242,10 +242,10 @@ public:
     void setSoundManager(ISoundManager* soundManager) { m_soundManager = soundManager; }
 
     // Sound facade used by BlockBehavior strategies.
-    void playBumpSound();
-    void playBrickSound();
-    void playCoinSound();
-    void playItemSound();
+    void playBumpSound() override;
+    void playBrickSound() override;
+    void playCoinSound() override;
+    void playItemSound() override;
 
     void triggerFlagSlide(int poleGridX) override;
     bool isFlagSliding() const override { return m_flagAnim.active; }

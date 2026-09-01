@@ -93,7 +93,7 @@ class HiddenBlockBehavior final : public IBlockBehavior {
     // HIDDEN_BLOCK: vô hình & KHÔNG solid từ trái/phải/trên (Mario đi xuyên qua).
     // Chỉ bump được từ dưới lên (isSolidFromBelow = true) vì PlayerManager
     // gọi onHitFromBelow trong nhánh isSolidFromBelow(). Sau khi đập →
-    // setTile(SOLID_BRICK) trở thành block solid thật sự.
+    // setTile(QUESTION_USED) trở thành block solid thật sự.
 public:
     bool isSolid() const override { return false; }
     bool isSolidFromBelow() const override { return true; }

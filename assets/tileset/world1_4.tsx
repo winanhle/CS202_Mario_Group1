@@ -2401,9 +2401,24 @@
    <property name="type" value="GROUND"/>
   </properties>
  </tile>
+ <tile id="480">
+  <properties>
+   <property name="type" value="QUESTION_USED"/>
+  </properties>
+ </tile>
+ <tile id="481">
+  <properties>
+   <property name="type" value="SOLID_BRICK"/>
+  </properties>
+ </tile>
  <tile id="983">
   <properties>
    <property name="type" value="FIRE_BAR"/>
+  </properties>
+ </tile>
+ <tile id="1421">
+  <properties>
+   <property name="type" value="FLAGPOLE"/>
   </properties>
  </tile>
  <tile id="1546">

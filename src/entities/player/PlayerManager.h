@@ -34,6 +34,7 @@ protected:
     float m_jumpHoldGrace = 0.30f; // giới hạn thời gian giữ (s) để tăng thêm độ cao
     float m_jumpHoldBoost = 0.30f; // tỉ lệ GIẢM trọng lực trong đà lên khi đang giữ
     float m_jumpHoldTimer = 0.f;   // thời gian đã giữ trong lần nhảy hiện tại
+    bool  m_jumpSoundPlayedBig = false; // true khi đã phát âm thanh giữ nhảy (jump.wav)
     
     // --- THÔNG SỐ RPG ---
     int m_maxHealth;

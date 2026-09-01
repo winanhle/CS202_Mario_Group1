@@ -254,6 +254,8 @@ void EnemyManager::killEnemiesAboveTile(int gx, int gy)
         if (enemy->isDead()) continue;
         if (enemy->getHitbox().findIntersection(aboveRect).has_value()) {
             enemy->onStomp(); // treat like a stomp kill (plays death anim, removes enemy)
+            if (m_soundManager)
+                m_soundManager->playStomp();
         }
     }
 }

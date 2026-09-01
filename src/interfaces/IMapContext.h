@@ -60,4 +60,16 @@ public:
      * @param targetY Tọa độ Y đích (-1 = lấy PlayerSpawn từ map đích).
      */
     virtual void requestWarp(const std::string& targetMap, float targetX = -1.f, float targetY = -1.f) = 0;
+
+    /** Play the brick sound effect. */
+    virtual void playBrickSound() = 0;
+
+    /** Play the bump sound effect. */
+    virtual void playBumpSound() = 0;
+
+    /** Play the coin sound effect. */
+    virtual void playCoinSound() = 0;
+
+    /** Play the item sound effect. */
+    virtual void playItemSound() = 0;
 };
