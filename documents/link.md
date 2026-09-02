@@ -1,0 +1,2 @@
+- Git: https://github.com/winanhle/CS202_Mario_Group1.git
+- Demo link: https://drive.google.com/file/d/1VHP3RRrHBTNbPNYqAUEw49_fVlBPFYc-/view?usp=sharing
