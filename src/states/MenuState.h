@@ -35,15 +35,13 @@ public:
     void render(sf::RenderWindow& window) const override;
 
 private:
-    void startGame(bool loadSave = false);
-
     sf::Font m_font;
     bool m_fontLoaded = false;
     sf::Text m_titleText{m_font};
     sf::Text m_promptText{m_font};
     sf::Text m_continueText{m_font};
+    sf::Text m_recordsText{m_font};
     sf::Text m_highScoreText{m_font};
-    bool m_hasSave = false;
 
     // Blinks the "Press SPACE to start" prompt
     float m_blinkTimer = 0.0f;

@@ -3,7 +3,6 @@
 #include "enemies/BossFireBall.h"
 #include "../../interfaces/IPlayerManager.h"
 #include "../../interfaces/ISoundManager.h"
-#include <iostream>
 #include <SFML/Graphics.hpp>
 
 EnemyManager::EnemyManager()
@@ -167,6 +166,7 @@ void EnemyManager::resolvePlayerCollision(Enemy& enemy, IPlayerManager* player, 
             enemy.onStomp();
             player->addScore(100);
             player->bounce();
+            if (m_killCallback) m_killCallback();
             if (m_soundManager)
                 m_soundManager->playStomp();
         }
@@ -187,7 +187,6 @@ void EnemyManager::render(sf::RenderWindow& window) const {
     for (const auto& enemy : m_enemies) {
         enemy->render(window);
     }
-    
 }
 
 int EnemyManager::getEnemyCount() const
@@ -205,6 +204,7 @@ bool EnemyManager::takeDamageFromFireball(const sf::FloatRect& fireballHitbox, I
         if (enemy->getHitbox().findIntersection(fireballHitbox))
         {
             enemy->onStomp();
+            if (m_killCallback) m_killCallback();
             if (owner) owner->addScore(100);
             if (m_soundManager)
                 m_soundManager->playStomp();
@@ -233,9 +233,6 @@ void EnemyManager::spawnFromMapData(const std::vector<EntitySpawnData>& spawns) 
             m_enemies.push_back(std::move(enemy));
         }
     }
-
-    std::cout << "[EnemyManager] Spawned " << m_enemies.size()
-              << " enemies from map data using EnemyFactory." << std::endl;
 }
 
 void EnemyManager::killEnemiesAboveTile(int gx, int gy)
@@ -254,6 +251,7 @@ void EnemyManager::killEnemiesAboveTile(int gx, int gy)
         if (enemy->isDead()) continue;
         if (enemy->getHitbox().findIntersection(aboveRect).has_value()) {
             enemy->onStomp(); // treat like a stomp kill (plays death anim, removes enemy)
+            if (m_killCallback) m_killCallback();
             if (m_soundManager)
                 m_soundManager->playStomp();
         }

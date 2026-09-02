@@ -61,4 +61,5 @@ private:
 
     void setup(const GameConfig& config);
     GameMemento captureLevelStartMemento() const;
+    bool handleLevelEndTransition(StateManager* manager);
 };

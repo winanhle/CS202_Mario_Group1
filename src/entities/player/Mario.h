@@ -13,6 +13,7 @@
 class Mario : public PlayerManager {
 public:
     Mario();
+    void resetForm() override;
 
 protected:
     void setupStats() override;

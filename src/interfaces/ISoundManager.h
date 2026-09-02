@@ -16,6 +16,7 @@ public:
     virtual void playJumpSmall() = 0;
     virtual void playPowerUp() = 0;
     virtual void playStomp() = 0;
+    virtual void playOneUp() = 0;
 
     // UI sounds
     virtual void playUIBump() = 0;
@@ -30,4 +31,11 @@ public:
     virtual void setVolume(float volume) = 0;
     virtual float getVolume() const = 0;
     virtual void stopAll() = 0;
+
+    // Music
+    virtual void playMenuMusic() = 0;
+    virtual void stopMenuMusic() = 0;
+    virtual void playGroundTheme() = 0;
+    virtual void playCastleTheme() = 0;
+    virtual void stopPlayMusic() = 0;
 };

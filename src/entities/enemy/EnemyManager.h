@@ -9,6 +9,7 @@
 #include <array>
 #include <memory>
 #include <vector>
+#include <functional>
 
 class IPlayerManager;
 class ISoundManager;
@@ -29,6 +30,10 @@ class EnemyManager : public IEnemyManager
     std::vector<std::unique_ptr<Enemy>> m_pendingSpawns;
 
     void resolvePlayerCollision(Enemy& enemy, IPlayerManager* player, int playerIndex);
+
+    // ─── Observer callback ────────────────────────────────────────────────────
+    std::function<void()> m_killCallback;
+
 public:
     EnemyManager();
     explicit EnemyManager(std::unique_ptr<IEnemyFactory> factory);
@@ -51,6 +56,10 @@ public:
     void setMapManager(IMapManager* map) override { m_mapManager = map; }
 
     void setSoundManager(ISoundManager* sound) override { m_soundManager = sound; }
+
+    // ─── Observer callback (career stat tracking) ────────────────────────────
+    /** Called when an enemy is killed (stomp, fireball, or brick-break). */
+    void setKillCallback(std::function<void()> cb) { m_killCallback = std::move(cb); }
 
     bool takeDamageFromFireball(const sf::FloatRect& fireballHitbox, IPlayerManager* owner = nullptr) override;
 

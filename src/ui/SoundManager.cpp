@@ -1,68 +1,46 @@
 #include "SoundManager.h"
-#include <stdexcept>
+#include <iostream>
 #include <vector>
 
 SoundManager::SoundManager()
 {
+    auto loadBuffer = [](sf::SoundBuffer& buf, const std::string& path) -> bool {
+        if (!buf.loadFromFile(path)) {
+            std::cerr << "[SoundManager] WARNING: Failed to load sound: " << path << std::endl;
+            return false;
+        }
+        return true;
+    };
+
     // =========================
     // GAME SOUNDS
     // =========================
 
-    if (!m_bumpBuffer.loadFromFile("assets/sound/ui/bump.wav"))
-        throw std::runtime_error("Failed to load ui/bump.wav");
+    if (!loadBuffer(m_bumpBuffer, "assets/sound/ui/bump.wav"))
+        loadBuffer(m_bumpBuffer, "assets/sound/bump.wav");
 
-    if (!m_brickBuffer.loadFromFile("assets/sound/brick.wav"))
-        throw std::runtime_error("Failed to load brick.wav");
-
-    if (!m_coinBuffer.loadFromFile("assets/sound/coin.wav"))
-        throw std::runtime_error("Failed to load coin.wav");
-
-    if (!m_fireballBuffer.loadFromFile("assets/sound/fireball.wav"))
-        throw std::runtime_error("Failed to load fireball.wav");
-
-    if (!m_flagpoleBuffer.loadFromFile("assets/sound/flagpole.wav"))
-        throw std::runtime_error("Failed to load flagpole.wav");
-
-    if (!m_itemBuffer.loadFromFile("assets/sound/item.wav"))
-        throw std::runtime_error("Failed to load item.wav");
-
-    if (!m_jumpBuffer.loadFromFile("assets/sound/jump.wav"))
-        throw std::runtime_error("Failed to load jump.wav");
-
-    if (!m_jumpSmallBuffer.loadFromFile("assets/sound/jumpsmall.wav"))
-        throw std::runtime_error("Failed to load jumpsmall.wav");
-
-    if (!m_powerupBuffer.loadFromFile("assets/sound/powerup.wav"))
-        throw std::runtime_error("Failed to load powerup.wav");
-
-    if (!m_stompBuffer.loadFromFile("assets/sound/stomp.wav"))
-        throw std::runtime_error("Failed to load stomp.wav");
-
+    loadBuffer(m_brickBuffer, "assets/sound/brick.wav");
+    loadBuffer(m_coinBuffer, "assets/sound/coin.wav");
+    loadBuffer(m_fireballBuffer, "assets/sound/fireball.wav");
+    loadBuffer(m_flagpoleBuffer, "assets/sound/flagpole.wav");
+    loadBuffer(m_itemBuffer, "assets/sound/item.wav");
+    loadBuffer(m_jumpBuffer, "assets/sound/jump.wav");
+    loadBuffer(m_jumpSmallBuffer, "assets/sound/jumpsmall.wav");
+    loadBuffer(m_powerupBuffer, "assets/sound/powerup.wav");
+    loadBuffer(m_stompBuffer, "assets/sound/stomp.wav");
+    loadBuffer(m_oneUpBuffer, "assets/sound/1up.wav");
 
     // =========================
     // UI SOUNDS
     // =========================
 
-    if (!m_uiBumpBuffer.loadFromFile("assets/sound/ui/bump.wav"))
-        throw std::runtime_error("Failed to load ui/bump.wav");
-
-    if (!m_pauseBuffer.loadFromFile("assets/sound/ui/pause.wav"))
-        throw std::runtime_error("Failed to load ui/pause.wav");
-
-    if (!m_saveGameBuffer.loadFromFile("assets/sound/ui/save_game.wav"))
-        throw std::runtime_error("Failed to load ui/save_game.wav");
-
-    if (!m_selectSuccessBuffer.loadFromFile("assets/sound/ui/select_success.wav"))
-        throw std::runtime_error("Failed to load ui/select_success.wav");
-
-    if (!m_selectBuffer.loadFromFile("assets/sound/ui/select.wav"))
-        throw std::runtime_error("Failed to load ui/select.wav");
-
-    if (!m_stageClearBuffer.loadFromFile("assets/sound/ui/stage_clear.wav"))
-        throw std::runtime_error("Failed to load ui/stage_clear.wav");
-
-    if (!m_worldClearBuffer.loadFromFile("assets/sound/ui/world_clear.wav"))
-        throw std::runtime_error("Failed to load ui/world_clear.wav");
+    loadBuffer(m_uiBumpBuffer, "assets/sound/ui/bump.wav");
+    loadBuffer(m_pauseBuffer, "assets/sound/ui/pause.wav");
+    loadBuffer(m_saveGameBuffer, "assets/sound/ui/save_game.wav");
+    loadBuffer(m_selectSuccessBuffer, "assets/sound/ui/select_success.wav");
+    loadBuffer(m_selectBuffer, "assets/sound/ui/select.wav");
+    loadBuffer(m_stageClearBuffer, "assets/sound/ui/stage_clear.wav");
+    loadBuffer(m_worldClearBuffer, "assets/sound/ui/world_clear.wav");
 
 
     // =========================
@@ -79,6 +57,7 @@ SoundManager::SoundManager()
     m_jumpSmallSound = std::make_unique<sf::Sound>(m_jumpSmallBuffer);
     m_powerupSound = std::make_unique<sf::Sound>(m_powerupBuffer);
     m_stompSound = std::make_unique<sf::Sound>(m_stompBuffer);
+    m_oneUpSound = std::make_unique<sf::Sound>(m_oneUpBuffer);
 
     m_uiBumpSound = std::make_unique<sf::Sound>(m_uiBumpBuffer);
     m_pauseSound = std::make_unique<sf::Sound>(m_pauseBuffer);
@@ -147,6 +126,11 @@ void SoundManager::playStomp()
     m_stompSound->play();
 }
 
+void SoundManager::playOneUp()
+{
+    m_oneUpSound->play();
+}
+
 
 // ============================================================
 // UI SOUNDS
@@ -169,7 +153,7 @@ void SoundManager::playSaveGame()
 
 void SoundManager::playSelectSuccess()
 {
-    m_selectSuccessSound->play();
+    m_stompSound->play();
 }
 
 void SoundManager::playSelect()
@@ -255,4 +239,62 @@ void SoundManager::stopAll()
     m_selectSound->stop();
     m_stageClearSound->stop();
     m_worldClearSound->stop();
+
+    stopMenuMusic();
+    stopPlayMusic();
+}
+
+void SoundManager::playMenuMusic()
+{
+    stopPlayMusic();
+    if (m_menuMusic.getStatus() == sf::SoundStream::Status::Playing)
+        return;
+
+    if (m_menuMusic.openFromFile("assets/sound/menu_music.mp3"))
+    {
+        m_menuMusic.setLooping(true);
+        m_menuMusic.setVolume(m_volume * 0.5f);
+        m_menuMusic.play();
+    }
+}
+
+void SoundManager::stopMenuMusic()
+{
+    m_menuMusic.stop();
+}
+
+void SoundManager::playGroundTheme()
+{
+    m_menuMusic.stop();
+    m_castleTheme.stop();
+    if (m_groundTheme.getStatus() == sf::SoundStream::Status::Playing)
+        return;
+
+    if (m_groundTheme.openFromFile("assets/sound/ground_theme.mp3"))
+    {
+        m_groundTheme.setLooping(true);
+        m_groundTheme.setVolume(m_volume * 0.5f);
+        m_groundTheme.play();
+    }
+}
+
+void SoundManager::playCastleTheme()
+{
+    m_menuMusic.stop();
+    m_groundTheme.stop();
+    if (m_castleTheme.getStatus() == sf::SoundStream::Status::Playing)
+        return;
+
+    if (m_castleTheme.openFromFile("assets/sound/castle_theme.mp3"))
+    {
+        m_castleTheme.setLooping(true);
+        m_castleTheme.setVolume(m_volume * 0.5f);
+        m_castleTheme.play();
+    }
+}
+
+void SoundManager::stopPlayMusic()
+{
+    m_groundTheme.stop();
+    m_castleTheme.stop();
 }

@@ -94,14 +94,6 @@ public:
     virtual void setCoins(int coins) { (void)coins; }
 
     /**
-     * @brief Get remaining lives.
-     * @note Ở chế độ 2P, lives được quản lý tập trung bởi GameWorld (shared lives pool).
-     *       getLives() trên mỗi player instance không còn có ý nghĩa — dùng GameWorld::getSharedLives() thay thế.
-     *       Method được giữ lại để backward compatible.
-     */
-    virtual int getLives() const { return 0; }
-
-    /**
      * @brief Get player position for queries
      * @return X coordinate of player
      */
@@ -133,13 +125,11 @@ public:
     virtual bool isPipeTraveling() const { return false; }
 
     /**
-     * @brief Restore a previously saved player state (score, lives, position)
+     * @brief Restore persistent player state (score and coins) from a save or stage checkpoint.
      * @param score Saved score
-     * @param lives Saved lives
-     * @param posX Saved X position
-     * @param posY Saved Y position
+     * @param coins Saved coins
      */
-    virtual void restoreState(int score, int lives, float posX, float posY) = 0;
+    virtual void restoreState(int score, int coins) = 0;
 
     /**
      * @brief Đặt vị trí spawn (và vị trí hiện tại) của player từ map.
@@ -183,10 +173,15 @@ public:
     virtual void die() = 0;
 
     /**
-     * @brief Returns the player's current power-up form.
-     *        Used by MapManager to decide Mushroom vs FireFlower spawn.
+     * @brief Returns which power-up form the player is currently in.
+     *        Used by MapManager to decide Mushroom vs FireFlower.
      */
     virtual FormType getFormType() const = 0;
+
+    /**
+     * @brief Reset player to default Normal form (e.g. upon world completion).
+     */
+    virtual void resetForm() = 0;
 
     // ─── FIREBALL ───
     /**

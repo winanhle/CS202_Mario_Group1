@@ -17,8 +17,8 @@ static const sf::Color OUTLINE_IDLE = sf::Color(60,  60, 140);
 CharacterSelectState::CharacterSelectState(
     std::shared_ptr<ISettingsManager> settings,
     std::shared_ptr<ISaveManager> saveManager,
-    bool loadSave,
-    std::shared_ptr<ISoundManager> soundManager
+    std::shared_ptr<ISoundManager> soundManager,
+    bool loadSave
 )
     : m_fontLoaded(false)
     , m_preview{sf::Sprite(m_marioTexture), sf::Sprite(m_luigiTexture)}
@@ -113,7 +113,10 @@ CharacterSelectState::CharacterSelectState(
     m_nav.setAxis(UINavigator::Axis::Horizontal);
     m_nav.getHitbox = [this](int i) { return m_card[i].getGlobalBounds(); };
     m_nav.onActivate = [this](int) { confirm(); };
-    m_nav.onSelectionChanged = [this](int, int) { refreshUI(); };
+    m_nav.onSelectionChanged = [this](int, int) {
+        if (m_soundManager) m_soundManager->playSelect();
+        refreshUI();
+    };
 
     refreshUI();
 }
@@ -139,6 +142,7 @@ void CharacterSelectState::handleInput(const sf::Event& event)
     {
         if (key->code == sf::Keyboard::Key::Escape)
         {
+            if (m_soundManager) m_soundManager->playSelect();
             if (auto* mgr = getStateManager())
                 mgr->changeState(std::make_unique<MenuState>(m_settings, m_saveManager, m_soundManager));
             return;
@@ -150,6 +154,8 @@ void CharacterSelectState::handleInput(const sf::Event& event)
 
 void CharacterSelectState::confirm()
 {
+    if (m_soundManager) m_soundManager->playStomp();
+
     m_config.player1Character = (m_nav.getSelectedIndex() == 0)
         ? CharacterType::Mario
         : CharacterType::Luigi;

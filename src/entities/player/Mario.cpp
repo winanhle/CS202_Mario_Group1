@@ -14,6 +14,10 @@ Mario::Mario() {
     m_currentForm = std::make_unique<NormalForm>(MARIO_OFFSETS);
 }
 
+void Mario::resetForm() {
+    setForm(std::make_unique<NormalForm>(MARIO_OFFSETS));
+}
+
 void Mario::setupStats() {
     m_maxSpeed        = 200.0f;   // WALK
     m_runMaxSpeed     = 330.0f;   // RUN (giữ Shift)

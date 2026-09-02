@@ -12,6 +12,7 @@
 #include <map>
 #include <set>
 #include <unordered_map>
+#include <functional>
 #include <utility>
 #include <optional>
 #include <SFML/Graphics.hpp>
@@ -148,6 +149,11 @@ private:
     std::vector<TileEdit> m_undoStack;
     std::vector<TileEdit> m_redoStack;
 
+    // ─── Block-break observer callback ─────────────────────────────────────────
+    // Called by spawnBrickDebris() so external systems can track career stats
+    // without polluting IMapManager with stat-tracking methods (ISP clean).
+    std::function<void()> m_blockBreakCallback;
+
     // ─── Pending Warp Request ────────────────────────────────────────────────
     std::optional<WarpRequest> m_pendingWarp;
 
@@ -244,6 +250,12 @@ public:
     // ─── Flag API ─────────────────────────────────────────────────────────────
     // ─── Sound dependency ─────────────────────────────────────────────────────
     void setSoundManager(ISoundManager* soundManager) { m_soundManager = soundManager; }
+
+    /**
+     * @brief Register a callback invoked when a brick block is destroyed.
+     * Used by PlayState to wire career-stat tracking without polluting IMapManager.
+     */
+    void setBlockBreakCallback(std::function<void()> cb) { m_blockBreakCallback = std::move(cb); }
 
     // Sound facade used by BlockBehavior strategies.
     void playBumpSound() override;

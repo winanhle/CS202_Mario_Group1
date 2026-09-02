@@ -1,4 +1,5 @@
 #include "SaveManager.h"
+#include "../data/AchievementDefs.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -28,14 +29,21 @@ namespace {
 SaveManager::SaveManager()
     : m_hasSave(false)
 {
-    loadProgression();
+}
+
+SaveManager::~SaveManager()
+{
+    flushStats();
 }
 
 void SaveManager::initialize()
 {
-    // Check if a save file already exists
-    m_hasSave = std::filesystem::exists(getSaveFilePath());
     loadProgression();
+    loadStats();
+    loadAchievements();
+
+    m_hasSave = std::filesystem::exists(getSaveFilePath());
+
     if (m_hasSave)
     {
         std::cout << "[SaveManager] Save file found: " << getSaveFilePath() << std::endl;
@@ -74,6 +82,7 @@ bool SaveManager::saveGame(const GameMemento& memento)
 
     file.close();
     m_hasSave = true;
+    flushStats(); // Persist any pending career stats alongside game save
 
     int totalScore = 0;
     for (const auto& p : memento.players) totalScore += p.score;
@@ -162,6 +171,7 @@ bool SaveManager::hasSaveFile() const
 
 void SaveManager::deleteSave()
 {
+    flushStats(); // Persist any pending career stats before game save is removed
     std::error_code ec;
     std::filesystem::remove(getSaveFilePath(), ec);
     m_hasSave = false;
@@ -301,4 +311,173 @@ void SaveManager::addHighScore(const std::string& initials, int score)
     auto list = loadHighScores();
     list.push_back({ formatInitials(initials), score });
     saveHighScores(list);
+}
+
+// ==================== CAREER STATISTICS ====================
+
+std::string SaveManager::getStatsFilePath() const
+{
+    return STATS_FILE;
+}
+
+void SaveManager::loadStats()
+{
+    m_stats.clear();
+    std::ifstream file(getStatsFilePath());
+    if (!file.is_open()) return;
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        std::istringstream iss(line);
+        std::string key;
+        int value;
+        if (std::getline(iss, key, '=') && (iss >> value))
+        {
+            m_stats[key] = value;
+        }
+    }
+}
+
+void SaveManager::saveStats()
+{
+    std::ofstream file(getStatsFilePath());
+    if (!file.is_open())
+    {
+        std::cerr << "[SaveManager] ERROR: Could not write stats file." << std::endl;
+        return;
+    }
+
+    for (const auto& [key, value] : m_stats)
+    {
+        file << key << "=" << value << "\n";
+    }
+    m_statsDirty = false;
+}
+
+void SaveManager::flushStats()
+{
+    if (m_statsDirty)
+        saveStats();
+}
+
+void SaveManager::recordStat(const std::string& type, int amount)
+{
+    if (amount <= 0) return;
+    m_stats[type] += amount;
+    m_statsDirty = true;
+    m_achievementsDirty = true;
+}
+
+int SaveManager::getStat(const std::string& type) const
+{
+    auto it = m_stats.find(type);
+    return (it != m_stats.end()) ? it->second : 0;
+}
+
+// ==================== ACHIEVEMENTS ====================
+
+std::string SaveManager::getAchievementsFilePath() const
+{
+    return ACHIEVEMENTS_FILE;
+}
+
+void SaveManager::loadAchievements()
+{
+    m_unlockedAchievements.clear();
+    std::ifstream file(getAchievementsFilePath());
+    if (!file.is_open()) return;
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        if (!line.empty())
+            m_unlockedAchievements.insert(line);
+    }
+}
+
+void SaveManager::saveAchievements()
+{
+    std::ofstream file(getAchievementsFilePath());
+    if (!file.is_open())
+    {
+        std::cerr << "[SaveManager] ERROR: Could not write achievements file." << std::endl;
+        return;
+    }
+
+    for (const auto& id : m_unlockedAchievements)
+    {
+        file << id << "\n";
+    }
+}
+
+bool SaveManager::isAchievementUnlocked(const std::string& id) const
+{
+    return m_unlockedAchievements.count(id) > 0;
+}
+
+void SaveManager::unlockAchievement(const std::string& id)
+{
+    if (m_unlockedAchievements.insert(id).second)
+    {
+        saveAchievements();
+        m_pendingUnlocks.push_back(id);
+        std::cout << "[SaveManager] Achievement unlocked: " << id << std::endl;
+    }
+}
+
+std::vector<std::pair<std::string, bool>> SaveManager::getAchievementStatuses() const
+{
+    std::vector<std::pair<std::string, bool>> all;
+    for (const auto& id : getAchievementIds())
+    {
+        all.push_back({id, m_unlockedAchievements.count(id) > 0});
+    }
+    return all;
+}
+
+void SaveManager::checkAndUnlock(const std::string& id, bool condition, std::vector<std::pair<std::string, bool>>& newlyUnlocked)
+{
+    if (condition && m_unlockedAchievements.find(id) == m_unlockedAchievements.end())
+    {
+        unlockAchievement(id);
+        newlyUnlocked.push_back({id, true});
+    }
+}
+
+std::vector<std::pair<std::string, bool>> SaveManager::evaluateAchievements()
+{
+    if (!m_achievementsDirty) return {};
+    m_achievementsDirty = false;
+    std::vector<std::pair<std::string, bool>> newlyUnlocked;
+
+    for (const auto& def : getAchievementDefinitions())
+    {
+        if (isAchievementUnlocked(def.id)) continue;
+        
+        bool met = true;
+        for (const auto& req : def.requirements)
+        {
+            if (getStat(req.first) < req.second)
+            {
+                met = false;
+                break;
+            }
+        }
+        
+        if (met && !def.requirements.empty())
+        {
+            unlockAchievement(def.id);
+            newlyUnlocked.push_back({def.id, true});
+        }
+    }
+
+    return newlyUnlocked;
+}
+
+std::vector<std::string> SaveManager::drainUnlockedAchievements()
+{
+    auto drained = std::move(m_pendingUnlocks);
+    m_pendingUnlocks.clear();
+    return drained;
 }

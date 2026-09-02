@@ -14,6 +14,10 @@ Luigi::Luigi() {
     m_currentForm = std::make_unique<NormalForm>(LUIGI_OFFSETS);
 }
 
+void Luigi::resetForm() {
+    setForm(std::make_unique<NormalForm>(LUIGI_OFFSETS));
+}
+
 void Luigi::setupStats() {
     m_maxSpeed        = 180.0f;   // WALK
     m_runMaxSpeed     = 310.0f;   // RUN (giữ Shift)

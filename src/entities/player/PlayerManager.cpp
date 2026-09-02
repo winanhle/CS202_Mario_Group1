@@ -329,9 +329,14 @@ void PlayerManager::setForm(std::unique_ptr<IPlayerForm> newForm)
 void PlayerManager::collectPowerUp(int type)
 {
     auto t = static_cast<PowerUpType>(type);
+    FormType prevForm = getFormType();
     if (auto newForm = m_currentForm->evolve(t)) {
         setForm(std::move(newForm));
     }
+    FormType newForm = getFormType();
+
+    if (m_powerUpCallback && newForm != prevForm)
+        m_powerUpCallback(newForm);
 
     if (m_soundManager)
         m_soundManager->playItem();
@@ -348,13 +353,10 @@ int PlayerManager::getScore() const
 }
 
 
-void PlayerManager::restoreState(int score, int lives, float posX, float posY)
+void PlayerManager::restoreState(int score, int coins)
 {
     m_score = score;
-    // m_lives = lives; // Managed by GameWorld
-    (void)lives;
-    m_positionX = posX;
-    m_positionY = posY;
+    m_coins = coins;
     m_isAlive = true;
 }
 
@@ -767,6 +769,7 @@ void PlayerManager::takeDamage()
 void PlayerManager::activateStar()
 {
     m_starState = std::make_unique<StarState>();
+    if (m_starCallback) m_starCallback();
     if (m_soundManager)
         m_soundManager->playItem();
 }
@@ -789,6 +792,7 @@ void PlayerManager::collectCoin(int amount) {
     m_coins += amount;
     m_score += amount * 200;
 
+    if (m_coinCallback) m_coinCallback(amount);
     if (m_soundManager)
         m_soundManager->playCoin();
     while (m_coins >= 100) {

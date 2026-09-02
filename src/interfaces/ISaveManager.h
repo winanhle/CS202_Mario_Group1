@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <utility>
 
 /**
  * @struct ScoreEntry
@@ -70,5 +71,28 @@ public:
     // --- STAGE PROGRESSION ---
     virtual int getMaxUnlockedStage() const = 0;
     virtual void unlockStage(int stageNumber) = 0;
+
+    // --- CAREER STATISTICS ---
+    virtual void recordStat(const std::string& type, int amount = 1) = 0;
+    virtual int getStat(const std::string& type) const = 0;
+    virtual void flushStats() = 0;
+
+    // --- ACHIEVEMENTS ---
+    virtual bool isAchievementUnlocked(const std::string& id) const = 0;
+    virtual void unlockAchievement(const std::string& id) = 0;
+    virtual std::vector<std::pair<std::string, bool>> getAchievementStatuses() const = 0;
+
+    /**
+     * @brief Evaluate all achievement conditions against current career stats
+     *        and unlock any newly met achievements.
+     * @return Vector of {achievement_id, was_just_unlocked} pairs
+     */
+    virtual std::vector<std::pair<std::string, bool>> evaluateAchievements() = 0;
+
+    /**
+     * @brief Drain and return achievement IDs that unlocked since the last drain.
+     *        Callers with HUD access should poll this and show toast notifications.
+     */
+    virtual std::vector<std::string> drainUnlockedAchievements() = 0;
 };
 

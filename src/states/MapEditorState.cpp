@@ -9,6 +9,7 @@
 #include <cmath>
 #include <queue>
 #include <algorithm>
+#include "../interfaces/ISoundManager.h"
 
 namespace {
     static constexpr const char* FONT_PATH = "assets/fonts/SuperMario256.ttf";
@@ -16,11 +17,17 @@ namespace {
 
 MapEditorState::MapEditorState(const GameConfig& config,
                                std::shared_ptr<ISettingsManager> settings,
-                               std::shared_ptr<ISaveManager> saveManager)
+                               std::shared_ptr<ISaveManager> saveManager,
+                               std::shared_ptr<ISoundManager> soundManager)
     : m_config(config),
       m_settings(std::move(settings)),
-      m_saveManager(std::move(saveManager))
+      m_saveManager(std::move(saveManager)),
+      m_soundManager(std::move(soundManager))
 {
+    if (m_soundManager) {
+        m_soundManager->playMenuMusic();
+    }
+    
     m_config.fromEditor = true;
 
     m_mapManager = std::make_shared<MapManager>();
@@ -426,12 +433,19 @@ void MapEditorState::launchPlay()
 
     std::cout << "[MapEditorState] Map exported to " << tmpPath << ". Launching PlayState...\n";
 
+    // Record career stat: custom map played from editor
+    if (m_saveManager)
+    {
+        m_saveManager->recordStat("editor_maps_played", 1);
+        m_saveManager->flushStats(); // Persist before PlayState::initialize() reloads from disk
+    }
+
     GameConfig playConfig = m_config;
     playConfig.customMapPath = tmpPath;
     playConfig.fromEditor = true;
 
     if (auto* mgr = getStateManager()) {
-        mgr->changeState(std::make_unique<PlayState>(playConfig, m_settings, m_saveManager, false));
+        mgr->changeState(std::make_unique<PlayState>(playConfig, m_settings, m_saveManager, false, m_soundManager));
     }
 }
 
@@ -550,7 +564,7 @@ void MapEditorState::handleInput(const sf::Event& event)
                 else if (checkBtn(72.f)) launchPlay();
                 else if (checkBtn(50.f)) {
                     if (auto* mgr = getStateManager()) {
-                        mgr->changeState(std::make_unique<LevelSelectState>(m_config, m_settings, m_saveManager, false));
+                        mgr->changeState(std::make_unique<LevelSelectState>(m_config, m_settings, m_saveManager, false, m_soundManager));
                     }
                 }
                 return;

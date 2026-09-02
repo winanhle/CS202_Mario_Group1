@@ -13,6 +13,7 @@
 class Luigi : public PlayerManager {
 public:
     Luigi();
+    void resetForm() override;
 
 protected:
     void setupStats() override;

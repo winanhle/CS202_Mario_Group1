@@ -1,5 +1,6 @@
 #include "GameWorld.h"
 #include <algorithm>
+#include <cctype>
 #include <cstdint>
 #include <cmath>
 #include <SFML/Graphics/Image.hpp>
@@ -12,10 +13,27 @@
 #include "../interfaces/IItemManager.h"
 #include "../interfaces/IHUDManager.h"
 #include "../interfaces/ISaveManager.h"
+#include "../interfaces/ISoundManager.h"
 #include "../interfaces/ICameraManager.h"
 #include "../interfaces/ILiftManager.h"
 #include "../interfaces/IFireBarManager.h"
 #include "../entities/map/MapManager.h"
+
+namespace {
+    /** Convert a snake_case achievement ID to a display title (e.g. "block_breaker" → "Block Breaker"). */
+    std::string snakeToTitle(const std::string& id)
+    {
+        std::string title = id;
+        bool capitalizeNext = true;
+        for (auto& c : title)
+        {
+            if (c == '_') { c = ' '; capitalizeNext = true; }
+            else if (capitalizeNext && std::isalpha(static_cast<unsigned char>(c)))
+            { c = static_cast<char>(std::toupper(static_cast<unsigned char>(c))); capitalizeNext = false; }
+        }
+        return title;
+    }
+} // anonymous namespace
 
 GameWorld::GameWorld()
     : m_sharedLives(INITIAL_LIVES)
@@ -77,6 +95,7 @@ void GameWorld::initialize()
 
     // Tải stage hiện tại: map + enemy + item + player spawn + camera.
     loadCurrentLevel();
+    snapshotStageStartStats();
 
     m_isInitialized = true;
 }
@@ -139,6 +158,11 @@ void GameWorld::loadCurrentLevel()
         m_hudManager->resetTimer();
         m_hudManager->showToast("WORLD 1-" + std::to_string(getCurrentStageNumber()), 2.5f);
     }
+}
+
+void GameWorld::snapshotStageStartStats()
+{
+    m_stageStartSnapshot = createMemento();
 }
 
 void GameWorld::warpToMap(const std::string& mapPath, float targetX, float targetY)
@@ -260,10 +284,21 @@ void GameWorld::checkFlagpoleCollision()
                 if (m_levelManager.isLastLevel())
                 {
                     m_isGameWon = true;
+                    if (m_saveManager) m_saveManager->recordStat("games_won", 1);
                 }
                 else
                 {
                     m_isStageClear = true;
+                    // Track stage-clear achievements
+                    if (m_saveManager)
+                    {
+                        // Brotherhood: clear a stage in 2-player co-op
+                        if (m_playerManager2)
+                            m_saveManager->recordStat("coop_stages_cleared", 1);
+                        // Speedrunner: clear stage 1 with >250s left
+                        if (getCurrentStageNumber() == 1 && m_timeLeftOnFlagpole > 250.0f)
+                            m_saveManager->recordStat("speedrun_stage1", 1);
+                    }
                 }
             };
             if (m_hudManager && m_hudManager->getTimeLeft() > 0.0f)
@@ -313,6 +348,7 @@ void GameWorld::checkFlagpoleCollision()
         return;
 
     m_isFlagpoleSequenceActive = true;
+    m_timeLeftOnFlagpole = m_hudManager ? m_hudManager->getTimeLeft() : 0.f;
 
     if (m_mapManager)
     {
@@ -370,7 +406,17 @@ void GameWorld::checkFlagpoleCollision()
 void GameWorld::update(float deltaTime)
 {
     if (!m_isInitialized || m_isGameOver || m_isGameWon || m_isStageClear)
+    {
+        // Still poll achievement toasts even when gameplay is frozen,
+        // because unlocks may have been queued by the flagpole callback.
+        if (m_saveManager && m_hudManager)
+        {
+            auto unlocked = m_saveManager->drainUnlockedAchievements();
+            for (const auto& id : unlocked)
+                m_hudManager->showAchievementToast(snakeToTitle(id));
+        }
         return;
+    }
 
     // During a pipe cutscene, freeze gameplay systems but keep the scripted
     // player movement and camera alive until the map hand-off is complete.
@@ -441,37 +487,48 @@ void GameWorld::update(float deltaTime)
     // 5. Kiểm tra & xử lý death / respawn / game over
     checkAndHandleDeath();
 
+    // 5a. Evaluate achievements once per frame
+    if (m_saveManager)
+        m_saveManager->evaluateAchievements();
+    // Check for 100-coin 1-UP rollovers from either player
+    if (m_playerManager)
+    {
+        int oneUps = m_playerManager->consumePendingOneUps();
+        for (int i = 0; i < oneUps; ++i)
+        {
+            ++m_sharedLives;
+            if (m_soundManager) m_soundManager->playOneUp();
+            if (m_hudManager)
+            {
+                float px = m_playerManager->getPositionX();
+                float py = m_playerManager->getPositionY();
+                m_hudManager->spawnScorePopup(0, px + 8.0f, py - 32.0f - (i * 20.0f), true);
+            }
+        }
+        if (oneUps > 0 && m_hudManager)
+            m_hudManager->showToast(std::to_string(oneUps) + "-UP!", 1.5f);
+    }
+    if (m_playerManager2)
+    {
+        int oneUps = m_playerManager2->consumePendingOneUps();
+        for (int i = 0; i < oneUps; ++i)
+        {
+            ++m_sharedLives;
+            if (m_soundManager) m_soundManager->playOneUp();
+            if (m_hudManager)
+            {
+                float px = m_playerManager2->getPositionX();
+                float py = m_playerManager2->getPositionY();
+                m_hudManager->spawnScorePopup(0, px + 8.0f, py - 32.0f - (i * 20.0f), true);
+            }
+        }
+        if (oneUps > 0 && m_hudManager)
+            m_hudManager->showToast(std::to_string(oneUps) + "-UP!", 1.5f);
+    }
+
     // 5. HUD update
     if (m_hudManager)
     {
-        // Check for 100-coin 1-UP rollovers from either player
-        if (m_playerManager)
-        {
-            int oneUps = m_playerManager->consumePendingOneUps();
-            for (int i = 0; i < oneUps; ++i)
-            {
-                ++m_sharedLives;
-                float px = m_playerManager->getPositionX();
-                float py = m_playerManager->getPositionY();
-                m_hudManager->spawnScorePopup(0, px + 8.0f, py - 32.0f, true);
-            }
-            if (oneUps > 0)
-                m_hudManager->showToast("1-UP!", 1.5f);
-        }
-        if (m_playerManager2)
-        {
-            int oneUps = m_playerManager2->consumePendingOneUps();
-            for (int i = 0; i < oneUps; ++i)
-            {
-                ++m_sharedLives;
-                float px = m_playerManager2->getPositionX();
-                float py = m_playerManager2->getPositionY();
-                m_hudManager->spawnScorePopup(0, px + 8.0f, py - 32.0f, true);
-            }
-            if (oneUps > 0)
-                m_hudManager->showToast("1-UP!", 1.5f);
-        }
-
         if (!m_isFlagpoleSequenceActive && !m_isTimerTallyActive)
         {
             if (m_playerManager && m_lastScore1 >= 0 && m_playerManager->getScore() > m_lastScore1)
@@ -501,6 +558,14 @@ void GameWorld::update(float deltaTime)
         
         m_hudManager->updateWorld(m_levelManager.getCurrentLevelNumber());
         m_hudManager->update(deltaTime);
+
+        // 5b. Poll newly unlocked achievements and show toast notifications
+        if (m_saveManager)
+        {
+            auto unlocked = m_saveManager->drainUnlockedAchievements();
+            for (const auto& id : unlocked)
+                m_hudManager->showAchievementToast(snakeToTitle(id));
+        }
     }
 
     // 6. Camera bám theo player (đã final)
@@ -602,6 +667,10 @@ void GameWorld::checkAndHandleDeath()
 
     if (!roundOver) return;
 
+    // Record death stat
+    if (m_saveManager)
+        m_saveManager->recordStat("total_deaths", 1);
+
     // Trừ 1 shared live
     --m_sharedLives;
 
@@ -612,7 +681,14 @@ void GameWorld::checkAndHandleDeath()
         return;
     }
 
-    // Còn lives → reload nguyên cả stage từ đầu (reset map, enemy, item, player)
+    // Còn lives → restore point/coin snapshot then reload nguyên cả stage từ đầu
+    if (m_stageStartSnapshot) {
+        // We want to restore score/coins, but preserve the fact that we just lost a life.
+        int currentLives = m_sharedLives;
+        restoreFromMemento(*m_stageStartSnapshot);
+        setSharedLives(currentLives);
+    }
+
     loadCurrentLevel();
 }
 
@@ -760,12 +836,17 @@ void GameWorld::advanceStage()
     m_isStageClear = false;
     m_isFlagpoleSequenceActive = false;
 
+    // Reset player forms to Normal form upon world completion
+    if (m_playerManager)  m_playerManager->resetForm();
+    if (m_playerManager2) m_playerManager2->resetForm();
+
     // Clear custom map so that normal level progression resumes
     m_customMapPath = "";
 
     if (!m_levelManager.advanceToNextLevel())
         m_levelManager.reset();
     loadCurrentLevel();
+    snapshotStageStartStats();
 }
 
 void GameWorld::setCustomMapPath(const std::string& path)
@@ -834,7 +915,9 @@ void GameWorld::setSharedLives(int lives)
 void GameWorld::deleteSaveData()
 {
     if (m_saveManager)
+    {
         m_saveManager->deleteSave();
+    }
 }
 
 GameMemento GameWorld::createMemento(const GameConfig& config) const
@@ -885,17 +968,11 @@ void GameWorld::restoreFromMemento(const GameMemento& memento)
 
     if (m_playerManager)
     {
-        m_playerManager->restoreState(p1Score, memento.lives,
-                                      m_playerManager->getPositionX(),
-                                      m_playerManager->getPositionY());
-        m_playerManager->setCoins(p1Coins);
+        m_playerManager->restoreState(p1Score, p1Coins);
     }
     if (m_playerManager2)
     {
-        m_playerManager2->restoreState(p2Score, memento.lives,
-                                       m_playerManager2->getPositionX(),
-                                       m_playerManager2->getPositionY());
-        m_playerManager2->setCoins(p2Coins);
+        m_playerManager2->restoreState(p2Score, p2Coins);
     }
 
     m_lastScore1 = p1Score;
@@ -908,6 +985,8 @@ void GameWorld::restoreFromMemento(const GameMemento& memento)
         m_hudManager->updateLives(memento.lives);
         m_hudManager->updateWorld(memento.stage);
     }
+    
+    snapshotStageStartStats();
 }
 
 // ==================== INJECT DEPENDENCIES ====================

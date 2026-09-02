@@ -28,6 +28,8 @@
  * - ESC: go back / resume / exit settings
  * - While rebinding: any key is assigned to the selected action
  */
+class ISoundManager;
+
 class SettingsMenu
 {
 public:
@@ -46,8 +48,11 @@ public:
     /**
      * @param settings Reference to the shared settings manager (injected)
      * @param pauseContext True when shown from PauseState (root menu shown first)
+     * @param soundManager Optional pointer to the shared sound manager
      */
-    SettingsMenu(ISettingsManager& settings, bool pauseContext);
+    SettingsMenu(ISettingsManager& settings, bool pauseContext, ISoundManager* soundManager = nullptr);
+
+    void setSoundManager(ISoundManager* soundManager) { m_soundManager = soundManager; }
 
     void openRoot();
     void openSettings();
@@ -108,6 +113,7 @@ private:
     static constexpr float ITEM_SPACING = 55.0f;
 
     ISettingsManager& m_settings;
+    ISoundManager* m_soundManager = nullptr;
     bool m_pauseContext = false;
 
     Screen m_screen = Screen::Root;

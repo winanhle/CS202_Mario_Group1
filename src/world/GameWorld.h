@@ -2,14 +2,15 @@
 
 #include <memory>
 #include <string>
+#include <optional>
 #include <SFML/Graphics/Rect.hpp>
 #include <SFML/Graphics/Texture.hpp>
 #include "../core/LevelManager.h"
 #include "../core/GameMemento.h"
+#include "../interfaces/IPlayerManager.h"
 
 // Forward declarations for all modules
 class IMapManager;
-class IPlayerManager;
 class IEnemyManager;
 class IItemManager;
 class IHUDManager;
@@ -128,7 +129,7 @@ public:
      * @param livesOverride Optional lives override (e.g. stage-start lives). If nullopt, uses current lives.
      * @param coinsOverride Optional coins override (e.g. stage-start coins). If nullopt, uses current coins.
      */
-    GameMemento createMemento(const GameConfig& config) const;
+    GameMemento createMemento(const GameConfig& config = {}) const;
 
     /**
      * @brief Restores the game world state from a Memento snapshot (Originator in Memento pattern).
@@ -212,6 +213,7 @@ private:
     bool m_isStageClear = false;
     bool m_isFlagpoleSequenceActive = false;
     bool m_isTimerTallyActive = false;
+    float m_timeLeftOnFlagpole = 0.f;
     int  m_timerPopupCounter = 0;
     bool m_isInitialized = false;
     int  m_lastScore1 = -1;
@@ -246,6 +248,9 @@ private:
     // ─── Level progression ──────────────────────────────────────────────────
     LevelManager m_levelManager;
     std::string  m_customMapPath = "";
+    
+    std::optional<GameMemento> m_stageStartSnapshot;
+    void snapshotStageStartStats();
 
     /**
      * @brief Tải lại stage hiện tại từ đầu: map + enemy + item + player spawn,

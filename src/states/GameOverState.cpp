@@ -102,7 +102,10 @@ GameOverState::GameOverState(
 
     m_nav.getHitbox = [this](int i) { return m_optionCards[i].getGlobalBounds(); };
     m_nav.onActivate = [this](int i) { confirmSelection(); };
-    m_nav.onSelectionChanged = [this](int oldIdx, int newIdx) { refreshUI(); };
+    m_nav.onSelectionChanged = [this](int oldIdx, int newIdx) {
+        if (m_soundManager) m_soundManager->playSelect();
+        refreshUI();
+    };
 
     refreshUI();
 }
@@ -154,6 +157,9 @@ void GameOverState::handleInput(const sf::Event& event)
 
 void GameOverState::confirmSelection()
 {
+    if (m_soundManager)
+        m_soundManager->playStomp();
+
     if (m_nav.getSelectedIndex() == 0)
     {
         retryGame();
@@ -175,6 +181,15 @@ void GameOverState::retryGame()
 
 void GameOverState::returnToMenu()
 {
+    // Record career stats on game over
+    if (m_saveManager)
+    {
+        m_saveManager->recordStat("games_played", 1);
+        m_saveManager->recordStat("total_score", m_finalScore);
+        m_saveManager->evaluateAchievements();
+        m_saveManager->flushStats();
+    }
+
     auto* manager = getStateManager();
     if (manager)
     {

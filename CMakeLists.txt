@@ -52,6 +52,7 @@ set(SHARED_SOURCES
     src/states/ModeSelectState.cpp
     src/states/InitialsEntryState.cpp
     src/states/LeaderboardState.cpp
+    src/states/StatsState.cpp
     src/world/GameWorld.cpp
     src/entities/map/MapManager.cpp
     src/entities/map/block/BlockBehavior.cpp

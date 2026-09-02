@@ -20,7 +20,7 @@ PauseState::PauseState(
     , m_player1(player1)
     , m_player2(player2)
     , m_saveSnapshot(std::move(saveSnapshot))
-    , m_menu(*m_settings, /*pauseContext=*/true)
+    , m_menu(*m_settings, /*pauseContext=*/true, m_soundManager.get())
 {
 }
 
@@ -32,6 +32,9 @@ void PauseState::handleInput(const sf::Event& event)
     {
     case SettingsMenu::Request::Resume:
     {
+        if (m_soundManager)
+            m_soundManager->playPause();
+
         // Re-apply key bindings from the latest settings so any rebind made
         // in the pause menu takes effect immediately when the game resumes.
         if (m_player1)
@@ -69,6 +72,9 @@ void PauseState::handleInput(const sf::Event& event)
 
 void PauseState::saveAndQuitToMenu()
 {
+    if (m_soundManager)
+        m_soundManager->playSaveGame();
+
     // Persist the game state Memento snapshot if available
     if (m_saveManager)
     {
