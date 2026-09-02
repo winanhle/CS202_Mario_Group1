@@ -269,6 +269,8 @@ WinState::WinState(
     m_nav.onSelectionChanged =
         [this](int, int)
         {
+            if (m_soundManager)
+                m_soundManager->playSelect();
             refreshUI();
         };
 
@@ -319,6 +321,9 @@ void WinState::handleInput(const sf::Event& event)
 
 void WinState::confirmSelection()
 {
+    if (m_soundManager)
+        m_soundManager->playStomp();
+
     if (m_nav.getSelectedIndex() == 0)
     {
         playAgain();
@@ -340,6 +345,15 @@ void WinState::playAgain()
 
 void WinState::returnToMenu()
 {
+    // Record career stats on victory
+    if (m_saveManager)
+    {
+        m_saveManager->recordStat("games_played", 1);
+        m_saveManager->recordStat("total_score", m_totalScore);
+        m_saveManager->evaluateAchievements();
+        m_saveManager->flushStats();
+    }
+
     auto* manager = getStateManager();
     if (manager)
     {

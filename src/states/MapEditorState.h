@@ -12,6 +12,7 @@
 
 class ISettingsManager;
 class ISaveManager;
+class ISoundManager;
 
 /**
  * @enum EditorTool
@@ -91,7 +92,8 @@ class MapEditorState : public GameState
 public:
     explicit MapEditorState(const GameConfig& config,
                             std::shared_ptr<ISettingsManager> settings,
-                            std::shared_ptr<ISaveManager> saveManager);
+                            std::shared_ptr<ISaveManager> saveManager,
+                            std::shared_ptr<ISoundManager> soundManager = nullptr);
     ~MapEditorState() override = default;
 
     void handleInput(const sf::Event& event) override;
@@ -186,4 +188,5 @@ private:
     GameConfig                        m_config;
     std::shared_ptr<ISettingsManager> m_settings;
     std::shared_ptr<ISaveManager>     m_saveManager;
+    std::shared_ptr<ISoundManager>    m_soundManager;
 };

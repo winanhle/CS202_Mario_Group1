@@ -1,12 +1,14 @@
 #include "../ui/UIUtils.h"
 #include "SettingsMenu.h"
 #include "../core/GameState.h"
-#include "../ui/UIUtils.h"
+#include "../interfaces/ISoundManager.h"
 #include <SFML/Window/Event.hpp>
 #include <algorithm>
+#include <cmath>
 
-SettingsMenu::SettingsMenu(ISettingsManager& settings, bool pauseContext)
+SettingsMenu::SettingsMenu(ISettingsManager& settings, bool pauseContext, ISoundManager* soundManager)
     : m_settings(settings)
+    , m_soundManager(soundManager)
     , m_pauseContext(pauseContext)
     , m_screen(pauseContext ? Screen::Root : Screen::Settings)
     , m_selectedIndex(0)
@@ -242,6 +244,11 @@ SettingsMenu::Request SettingsMenu::handleMouseClick(sf::Vector2i position)
                     m_settings.setVolume(newVol);
                 }
                 m_settings.save();
+                if (m_soundManager)
+                {
+                    m_soundManager->setVolume(m_settings.getVolume());
+                    m_soundManager->playSelect();
+                }
                 return Request::None;
             }
 
@@ -277,18 +284,21 @@ SettingsMenu::Request SettingsMenu::handleInput(const sf::Event& event)
         {
             m_rebindReserved = false;
             m_screen = Screen::Settings;
+            if (m_soundManager) m_soundManager->playSelect();
             return Request::None;
         }
         // Reject reserved / invalid keys and stay in capture mode
         if (keyEvent->code == sf::Keyboard::Key::Unknown)
         {
             m_rebindReserved = true;
+            if (m_soundManager) m_soundManager->playUIBump();
             return Request::None;
         }
         m_rebindReserved = false;
         m_settings.setKey(m_rebindingAction, keyEvent->code);
         m_settings.save();
         m_screen = Screen::Settings;
+        if (m_soundManager) m_soundManager->playStomp();
         return Request::None;
     }
 
@@ -305,6 +315,11 @@ SettingsMenu::Request SettingsMenu::handleInput(const sf::Event& event)
         {
             m_settings.setVolume(m_settings.getVolume() - 5.0f);
             m_settings.save();
+            if (m_soundManager)
+            {
+                m_soundManager->setVolume(m_settings.getVolume());
+                m_soundManager->playSelect();
+            }
         }
         else
         {
@@ -316,6 +331,11 @@ SettingsMenu::Request SettingsMenu::handleInput(const sf::Event& event)
         {
             m_settings.setVolume(m_settings.getVolume() + 5.0f);
             m_settings.save();
+            if (m_soundManager)
+            {
+                m_soundManager->setVolume(m_settings.getVolume());
+                m_soundManager->playSelect();
+            }
         }
         else
         {
@@ -339,6 +359,7 @@ void SettingsMenu::moveSelection(int dx, int dy)
         return;
 
     int n = static_cast<int>(items->size());
+    int oldIndex = m_selectedIndex;
 
     if (m_screen != Screen::Settings)
     {
@@ -348,30 +369,36 @@ void SettingsMenu::moveSelection(int dx, int dy)
             if (m_selectedIndex < 0) m_selectedIndex = n - 1;
             if (m_selectedIndex >= n) m_selectedIndex = 0;
         }
-        return;
+    }
+    else
+    {
+        // 2D Spatial Navigation for Settings Screen
+        if (dy == -1) // Up
+        {
+            if (m_selectedIndex == 0) m_selectedIndex = 10; // Vol -> Back
+            else if (m_selectedIndex >= 1 && m_selectedIndex <= 4) m_selectedIndex = (m_selectedIndex == 1) ? 0 : m_selectedIndex - 1;
+            else if (m_selectedIndex >= 5 && m_selectedIndex <= 8) m_selectedIndex = (m_selectedIndex == 5) ? 0 : m_selectedIndex - 1;
+            else if (m_selectedIndex == 9) m_selectedIndex = 4; // Reset -> P1 Shoot
+            else if (m_selectedIndex == 10) m_selectedIndex = 9; // Back -> Reset
+        }
+        else if (dy == 1) // Down
+        {
+            if (m_selectedIndex == 0) m_selectedIndex = 1; // Vol -> P1 Jump
+            else if (m_selectedIndex >= 1 && m_selectedIndex <= 4) m_selectedIndex = (m_selectedIndex == 4) ? 9 : m_selectedIndex + 1;
+            else if (m_selectedIndex >= 5 && m_selectedIndex <= 8) m_selectedIndex = (m_selectedIndex == 8) ? 9 : m_selectedIndex + 1;
+            else if (m_selectedIndex == 9) m_selectedIndex = 10; // Reset -> Back
+            else if (m_selectedIndex == 10) m_selectedIndex = 0; // Back -> Vol
+        }
+        else if (dx == -1 || dx == 1) // Left or Right
+        {
+            if (m_selectedIndex >= 1 && m_selectedIndex <= 4) m_selectedIndex += 4;
+            else if (m_selectedIndex >= 5 && m_selectedIndex <= 8) m_selectedIndex -= 4;
+        }
     }
 
-    // 2D Spatial Navigation for Settings Screen
-    if (dy == -1) // Up
+    if (m_selectedIndex != oldIndex && m_soundManager)
     {
-        if (m_selectedIndex == 0) m_selectedIndex = 10; // Vol -> Back
-        else if (m_selectedIndex >= 1 && m_selectedIndex <= 4) m_selectedIndex = (m_selectedIndex == 1) ? 0 : m_selectedIndex - 1;
-        else if (m_selectedIndex >= 5 && m_selectedIndex <= 8) m_selectedIndex = (m_selectedIndex == 5) ? 0 : m_selectedIndex - 1;
-        else if (m_selectedIndex == 9) m_selectedIndex = 4; // Reset -> P1 Shoot
-        else if (m_selectedIndex == 10) m_selectedIndex = 9; // Back -> Reset
-    }
-    else if (dy == 1) // Down
-    {
-        if (m_selectedIndex == 0) m_selectedIndex = 1; // Vol -> P1 Jump
-        else if (m_selectedIndex >= 1 && m_selectedIndex <= 4) m_selectedIndex = (m_selectedIndex == 4) ? 9 : m_selectedIndex + 1;
-        else if (m_selectedIndex >= 5 && m_selectedIndex <= 8) m_selectedIndex = (m_selectedIndex == 8) ? 9 : m_selectedIndex + 1;
-        else if (m_selectedIndex == 9) m_selectedIndex = 10; // Reset -> Back
-        else if (m_selectedIndex == 10) m_selectedIndex = 0; // Back -> Vol
-    }
-    else if (dx == -1 || dx == 1) // Left or Right
-    {
-        if (m_selectedIndex >= 1 && m_selectedIndex <= 4) m_selectedIndex += 4;
-        else if (m_selectedIndex >= 5 && m_selectedIndex <= 8) m_selectedIndex -= 4;
+        m_soundManager->playSelect();
     }
 }
 
@@ -385,9 +412,11 @@ SettingsMenu::Request SettingsMenu::activateSelected()
         const MenuItem& item = m_rootItems[m_selectedIndex];
         if (item.label == "SETTINGS")
         {
+            if (m_soundManager) m_soundManager->playSelect();
             openSettings();
             return Request::None;
         }
+        if (m_soundManager) m_soundManager->playStomp();
         return item.request; // Resume or QuitToMenu
     }
 
@@ -399,12 +428,14 @@ SettingsMenu::Request SettingsMenu::activateSelected()
         const MenuItem& item = m_settingsItems[m_selectedIndex];
         if (item.kind == ItemKind::Rebind)
         {
+            if (m_soundManager) m_soundManager->playSelect();
             m_rebindingAction = item.action;
             m_screen = Screen::Rebind;
             return Request::None;
         }
         if (item.label == "RESET TO DEFAULTS")
         {
+            if (m_soundManager) m_soundManager->playStomp();
             m_settings.resetToDefault();
             m_settings.save();
             return Request::None;
@@ -419,6 +450,8 @@ SettingsMenu::Request SettingsMenu::activateSelected()
 
 SettingsMenu::Request SettingsMenu::goBack()
 {
+    if (m_soundManager) m_soundManager->playSelect();
+
     if (m_screen == Screen::Settings)
     {
         if (m_pauseContext)

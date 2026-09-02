@@ -181,6 +181,7 @@ void HUDManager::update(float deltaTime)
     updateScorePop(deltaTime);
     updateCoinAnim(deltaTime);
     updateToasts(deltaTime);
+    updateAchievementToasts(deltaTime);
     updatePopups(deltaTime);
     updateTimerBonus(deltaTime);
 }
@@ -367,6 +368,7 @@ void HUDManager::render(sf::RenderWindow& window) const
     window.draw(m_timeValue);
     // Draw active toast notifications (in screen space)
     renderToasts(window);
+    renderAchievementToasts(window);
 }
 
 void HUDManager::renderToasts(sf::RenderWindow& window) const
@@ -591,3 +593,88 @@ float HUDManager::getTimeLeft() const
     return m_timeLeft;
 }
 
+void HUDManager::showAchievementToast(const std::string& title)
+{
+    AchievementToast at;
+    at.title = title;
+    at.lifetime = 3.0f;
+    at.maxLifetime = 3.0f;
+    m_achieveToasts.push_back(at);
+}
+
+void HUDManager::updateAchievementToasts(float deltaTime)
+{
+    float baseY = 80.0f; // Below the HUD bar
+    int index = 0;
+
+    for (auto it = m_achieveToasts.begin(); it != m_achieveToasts.end(); )
+    {
+        it->lifetime -= deltaTime;
+        if (it->lifetime <= 0.0f)
+        {
+            it = m_achieveToasts.erase(it);
+        }
+        else
+        {
+            float targetY = baseY + static_cast<float>(index) * 40.0f;
+            if (it->currentY == 0.0f) {
+                it->currentY = targetY;
+            } else {
+                it->currentY += (targetY - it->currentY) * 10.0f * deltaTime;
+            }
+            ++index;
+            ++it;
+        }
+    }
+}
+
+void HUDManager::renderAchievementToasts(sf::RenderWindow& window) const
+{
+    if (!m_fontLoaded || m_achieveToasts.empty())
+        return;
+
+    static constexpr sf::Color ACHIEVE_GOLD{ 255, 215, 0 };
+    static constexpr sf::Color ACHIEVE_BG{ 40, 30, 10, 220 };
+
+    for (std::size_t i = 0; i < m_achieveToasts.size(); ++i)
+    {
+        const auto& at = m_achieveToasts[i];
+        float alpha = (at.lifetime > 0.5f) ? 1.0f : (at.lifetime / 0.5f);
+
+        auto toUint8 = [](int v) -> std::uint8_t { return static_cast<std::uint8_t>(v); };
+
+        // Gold banner background
+        sf::RectangleShape banner({ 420.0f, 34.0f });
+        banner.setOrigin({ 210.0f, 17.0f });
+        banner.setPosition({ 400.0f, at.currentY });
+        banner.setFillColor(sf::Color(
+            toUint8(ACHIEVE_BG.r),
+            toUint8(ACHIEVE_BG.g),
+            toUint8(ACHIEVE_BG.b),
+            toUint8(static_cast<int>(ACHIEVE_BG.a * alpha))));
+        banner.setOutlineColor(sf::Color(
+            toUint8(ACHIEVE_GOLD.r),
+            toUint8(ACHIEVE_GOLD.g),
+            toUint8(ACHIEVE_GOLD.b),
+            toUint8(static_cast<int>(255 * alpha))));
+        banner.setOutlineThickness(2.0f);
+        window.draw(banner);
+
+        // Trophy text
+        sf::Text text{m_font};
+        text.setString("[ACHIEVEMENT: " + at.title + "]");
+        text.setCharacterSize(16);
+        text.setFillColor(sf::Color(
+            toUint8(ACHIEVE_GOLD.r),
+            toUint8(ACHIEVE_GOLD.g),
+            toUint8(ACHIEVE_GOLD.b),
+            toUint8(static_cast<int>(255 * alpha))));
+        text.setOutlineColor(sf::Color::Black);
+        text.setOutlineThickness(1.0f);
+        sf::FloatRect bounds = text.getLocalBounds();
+        text.setOrigin({ bounds.position.x + bounds.size.x / 2.0f,
+                         bounds.position.y + bounds.size.y / 2.0f });
+        text.setPosition({ 400.0f, at.currentY });
+        window.draw(text);
+    }
+}

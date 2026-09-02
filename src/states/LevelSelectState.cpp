@@ -78,6 +78,10 @@ LevelSelectState::LevelSelectState(
       m_soundManager(std::move(soundManager)),
       m_loadSave(loadSave)
 {
+    if (m_soundManager) {
+        m_soundManager->playMenuMusic();
+    }
+
     if (m_font.openFromFile(FONT_PATH)) {
         m_fontLoaded = true;
     } else {
@@ -137,15 +141,19 @@ void LevelSelectState::initLevels()
 void LevelSelectState::confirmSelection()
 {
     if (m_selectedIndex >= 0 && m_selectedIndex < static_cast<int>(m_levels.size())) {
-        if (m_levels[m_selectedIndex].isLocked) return;
+        if (m_levels[m_selectedIndex].isLocked) {
+            if (m_soundManager) m_soundManager->playUIBump();
+            return;
+        }
 
         if (m_levels[m_selectedIndex].path == "__EDITOR__") {
             if (auto* mgr = getStateManager()) {
-                mgr->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager));
+                mgr->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager, m_soundManager));
             }
             return;
         }
 
+        if (m_soundManager) m_soundManager->playStomp();
         m_config.customMapPath = m_levels[m_selectedIndex].path;
         if (auto* mgr = getStateManager()) {
             mgr->changeState(std::make_unique<PlayState>(m_config, m_settings, m_saveManager, m_loadSave, m_soundManager));
@@ -193,6 +201,7 @@ void LevelSelectState::handleInput(const sf::Event& event)
 
     if (const auto* keyEvent = event.getIf<sf::Event::KeyPressed>()) {
         int total = static_cast<int>(m_levels.size());
+        int oldIdx = m_selectedIndex;
         if (total > 0) {
             if (keyEvent->code == sf::Keyboard::Key::A || keyEvent->code == sf::Keyboard::Key::Left) {
                 if (m_selectedIndex == 0) m_selectedIndex = 2;
@@ -214,8 +223,12 @@ void LevelSelectState::handleInput(const sf::Event& event)
             } else if (keyEvent->code == sf::Keyboard::Key::Enter || keyEvent->code == sf::Keyboard::Key::Space) {
                 confirmSelection();
             }
+            if (m_selectedIndex != oldIdx && m_soundManager) {
+                m_soundManager->playSelect();
+            }
         }
         if (keyEvent->code == sf::Keyboard::Key::Escape) {
+            if (m_soundManager) m_soundManager->playSelect();
             if (auto* mgr = getStateManager())
                 mgr->changeState(std::make_unique<ModeSelectState>(m_config, m_settings, m_saveManager, m_loadSave, m_soundManager));
         }
@@ -226,6 +239,9 @@ void LevelSelectState::handleInput(const sf::Event& event)
         for (size_t i = 0; i < m_levels.size(); ++i) {
             sf::FloatRect bounds = getBoxBounds(i);
             if (bounds.contains(mouse)) {
+                if (m_selectedIndex != static_cast<int>(i) && m_soundManager) {
+                    m_soundManager->playSelect();
+                }
                 m_selectedIndex = static_cast<int>(i);
                 break;
             }

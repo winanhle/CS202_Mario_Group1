@@ -12,6 +12,7 @@
 #include "StarState.h"
 #include <memory>
 #include <string>
+#include <functional>
 
 class ISoundManager;
 
@@ -43,6 +44,7 @@ protected:
     int m_defense;
 
     // ─── dependency ───
+    // --- TRẠNG THÁI HIỆN TẠI ---
     IMapManager*  m_mapManager  = nullptr;
     ILiftManager* m_liftManager = nullptr;
     ISoundManager* m_soundManager = nullptr;
@@ -131,7 +133,7 @@ public:
     bool  isDownPressed() const override;
     void  startPipeTravel(float alignX, float alignY, float targetX, float targetY) override;
     bool  isPipeTraveling() const override { return m_isPipeTraveling; }
-    void restoreState(int score, int lives, float posX, float posY) override;
+    void restoreState(int score, int coins) override;
     void setSpawnPoint(float x, float y) override;
 
     void jump();
@@ -170,7 +172,16 @@ public:
      *        Used by MapManager to decide Mushroom vs FireFlower.
      */
     FormType getFormType() const override;
+    void resetForm() override = 0;
     void setFireballEnemyTarget(IEnemyManager* enemies) override;
+
+    // ─── Observer callbacks (career stat tracking) ──────────────────────────
+    /** Called when coins are collected. Args: coin amount. */
+    void setCoinCallback(std::function<void(int)> cb) { m_coinCallback = std::move(cb); }
+    /** Called when a powerup changes the player's form. Args: FormType. */
+    void setPowerUpCallback(std::function<void(FormType)> cb) { m_powerUpCallback = std::move(cb); }
+    /** Called when a Star is collected (via activateStar). */
+    void setStarCallback(std::function<void()> cb) { m_starCallback = std::move(cb); }
 
     /**
      * @brief Gán KeyBinding cho player (gọi sau initialize, trước game loop).
@@ -201,6 +212,11 @@ public:
     void applyLiftOffset(float dx, float dy) override;
 
 private:
+    // ─── Observer callbacks ─────────────────────────────────────────────────
+    std::function<void(int)>      m_coinCallback;
+    std::function<void(FormType)> m_powerUpCallback;
+    std::function<void()>         m_starCallback;
+
     bool  m_isPipeTraveling = false;
     bool  m_isPipeAligning = false;
     float m_pipeAlignX = 0.f;

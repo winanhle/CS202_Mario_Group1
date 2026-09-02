@@ -34,6 +34,30 @@ static std::shared_ptr<PlayerManager> makePlayer(CharacterType type)
 }
 
 // ──────────────────────────────────────────────────────────────────
+// Wire career stat tracking callbacks on a player.
+// Captures GameWorld* (not PlayState*) to reduce coupling.
+// INVARIANT: GameWorld must outlive the callbacks set here.
+// ──────────────────────────────────────────────────────────────────
+static void wireStatCallbacks(const std::shared_ptr<PlayerManager>& player, GameWorld* world)
+{
+    player->setCoinCallback([world](int amount) {
+        if (auto* sm = world->getSaveManager())
+            sm->recordStat("coins_collected", amount);
+    });
+    player->setPowerUpCallback([world](FormType form) {
+        if (auto* sm = world->getSaveManager())
+        {
+            if (form == FormType::Super)  sm->recordStat("mushrooms_collected", 1);
+            if (form == FormType::Fire)   sm->recordStat("fire_flowers_collected", 1);
+        }
+    });
+    player->setStarCallback([world]() {
+        if (auto* sm = world->getSaveManager())
+            sm->recordStat("stars_collected", 1);
+    });
+}
+
+// ──────────────────────────────────────────────────────────────────
 // setup() – logic khởi tạo chung, dùng bởi cả 2 constructor
 // ──────────────────────────────────────────────────────────────────
 void PlayState::setup(const GameConfig& config)
@@ -49,15 +73,25 @@ void PlayState::setup(const GameConfig& config)
 
     m_gameWorld->setSoundManager(m_soundManager);
 
+    // Stop menu music when entering gameplay
+    m_soundManager->stopMenuMusic();
+
     // ── Map / Camera ─────────────────────────────────────────────
     auto mapManager = std::make_shared<MapManager>();
     mapManager->setSoundManager(m_soundManager.get());
+    // Wire block-break → career stat tracking (observer pattern, keeps IMapManager clean)
+    auto* world = m_gameWorld.get();
+    mapManager->setBlockBreakCallback([world]() {
+        if (auto* sm = world->getSaveManager())
+            sm->recordStat("blocks_broken", 1);
+    });
     m_gameWorld->setMapManager(mapManager);
     m_gameWorld->setCameraManager(std::make_shared<CameraManager>());
 
     // ── Player 1 ─────────────────────────────────────────────────
     auto p1 = makePlayer(config.player1Character);
     p1->setSoundManager(m_soundManager.get());
+    wireStatCallbacks(p1, m_gameWorld.get());
     if (config.mode == GameMode::SinglePlayer)
         p1->setKeyBinding(KeyBindingPresets::singlePlayer());
     else
@@ -71,12 +105,18 @@ void PlayState::setup(const GameConfig& config)
         auto p2 = makePlayer(config.player2Character);
         p2->setSoundManager(m_soundManager.get());
         p2->setKeyBinding(KeyBindingPresets::player2TwoPlayer());
+        wireStatCallbacks(p2, m_gameWorld.get());
         m_gameWorld->setPlayerManager2(p2);
     }
 
     // ── Enemies / Items / Lifts / FireBars / HUD / Save ───────────
     auto enemyManager = std::make_shared<EnemyManager>();
     enemyManager->setSoundManager(m_soundManager.get());
+    // Wire observer callback for career stat tracking
+    enemyManager->setKillCallback([this]() {
+        if (auto* sm = m_gameWorld->getSaveManager())
+            sm->recordStat("enemies_killed", 1);
+    });
     m_gameWorld->setEnemyManager(enemyManager);
     auto itemManager = std::make_shared<ItemManager>();
     itemManager->setSoundManager(m_soundManager.get());
@@ -122,6 +162,15 @@ void PlayState::setup(const GameConfig& config)
     }
 
     m_levelStartMemento = m_gameWorld->createMemento(m_config);
+
+    // Start level music based on stage number
+    if (m_soundManager)
+    {
+        if (m_config.fromEditor || m_gameWorld->getCurrentStageNumber() < 3)
+            m_soundManager->playGroundTheme();
+        else
+            m_soundManager->playCastleTheme();
+    }
 }
 
 GameMemento PlayState::captureLevelStartMemento() const
@@ -172,12 +221,16 @@ void PlayState::handleInput(const sf::Event& event)
     {
         if (keyEvent->code == sf::Keyboard::Key::Escape)
         {
+            if (m_soundManager)
+                m_soundManager->playPause();
+
             auto* manager = getStateManager();
             if (manager)
             {
                 if (m_config.fromEditor)
                 {
-                    manager->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager));
+                    if (m_soundManager) m_soundManager->stopPlayMusic();
+                    manager->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager, m_soundManager));
                     return;
                 }
 
@@ -208,11 +261,7 @@ void PlayState::update(float deltaTime)
         auto* manager = getStateManager();
         if (manager)
         {
-            if (m_config.fromEditor)
-            {
-                manager->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager));
-                return;
-            }
+            if (handleLevelEndTransition(manager)) return;
 
             if (m_saveManager)
             {
@@ -233,11 +282,7 @@ void PlayState::update(float deltaTime)
         auto* manager = getStateManager();
         if (manager)
         {
-            if (m_config.fromEditor)
-            {
-                manager->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager));
-                return;
-            }
+            if (handleLevelEndTransition(manager)) return;
 
             int cur = m_gameWorld->getCurrentStageNumber();
             int next = m_gameWorld->getNextStageNumber();
@@ -263,6 +308,15 @@ void PlayState::update(float deltaTime)
                             GameMemento memento = captureLevelStartMemento();
                             m_saveManager->saveGame(memento);
                         }
+
+                        // Start music for the next stage
+                        if (m_soundManager)
+                        {
+                            if (m_gameWorld->getCurrentStageNumber() < 3)
+                                m_soundManager->playGroundTheme();
+                            else
+                                m_soundManager->playCastleTheme();
+                        }
                     }
                 }
             );
@@ -274,11 +328,7 @@ void PlayState::update(float deltaTime)
         auto* manager = getStateManager();
         if (manager)
         {
-            if (m_config.fromEditor)
-            {
-                manager->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager));
-                return;
-            }
+            if (handleLevelEndTransition(manager)) return;
 
             // Delete save file — the player lost, no game to continue
             m_gameWorld->deleteSaveData();
@@ -289,6 +339,18 @@ void PlayState::update(float deltaTime)
             manager->changeState(std::move(gameOverState));
         }
     }
+}
+
+bool PlayState::handleLevelEndTransition(StateManager* manager)
+{
+    if (m_soundManager) m_soundManager->stopPlayMusic();
+
+    if (m_config.fromEditor)
+    {
+        manager->changeState(std::make_unique<MapEditorState>(m_config, m_settings, m_saveManager, m_soundManager));
+        return true;
+    }
+    return false;
 }
 
 void PlayState::render(sf::RenderWindow& window) const

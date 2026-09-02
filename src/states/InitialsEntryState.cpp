@@ -127,6 +127,9 @@ void InitialsEntryState::handleInput(const sf::Event& event)
             m_slots[static_cast<std::size_t>(m_activeSlot)].text.setString(std::string(1, c));
             UIUtils::centerOrigin(m_slots[static_cast<std::size_t>(m_activeSlot)].text);
 
+            if (m_soundManager)
+                m_soundManager->playSelect();
+
             if (m_activeSlot < 4)
             {
                 ++m_activeSlot;
@@ -142,6 +145,9 @@ void InitialsEntryState::handleInput(const sf::Event& event)
         {
         case sf::Keyboard::Key::Backspace:
         {
+            if (m_soundManager)
+                m_soundManager->playSelect();
+
             if (m_letters[static_cast<std::size_t>(m_activeSlot)] != '_')
             {
                 m_letters[static_cast<std::size_t>(m_activeSlot)] = '_';
@@ -161,14 +167,18 @@ void InitialsEntryState::handleInput(const sf::Event& event)
             submitScore();
             break;
         case sf::Keyboard::Key::Left:
-            if (m_activeSlot > 0)
+            if (m_activeSlot > 0) {
                 --m_activeSlot;
+                if (m_soundManager) m_soundManager->playSelect();
+            }
             break;
         case sf::Keyboard::Key::Right:
         case sf::Keyboard::Key::Tab:
         case sf::Keyboard::Key::Space:
-            if (m_activeSlot < 4)
+            if (m_activeSlot < 4) {
                 ++m_activeSlot;
+                if (m_soundManager) m_soundManager->playSelect();
+            }
             break;
         default:
             break;
@@ -178,6 +188,9 @@ void InitialsEntryState::handleInput(const sf::Event& event)
 
 void InitialsEntryState::submitScore()
 {
+    if (m_soundManager)
+        m_soundManager->playStomp();
+
     std::string initials;
     for (int i = 0; i < 5; ++i)
     {

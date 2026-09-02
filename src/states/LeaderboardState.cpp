@@ -155,6 +155,9 @@ void LeaderboardState::handleInput(const sf::Event& event)
 
 void LeaderboardState::returnToMenu()
 {
+    if (m_soundManager)
+        m_soundManager->playSelect();
+
     if (auto* manager = getStateManager())
     {
         manager->changeState(std::make_unique<MenuState>(m_settings, m_saveManager, m_soundManager));

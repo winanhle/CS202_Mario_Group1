@@ -365,7 +365,9 @@ MigrationBackup/
 FodyWeavers.xsd
 # Runtime artifacts (created next to the executable)
 settings.ini
-mario_save.dat
 scores.dat
 progression.dat
+savegame.dat
+stats.dat
+achievements.dat
 

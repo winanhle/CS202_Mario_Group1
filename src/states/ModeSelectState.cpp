@@ -110,7 +110,10 @@ ModeSelectState::ModeSelectState(
     m_nav.setAxis(UINavigator::Axis::Horizontal);
     m_nav.getHitbox = [this](int i) { return m_card[i].getGlobalBounds(); };
     m_nav.onActivate = [this](int) { confirm(); };
-    m_nav.onSelectionChanged = [this](int, int) { refreshUI(); };
+    m_nav.onSelectionChanged = [this](int, int) {
+        if (m_soundManager) m_soundManager->playSelect();
+        refreshUI();
+    };
 
     refreshUI();
 }
@@ -136,8 +139,9 @@ void ModeSelectState::handleInput(const sf::Event& event)
     {
         if (key->code == sf::Keyboard::Key::Escape)
         {
+            if (m_soundManager) m_soundManager->playSelect();
             if (auto* mgr = getStateManager())
-                mgr->changeState(std::make_unique<CharacterSelectState>(m_settings, m_saveManager, m_loadSave, m_soundManager));
+                mgr->changeState(std::make_unique<CharacterSelectState>(m_settings, m_saveManager, m_soundManager, m_loadSave));
             return;
         }
     }
@@ -147,6 +151,8 @@ void ModeSelectState::handleInput(const sf::Event& event)
 
 void ModeSelectState::confirm()
 {
+    if (m_soundManager) m_soundManager->playStomp();
+
     m_config.mode = (m_nav.getSelectedIndex() == 0)
         ? GameMode::SinglePlayer
         : GameMode::TwoPlayer;

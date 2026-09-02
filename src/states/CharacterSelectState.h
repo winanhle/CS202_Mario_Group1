@@ -22,9 +22,9 @@ class CharacterSelectState : public GameState
 public:
     CharacterSelectState(
         std::shared_ptr<ISettingsManager> settings,
-        std::shared_ptr<ISaveManager> saveManager,
-        bool loadSave,
-        std::shared_ptr<ISoundManager> soundManager = nullptr
+        std::shared_ptr<ISaveManager> saveManager = nullptr,
+        std::shared_ptr<ISoundManager> soundManager = nullptr,
+        bool loadSave = false
     );
     ~CharacterSelectState() override = default;
 

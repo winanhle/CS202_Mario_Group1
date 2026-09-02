@@ -1134,7 +1134,8 @@ void MapManager::spawnBlockBump(int gx, int gy, TileType finalType) {
 // =============================================================================
 
 void MapManager::spawnBrickDebris(int gx, int gy) {
-    const sf::Color brickColor(205, 133, 63);
+    if (m_blockBreakCallback) m_blockBreakCallback();
+    constexpr sf::Color brickColor(205, 133, 63);
     float tileX = (float)gx * m_tileSize;
     float tileY = (float)gy * m_tileSize;
     float half  = (float)m_tileSize / 2.f;

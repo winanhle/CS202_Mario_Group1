@@ -50,6 +50,7 @@ public:
     void startTimerBonus(std::function<void(int bonus)> onScoreTick, std::function<void()> onComplete = nullptr, float worldX = 0.f, float worldY = 0.f) override;
     bool isTimerBonusActive() const override;
     float getTimeLeft() const override;
+    void showAchievementToast(const std::string& title) override;
 
 private:
     struct Toast
@@ -57,6 +58,14 @@ private:
         std::string message;
         float lifetime = 2.0f;
         float maxLifetime = 2.0f;
+    };
+
+    struct AchievementToast
+    {
+        std::string title;
+        float lifetime = 3.0f;
+        float maxLifetime = 3.0f;
+        float currentY = 0.0f;
     };
 
     struct ScorePopup
@@ -132,6 +141,11 @@ private:
 
     // Toasts
     std::vector<Toast> m_toasts;
+
+    // Achievement toasts (gold banner)
+    std::vector<AchievementToast> m_achieveToasts;
+    void updateAchievementToasts(float deltaTime);
+    void renderAchievementToasts(sf::RenderWindow& window) const;
 
     // Floating score popups
     std::vector<ScorePopup> m_popups;

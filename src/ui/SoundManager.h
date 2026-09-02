@@ -4,6 +4,7 @@
 
 #include <SFML/Audio/Sound.hpp>
 #include <SFML/Audio/SoundBuffer.hpp>
+#include <SFML/Audio/Music.hpp>
 
 #include <memory>
 
@@ -21,6 +22,7 @@ private:
     sf::SoundBuffer m_jumpSmallBuffer;
     sf::SoundBuffer m_powerupBuffer;
     sf::SoundBuffer m_stompBuffer;
+    sf::SoundBuffer m_oneUpBuffer;
 
     sf::SoundBuffer m_uiBumpBuffer;
     sf::SoundBuffer m_pauseBuffer;
@@ -40,6 +42,7 @@ private:
     std::unique_ptr<sf::Sound> m_jumpSmallSound;
     std::unique_ptr<sf::Sound> m_powerupSound;
     std::unique_ptr<sf::Sound> m_stompSound;
+    std::unique_ptr<sf::Sound> m_oneUpSound;
 
     // UI
     std::unique_ptr<sf::Sound> m_uiBumpSound;
@@ -66,6 +69,7 @@ public:
     void playJumpSmall() override;
     void playPowerUp() override;
     void playStomp() override;
+    void playOneUp() override;
 
     void playUIBump() override;
     void playPause() override;
@@ -79,4 +83,15 @@ public:
     float getVolume() const override;
 
     void stopAll() override;
+
+    void playMenuMusic() override;
+    void stopMenuMusic() override;
+    void playGroundTheme() override;
+    void playCastleTheme() override;
+    void stopPlayMusic() override;
+
+private:
+    sf::Music m_menuMusic;
+    sf::Music m_groundTheme;
+    sf::Music m_castleTheme;
 };
