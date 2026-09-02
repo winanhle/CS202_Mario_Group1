@@ -888,7 +888,7 @@
  </tile>
  <tile id="2120">
   <properties>
-   <property name="type" value="FLAGPOLE"/>
+   <property name="type" value="SOLID_BRICK"/>
   </properties>
  </tile>
  <tile id="2123">

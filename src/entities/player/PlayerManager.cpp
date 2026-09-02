@@ -217,17 +217,27 @@ void PlayerManager::update(float deltaTime)
         return;
     }
 
+    if (m_isInsideCastle) {
+        m_velocityX = 0.f;
+        m_velocityY = 0.f;
+        return;
+    }
+
     if (m_isFlagpoleSliding) {
         if (!m_isGrounded) {
             m_velocityY = 60.f; // Smooth, slow downward glide from contact height
-            m_positionY += m_velocityY * deltaTime;
             tileCollisionY(deltaTime);
         } else {
             m_velocityY = 0.f;
             m_flagpoleFinishTimer += deltaTime;
-            if (m_flagpoleFinishTimer >= 0.8f) {
+            if (m_flagpoleFinishTimer >= 0.5f) {
                 m_isFlagpoleSliding = false;
-                m_hasFinishedFlagpole = true;
+                m_isWalkingToCastle = true;
+                m_hasFinishedFlagpole = false;
+                m_positionX += 16.f; // Step off to right side of flagpole
+                m_facingDirection = 1;
+                m_inputDirection = 1;
+                m_castleWalkTargetX = m_positionX + 88.f; // Walk into castle door
             }
         }
         updateAnimation(deltaTime);
@@ -235,6 +245,31 @@ void PlayerManager::update(float deltaTime)
             m_positionX + m_playerSize.x / 2.f,
             m_positionY + m_playerSize.y / 2.f
         });
+        return;
+    }
+
+    if (m_isWalkingToCastle) {
+        constexpr float CASTLE_WALK_SPEED = 28.f; // Slow, deliberate walk into castle
+        m_velocityX = CASTLE_WALK_SPEED;
+        m_inputDirection = 1;
+        m_facingDirection = 1;
+        m_velocityY += m_gravity * deltaTime;
+        tileCollisionX(deltaTime);
+        tileCollisionY(deltaTime);
+        updateAnimation(deltaTime);
+        m_playerSprite.setPosition({
+            m_positionX + m_playerSize.x / 2.f,
+            m_positionY + m_playerSize.y / 2.f
+        });
+
+        if (m_positionX >= m_castleWalkTargetX) {
+            m_positionX = m_castleWalkTargetX;
+            m_velocityX = 0.f;
+            m_isWalkingToCastle = false;
+            m_isInsideCastle = m_disappearAtCastleEnd;
+            m_inputDirection = 0;
+            m_hasFinishedFlagpole = true; // Signal GameWorld to start timer score tally
+        }
         return;
     }
 
@@ -254,7 +289,7 @@ void PlayerManager::update(float deltaTime)
             m_starState.reset();
     }
 
-    if (m_inputHandler) {
+    if (m_inputHandler && !m_isFlagpoleSliding && !m_isWalkingToCastle && !m_isInsideCastle && !m_hasFinishedFlagpole) {
         Command* moveCommand = m_inputHandler->handleRealtimeInput();
         if (moveCommand) moveCommand->execute(*this);
     }
@@ -299,7 +334,7 @@ void PlayerManager::update(float deltaTime)
 }
 
 void PlayerManager::handleInput(const sf::Event& event) {
-    if (!m_isAlive || !m_inputHandler || m_isFlagpoleSliding || m_isPipeTraveling) return;
+    if (!m_isAlive || !m_inputHandler || m_isFlagpoleSliding || m_isWalkingToCastle || m_isInsideCastle || m_hasFinishedFlagpole || m_isPipeTraveling) return;
 
     Command* command = m_inputHandler->handleEvent(event);
     if (command) {
@@ -309,7 +344,7 @@ void PlayerManager::handleInput(const sf::Event& event) {
 
 void PlayerManager::render(sf::RenderWindow& window) const
 {
-    if (!m_isAlive) return;
+    if (!m_isAlive || m_isInsideCastle) return;
     window.draw(m_playerSprite);
     if (m_fireballManager)
         m_fireballManager->render(window);
@@ -702,8 +737,12 @@ void PlayerManager::resetToStart()
     m_pipeTargetX = m_positionX;
     m_pipeTargetY = m_positionY;
     m_isFlagpoleSliding = false;
+    m_isWalkingToCastle = false;
+    m_isInsideCastle = false;
     m_hasFinishedFlagpole = false;
+    m_disappearAtCastleEnd = true;
     m_flagpoleFinishTimer = 0.f;
+    m_castleWalkTargetX = 0.f;
 }
 
 void PlayerManager::startPipeTravel(float alignX, float alignY, float targetX, float targetY)
@@ -726,11 +765,14 @@ void PlayerManager::startPipeTravel(float alignX, float alignY, float targetX, f
 
 void PlayerManager::startFlagpoleSlide(float poleX)
 {
-    if (m_isFlagpoleSliding || m_hasFinishedFlagpole)
+    if (m_isFlagpoleSliding || m_isWalkingToCastle || m_isInsideCastle || m_hasFinishedFlagpole)
         return;
 
     m_isFlagpoleSliding = true;
+    m_isWalkingToCastle = false;
+    m_isInsideCastle = false;
     m_hasFinishedFlagpole = false;
+    m_disappearAtCastleEnd = true;
 
     if (m_soundManager)
         m_soundManager->playFlagpole();
@@ -742,6 +784,22 @@ void PlayerManager::startFlagpoleSlide(float poleX)
     m_velocityY = 60.f; // Slow, smooth drop
     m_facingDirection = 1;
     m_inputDirection = 0;
+}
+
+void PlayerManager::startWalkToTarget(float targetX, bool disappearAtEnd)
+{
+    if (m_isWalkingToCastle || m_isInsideCastle || m_hasFinishedFlagpole)
+        return;
+
+    m_isFlagpoleSliding = false;
+    m_isWalkingToCastle = true;
+    m_isInsideCastle = false;
+    m_hasFinishedFlagpole = false;
+    m_disappearAtCastleEnd = disappearAtEnd;
+    m_castleWalkTargetX = targetX;
+    m_facingDirection = 1;
+    m_inputDirection = 1;
+    m_velocityX = 28.f;
 }
 
 void PlayerManager::respawn()

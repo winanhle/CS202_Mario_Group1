@@ -158,6 +158,22 @@ void GameWorld::loadCurrentLevel()
         m_hudManager->resetTimer();
         m_hudManager->showToast("WORLD 1-" + std::to_string(getCurrentStageNumber()), 2.5f);
     }
+
+    if (m_levelManager.isLastLevel())
+    {
+        if (!m_peachLoaded)
+        {
+            if (m_peachTexture.loadFromFile("assets/texture/hero/peach.png"))
+            {
+                m_peachLoaded = true;
+                m_peachSprite.emplace(m_peachTexture);
+                m_peachSprite->setTextureRect(sf::IntRect({1, 1}, {16, 24}));
+                m_peachSprite->setOrigin({ 8.f, 24.f });
+                m_peachSprite->setScale({ -1.f, 1.f }); // Face left towards Mario
+                m_peachSprite->setPosition({ m_peachX, m_peachY });
+            }
+        }
+    }
 }
 
 void GameWorld::snapshotStageStartStats()
@@ -274,6 +290,14 @@ void GameWorld::checkFlagpoleCollision()
         {
             m_isTimerTallyActive = true;
 
+            if (m_soundManager)
+            {
+                if (m_levelManager.isLastLevel())
+                    m_soundManager->playWorldClear();
+                else
+                    m_soundManager->playStageClear();
+            }
+
             auto onDone = [this]() {
                 m_isFlagpoleSequenceActive = false;
                 m_isTimerTallyActive = false;
@@ -350,53 +374,94 @@ void GameWorld::checkFlagpoleCollision()
     m_isFlagpoleSequenceActive = true;
     m_timeLeftOnFlagpole = m_hudManager ? m_hudManager->getTimeLeft() : 0.f;
 
-    if (m_mapManager)
+    if (m_soundManager)
     {
-        const int tileSize = m_mapManager->getTileSize();
-        m_mapManager->triggerFlagSlide(static_cast<int>(poleX) / (tileSize > 0 ? tileSize : 16));
+        m_soundManager->stopPlayMusic();
     }
 
-    auto calculateFlagPoints = [this](float pX, const sf::FloatRect& hb) -> int {
-        // Standard flagpole dimensions in our map
-        const float POLE_BOTTOM = 208.f;
-        const float POLE_HEIGHT = 144.f;
-
-        // Use Mario's center Y instead of feet, so Big Mario doesn't get penalized
-        float playerCenterY = hb.position.y + (hb.size.y / 2.f);
-        float actualPixelsHigh = POLE_BOTTOM - playerCenterY;
-        
-        float ratio = actualPixelsHigh / POLE_HEIGHT;
-
-        // Classic SMB thresholds mapped as ratios of 153
-        if (ratio >= 152.f / 153.f) return 5000;
-        if (ratio >= 128.f / 153.f) return 4000;
-        if (ratio >= 82.f / 153.f)  return 2000;
-        if (ratio >= 58.f / 153.f)  return 800;
-        if (ratio >= 18.f / 153.f)  return 400;
-        return 100;
-    };
-
-    if (touchedP1 && m_playerManager && m_playerManager->isAlive())
+    if (m_levelManager.isLastLevel())
     {
-        m_playerManager->startFlagpoleSlide(poleX);
-        auto hb = m_playerManager->getHitbox();
-        const int flagPoints = calculateFlagPoints(poleX, hb);
-        m_playerManager->addScore(flagPoints);
-        if (m_hudManager)
+        // Hide the axe tile at column 141, row 9 so it looks collected
+        if (m_mapManager)
         {
-            m_hudManager->spawnScorePopup(flagPoints, hb.position.x + hb.size.x / 2.f, hb.position.y - 6.f);
+            m_mapManager->editTile(141, 9, TileType::EMPTY);
+        }
+
+        // Mario walks over to Princess Peach without flagpole slide or disappearing
+        float targetX1 = m_peachX - 24.f;
+        float targetX2 = m_peachX - 44.f;
+
+        if (touchedP1 && m_playerManager && m_playerManager->isAlive())
+        {
+            m_playerManager->startWalkToTarget(targetX1, /*disappearAtEnd=*/false);
+            m_playerManager->addScore(5000);
+            if (m_hudManager)
+            {
+                auto hb = m_playerManager->getHitbox();
+                m_hudManager->spawnScorePopup(5000, hb.position.x + hb.size.x / 2.f, hb.position.y - 6.f);
+            }
+        }
+        if (touchedP2 && m_playerManager2 && m_playerManager2->isAlive())
+        {
+            m_playerManager2->startWalkToTarget(targetX2, /*disappearAtEnd=*/false);
+            m_playerManager2->addScore(5000);
+            if (m_hudManager)
+            {
+                auto hb = m_playerManager2->getHitbox();
+                m_hudManager->spawnScorePopup(5000, hb.position.x + hb.size.x / 2.f, hb.position.y - 6.f);
+            }
         }
     }
-
-    if (touchedP2 && m_playerManager2 && m_playerManager2->isAlive())
+    else
     {
-        m_playerManager2->startFlagpoleSlide(poleX);
-        auto hb = m_playerManager2->getHitbox();
-        const int flagPoints = calculateFlagPoints(poleX, hb);
-        m_playerManager2->addScore(flagPoints);
-        if (m_hudManager)
+        if (m_mapManager)
         {
-            m_hudManager->spawnScorePopup(flagPoints, hb.position.x + hb.size.x / 2.f, hb.position.y - 6.f);
+            const int tileSize = m_mapManager->getTileSize();
+            m_mapManager->triggerFlagSlide(static_cast<int>(poleX) / (tileSize > 0 ? tileSize : 16));
+        }
+
+        auto calculateFlagPoints = [this](float pX, const sf::FloatRect& hb) -> int {
+            // Standard flagpole dimensions in our map
+            const float POLE_BOTTOM = 208.f;
+            const float POLE_HEIGHT = 144.f;
+
+            // Use Mario's center Y instead of feet, so Big Mario doesn't get penalized
+            float playerCenterY = hb.position.y + (hb.size.y / 2.f);
+            float actualPixelsHigh = POLE_BOTTOM - playerCenterY;
+            
+            float ratio = actualPixelsHigh / POLE_HEIGHT;
+
+            // Classic SMB thresholds mapped as ratios of 153
+            if (ratio >= 152.f / 153.f) return 5000;
+            if (ratio >= 128.f / 153.f) return 4000;
+            if (ratio >= 82.f / 153.f)  return 2000;
+            if (ratio >= 58.f / 153.f)  return 800;
+            if (ratio >= 18.f / 153.f)  return 400;
+            return 100;
+        };
+
+        if (touchedP1 && m_playerManager && m_playerManager->isAlive())
+        {
+            m_playerManager->startFlagpoleSlide(poleX);
+            auto hb = m_playerManager->getHitbox();
+            const int flagPoints = calculateFlagPoints(poleX, hb);
+            m_playerManager->addScore(flagPoints);
+            if (m_hudManager)
+            {
+                m_hudManager->spawnScorePopup(flagPoints, hb.position.x + hb.size.x / 2.f, hb.position.y - 6.f);
+            }
+        }
+
+        if (touchedP2 && m_playerManager2 && m_playerManager2->isAlive())
+        {
+            m_playerManager2->startFlagpoleSlide(poleX);
+            auto hb = m_playerManager2->getHitbox();
+            const int flagPoints = calculateFlagPoints(poleX, hb);
+            m_playerManager2->addScore(flagPoints);
+            if (m_hudManager)
+            {
+                m_hudManager->spawnScorePopup(flagPoints, hb.position.x + hb.size.x / 2.f, hb.position.y - 6.f);
+            }
         }
     }
 }
@@ -817,6 +882,9 @@ void GameWorld::render(sf::RenderWindow& window) const
         m_itemManager->render(window);
 
 
+    if (m_levelManager.isLastLevel() && m_peachLoaded && m_peachSprite)
+        window.draw(*m_peachSprite);
+
     if (m_playerManager)
         m_playerManager->render(window);
 
@@ -912,7 +980,7 @@ void GameWorld::renderScenery(sf::RenderWindow& window) const
 
 void GameWorld::handleInput(const sf::Event& event)
 {
-    if (!m_isInitialized || m_pipeTransitionPhase != PipeTransitionPhase::None) return;
+    if (!m_isInitialized || m_pipeTransitionPhase != PipeTransitionPhase::None || m_isFlagpoleSequenceActive) return;
 
     if (m_playerManager)
         m_playerManager->handleInput(event);

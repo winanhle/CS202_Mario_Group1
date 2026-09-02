@@ -109,7 +109,7 @@ private:
     sf::Sprite m_coinSprite{m_coinTextures[0]};
     int m_coinFrame = 0;
     float m_coinFrameTimer = 0.0f;
-    static constexpr float COIN_FRAME_DUR = 0.25f; // 4 frames * 0.25s = 1.0s full rotation
+    static constexpr float COIN_FRAME_DUR = 0.3f;
     bool m_coinsLoaded = false;
 
     // Character life icon

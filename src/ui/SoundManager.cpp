@@ -41,6 +41,7 @@ SoundManager::SoundManager()
     loadBuffer(m_selectBuffer, "assets/sound/ui/select.wav");
     loadBuffer(m_stageClearBuffer, "assets/sound/ui/stage_clear.wav");
     loadBuffer(m_worldClearBuffer, "assets/sound/ui/world_clear.wav");
+    loadBuffer(m_gameOverBuffer, "assets/sound/game_over.wav");
 
 
     // =========================
@@ -66,6 +67,7 @@ SoundManager::SoundManager()
     m_selectSound = std::make_unique<sf::Sound>(m_selectBuffer);
     m_stageClearSound = std::make_unique<sf::Sound>(m_stageClearBuffer);
     m_worldClearSound = std::make_unique<sf::Sound>(m_worldClearBuffer);
+    m_gameOverSound = std::make_unique<sf::Sound>(m_gameOverBuffer);
 
     // Apply initial volume
     setVolume(m_volume);
@@ -168,7 +170,16 @@ void SoundManager::playStageClear()
 
 void SoundManager::playWorldClear()
 {
-    m_worldClearSound->play();
+    if (m_worldClearSound->getStatus() != sf::Sound::Status::Playing)
+    {
+        m_worldClearSound->play();
+    }
+}
+
+void SoundManager::playGameOver()
+{
+    stopPlayMusic();
+    m_gameOverSound->play();
 }
 
 
@@ -207,6 +218,7 @@ void SoundManager::setVolume(float volume)
     m_selectSound->setVolume(m_volume);
     m_stageClearSound->setVolume(m_volume);
     m_worldClearSound->setVolume(m_volume);
+    m_gameOverSound->setVolume(m_volume);
 }
 
 float SoundManager::getVolume() const
@@ -239,6 +251,7 @@ void SoundManager::stopAll()
     m_selectSound->stop();
     m_stageClearSound->stop();
     m_worldClearSound->stop();
+    m_gameOverSound->stop();
 
     stopMenuMusic();
     stopPlayMusic();

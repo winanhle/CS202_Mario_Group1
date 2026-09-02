@@ -143,7 +143,7 @@ WinState::WinState(
         m_titleText.setOutlineColor(sf::Color::Black);
         m_titleText.setOutlineThickness(3.0f);
         UIUtils::centerOrigin(m_titleText);
-        m_titleText.setPosition({ WIN_W / 2.0f, 60.0f });
+        m_titleText.setPosition({ WIN_W / 2.0f, 52.0f });
 
         std::string subtitle;
         if (m_config.mode == GameMode::TwoPlayer)
@@ -164,7 +164,7 @@ WinState::WinState(
         m_subtitleText.setCharacterSize(16);
         m_subtitleText.setFillColor(sf::Color(255, 210, 230));
         UIUtils::centerOrigin(m_subtitleText);
-        m_subtitleText.setPosition({ WIN_W / 2.0f, 105.0f });
+        m_subtitleText.setPosition({ WIN_W / 2.0f, 92.0f });
 
         // Base score
         m_scoreLabelText.setFont(m_font);
@@ -175,7 +175,7 @@ WinState::WinState(
         m_scoreLabelText.setCharacterSize(15);
         m_scoreLabelText.setFillColor(sf::Color(200, 220, 255));
         UIUtils::centerOrigin(m_scoreLabelText);
-        m_scoreLabelText.setPosition({ WIN_W / 2.0f, 240.0f });
+        m_scoreLabelText.setPosition({ WIN_W / 2.0f, 245.0f });
 
         int livesBonus = std::max(0, m_livesRemaining) * LIVES_BONUS_MULTIPLIER;
         m_livesBonusText.setFont(m_font);
@@ -190,7 +190,7 @@ WinState::WinState(
         m_livesBonusText.setCharacterSize(15);
         m_livesBonusText.setFillColor(sf::Color(180, 240, 180));
         UIUtils::centerOrigin(m_livesBonusText);
-        m_livesBonusText.setPosition({ WIN_W / 2.0f, 268.0f });
+        m_livesBonusText.setPosition({ WIN_W / 2.0f, 273.0f });
 
         // Final score
         m_totalScoreText.setFont(m_font);
@@ -203,7 +203,7 @@ WinState::WinState(
         m_totalScoreText.setOutlineColor(sf::Color::Black);
         m_totalScoreText.setOutlineThickness(2.0f);
         UIUtils::centerOrigin(m_totalScoreText);
-        m_totalScoreText.setPosition({ WIN_W / 2.0f, 305.0f });
+        m_totalScoreText.setPosition({ WIN_W / 2.0f, 310.0f });
 
         // Hint
         m_hintText.setFont(m_font);
@@ -215,7 +215,29 @@ WinState::WinState(
         m_hintText.setFillColor(sf::Color(160, 170, 200));
         UIUtils::centerOrigin(m_hintText);
         m_hintText.setPosition({ WIN_W / 2.0f, 540.0f });
+
+        // Speech bubble for Princess Peach
+        m_bubbleText.setFont(m_font);
+        m_bubbleText.setString("Why'd you take so long!!!");
+        m_bubbleText.setCharacterSize(12);
+        m_bubbleText.setFillColor(sf::Color(200, 20, 50));
+        UIUtils::centerOrigin(m_bubbleText);
     }
+
+    // ==================== SPEECH BUBBLE SHAPES ====================
+    m_bubbleBox.setSize({ 210.f, 32.f });
+    m_bubbleBox.setFillColor(sf::Color(255, 255, 255));
+    m_bubbleBox.setOutlineColor(sf::Color(20, 25, 45));
+    m_bubbleBox.setOutlineThickness(2.5f);
+    m_bubbleBox.setOrigin({ 105.f, 16.f });
+
+    m_bubbleTail.setPointCount(3);
+    m_bubbleTail.setPoint(0, { -105.f, -6.f });
+    m_bubbleTail.setPoint(1, { -105.f, 6.f });
+    m_bubbleTail.setPoint(2, { -128.f, 0.f }); // Pointer directed to Peach's face
+    m_bubbleTail.setFillColor(sf::Color(255, 255, 255));
+    m_bubbleTail.setOutlineColor(sf::Color(20, 25, 45));
+    m_bubbleTail.setOutlineThickness(2.5f);
 
     // ==================== OPTION CARDS ====================
     const float CARD_W = 280.f;
@@ -382,21 +404,29 @@ void WinState::update(float deltaTime)
 
     // Gentle bounce animation for character sprites
     float bounce    = std::sin(m_animTimer * 4.0f) * 6.0f;
-    float baselineY = 210.0f;
+    float baselineY = 205.0f;
     float peachY    = baselineY + bounce;
     float heroY     = baselineY - bounce; // Counter-bounce for playful interaction
 
     if (m_config.mode == GameMode::TwoPlayer)
     {
-        if (m_heroLoaded)   m_heroSprite.setPosition({ WIN_W / 2.0f - 85.0f, heroY });
-        if (m_peachLoaded)  m_peachSprite.setPosition({ WIN_W / 2.0f, peachY });
-        if (m_hero2Loaded)  m_hero2Sprite.setPosition({ WIN_W / 2.0f + 85.0f, heroY });
+        if (m_heroLoaded)   m_heroSprite.setPosition({ WIN_W / 2.0f - 100.0f, heroY });
+        if (m_peachLoaded)  m_peachSprite.setPosition({ WIN_W / 2.0f - 15.0f, peachY });
+        if (m_hero2Loaded)  m_hero2Sprite.setPosition({ WIN_W / 2.0f + 70.0f, heroY });
     }
     else
     {
-        if (m_heroLoaded)   m_heroSprite.setPosition({ WIN_W / 2.0f - 45.0f, heroY });
-        if (m_peachLoaded)  m_peachSprite.setPosition({ WIN_W / 2.0f + 45.0f, peachY });
+        if (m_heroLoaded)   m_heroSprite.setPosition({ WIN_W / 2.0f - 55.0f, heroY });
+        if (m_peachLoaded)  m_peachSprite.setPosition({ WIN_W / 2.0f + 25.0f, peachY });
     }
+
+    // Static speech bubble position (does not bob up/down with Peach)
+    float bubbleX = (m_config.mode == GameMode::TwoPlayer) ? (WIN_W / 2.0f + 160.0f) : (WIN_W / 2.0f + 180.0f);
+    float bubbleY = 160.0f;
+
+    m_bubbleBox.setPosition({ bubbleX, bubbleY });
+    m_bubbleTail.setPosition({ bubbleX, bubbleY });
+    m_bubbleText.setPosition({ bubbleX, bubbleY });
 
     // Scale pulse on selected card
     if (m_fontLoaded)
@@ -437,6 +467,14 @@ void WinState::render(sf::RenderWindow& window) const
     if (m_peachLoaded) window.draw(m_peachSprite);
     if (m_config.mode == GameMode::TwoPlayer && m_hero2Loaded)
         window.draw(m_hero2Sprite);
+
+    // Peach speech bubble
+    if (m_peachLoaded && m_fontLoaded)
+    {
+        window.draw(m_bubbleTail);
+        window.draw(m_bubbleBox);
+        window.draw(m_bubbleText);
+    }
 
     window.draw(m_scoreLabelText);
     window.draw(m_livesBonusText);

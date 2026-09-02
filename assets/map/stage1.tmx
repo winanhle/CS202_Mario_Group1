@@ -362,6 +362,11 @@
     <property name="type" value="FLAGPOLE"/>
    </properties>
   </tile>
+  <tile id="2730">
+   <properties>
+    <property name="type" value="SOLID_BRICK"/>
+   </properties>
+  </tile>
   <tile id="2523">
    <properties>
     <property name="type" value="BACK_GROUND"/>

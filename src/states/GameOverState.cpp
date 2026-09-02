@@ -34,6 +34,11 @@ GameOverState::GameOverState(
 {
     m_fontLoaded = m_font.openFromFile("assets/fonts/SuperMario256.ttf");
 
+    if (m_soundManager)
+    {
+        m_soundManager->playGameOver();
+    }
+
     if (m_fontLoaded)
     {
         // 1. Title

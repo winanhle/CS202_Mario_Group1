@@ -218,7 +218,10 @@ public:
      * @brief Bắt đầu animation trượt cột cờ (Flagpole slide).
      */
     virtual void startFlagpoleSlide(float poleX) = 0;
+    virtual void startWalkToTarget(float targetX, bool disappearAtEnd = true) { (void)targetX; (void)disappearAtEnd; }
     virtual bool isFlagpoleSliding() const = 0;
+    virtual bool isWalkingToCastle() const { return false; }
+    virtual bool isInsideCastle() const { return false; }
     virtual bool hasFinishedFlagpole() const = 0;
 
     /**

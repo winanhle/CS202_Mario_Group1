@@ -26,6 +26,7 @@ public:
     virtual void playSelect() = 0;
     virtual void playStageClear() = 0;
     virtual void playWorldClear() = 0;
+    virtual void playGameOver() = 0;
 
     // Global controls
     virtual void setVolume(float volume) = 0;

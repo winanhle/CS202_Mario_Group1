@@ -202,7 +202,10 @@ public:
     bool isStarActive() const override;
 
     void startFlagpoleSlide(float poleX) override;
+    void startWalkToTarget(float targetX, bool disappearAtEnd = true) override;
     bool isFlagpoleSliding() const override { return m_isFlagpoleSliding; }
+    bool isWalkingToCastle() const override { return m_isWalkingToCastle; }
+    bool isInsideCastle() const override { return m_isInsideCastle; }
     bool hasFinishedFlagpole() const override { return m_hasFinishedFlagpole; }
 
     /**
@@ -227,6 +230,10 @@ private:
     static constexpr float PIPE_TRAVEL_SPEED = 36.f;
 
     bool  m_isFlagpoleSliding = false;
+    bool  m_isWalkingToCastle = false;
+    bool  m_isInsideCastle = false;
     bool  m_hasFinishedFlagpole = false;
+    bool  m_disappearAtCastleEnd = true;
     float m_flagpoleFinishTimer = 0.f;
+    float m_castleWalkTargetX = 0.f;
 };

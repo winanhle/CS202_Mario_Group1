@@ -5,6 +5,7 @@
 #include <optional>
 #include <SFML/Graphics/Rect.hpp>
 #include <SFML/Graphics/Texture.hpp>
+#include <SFML/Graphics/Sprite.hpp>
 #include "../core/LevelManager.h"
 #include "../core/GameMemento.h"
 #include "../interfaces/IPlayerManager.h"
@@ -282,4 +283,11 @@ private:
      * @brief Tìm tọa độ X của cột cờ mà hitbox đang chạm.
      */
     float getFlagpoleTileX(const sf::FloatRect& box) const;
+
+    // ─── Peach NPC (World 1-3 Final Stage) ──────────────────────────────────
+    sf::Texture                m_peachTexture;
+    std::optional<sf::Sprite>  m_peachSprite;
+    bool                       m_peachLoaded = false;
+    float                      m_peachX = 2390.f;
+    float                      m_peachY = 224.f;
 };

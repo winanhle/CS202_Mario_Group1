@@ -31,6 +31,7 @@ private:
     sf::SoundBuffer m_selectBuffer;
     sf::SoundBuffer m_stageClearBuffer;
     sf::SoundBuffer m_worldClearBuffer;
+    sf::SoundBuffer m_gameOverBuffer;
 
     std::unique_ptr<sf::Sound> m_bumpSound;
     std::unique_ptr<sf::Sound> m_brickSound;
@@ -52,6 +53,7 @@ private:
     std::unique_ptr<sf::Sound> m_selectSound;
     std::unique_ptr<sf::Sound> m_stageClearSound;
     std::unique_ptr<sf::Sound> m_worldClearSound;
+    std::unique_ptr<sf::Sound> m_gameOverSound;
 
     float m_volume = 100.f;
 
@@ -78,6 +80,7 @@ public:
     void playSelect() override;
     void playStageClear() override;
     void playWorldClear() override;
+    void playGameOver() override;
 
     void setVolume(float volume) override;
     float getVolume() const override;

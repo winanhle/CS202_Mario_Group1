@@ -71,6 +71,11 @@ private:
     sf::Sprite  m_peachSprite{m_peachTexture};
     bool        m_peachLoaded = false;
 
+    // Peach speech bubble
+    sf::RectangleShape m_bubbleBox{{224.f, 32.f}};
+    sf::ConvexShape    m_bubbleTail;
+    sf::Text           m_bubbleText{m_font};
+
     sf::Texture m_heroTexture;
     sf::Sprite  m_heroSprite{m_heroTexture};
     bool        m_heroLoaded = false;
