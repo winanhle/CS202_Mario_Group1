@@ -715,11 +715,11 @@ void GameWorld::renderScenery(sf::RenderWindow& window) const
         }
     };
 
-    // Crop authentic sprites from assets/tileset/world1_1.png. Only clouds
-    // drift; bushes remain fixed to the level geometry.
+    // Crop cloud sprites from assets/tileset/world1_1.png. Bushes stay in the
+    // map tile layer: their source pixels share a row with ground tiles, so
+    // duplicating that crop would occasionally paint over the terrain.
     drawRepeated(sf::IntRect({134, 43}, {38, 29}), 90.f, 460.f, 42.f, m_cloudScroll);
     drawRepeated(sf::IntRect({438, 43}, {68, 29}), 285.f, 620.f, 66.f, m_cloudScroll * 0.65f);
-    drawRepeated(sf::IntRect({186, 186}, {64, 22}), 125.f, 390.f, 186.f, 0.f);
 }
 
 // ==================== HANDLE INPUT ====================
