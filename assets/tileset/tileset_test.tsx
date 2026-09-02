@@ -124,6 +124,11 @@
    <property name="type" value="FLAGPOLE"/>
   </properties>
  </tile>
+ <tile id="1752">
+  <properties>
+   <property name="type" value="HIDDEN_BLOCK"/>
+  </properties>
+ </tile>
  <tile id="1886">
   <properties>
    <property name="type" value="FLAGPOLE"/>
