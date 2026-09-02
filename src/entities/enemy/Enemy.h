@@ -70,6 +70,11 @@ public:
         m_moveSpeed = speed;
     }
 
+    float getMoveSpeed() const
+    {
+        return m_moveSpeed;
+    }
+
     int getDirection() const
     {
         return m_direction;

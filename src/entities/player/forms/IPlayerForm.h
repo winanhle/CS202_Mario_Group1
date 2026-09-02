@@ -18,6 +18,7 @@ public:
     virtual sf::IntRect  getWalkFrame1()  const = 0;
     virtual sf::IntRect  getWalkFrame2()  const = 0;
     virtual sf::IntRect  getJumpFrame()   const = 0;
+    virtual sf::IntRect  getDeathFrame()  const = 0;
     virtual sf::Vector2f getHitboxSize()  const = 0;
     virtual std::unique_ptr<IPlayerForm> takeDamage() const = 0;
     virtual std::unique_ptr<IPlayerForm> evolve(PowerUpType type) const = 0;

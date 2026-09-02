@@ -169,6 +169,25 @@ public:
     virtual void die() = 0;
 
     /**
+     * @brief Returns true while the death arc animation is playing.
+     *        GameWorld freezes world simulation until this returns false.
+     */
+    virtual bool isDeathAnimating() const { return false; }
+
+    /**
+     * @brief Returns true once the death animation has fully completed.
+     *        GameWorld uses this to trigger respawn or game over.
+     */
+    virtual bool isDeathDone() const { return false; }
+
+    /**
+     * @brief Starts the death arc animation and plays the appropriate sound.
+     * @param isLastLife true → play gameover.wav; false → play death.wav.
+     *        Called by GameWorld after die() is detected, before deducting a life.
+     */
+    virtual void startDeathAnimation(bool isLastLife) { (void)isLastLife; }
+
+    /**
      * @brief Returns the player's current power-up form.
      *        Used by MapManager to decide Mushroom vs FireFlower spawn.
      */

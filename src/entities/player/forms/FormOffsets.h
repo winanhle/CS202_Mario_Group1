@@ -13,6 +13,7 @@ struct FormFrames {
     sf::IntRect  walkFrame1;
     sf::IntRect  walkFrame2;
     sf::IntRect  jumpFrame;
+    sf::IntRect  deathFrame; // death-pose sprite (used by all forms of a character)
     sf::Vector2f hitboxSize;
 };
 

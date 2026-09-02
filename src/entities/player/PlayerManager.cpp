@@ -185,6 +185,42 @@ void PlayerManager::updateAnimation(float deltaTime)
 
 void PlayerManager::update(float deltaTime)
 {
+    // ── Death animation arc (runs even while !m_isAlive) ─────────────────────
+    if (m_deathState == DeathState::Animating) {
+        m_deathTimer += deltaTime;
+
+        // Brief freeze in death pose before bouncing up and falling straight underground
+        if (m_deathTimer >= DEATH_FREEZE_TIME) {
+            float moveDt = (m_deathTimer - deltaTime < DEATH_FREEZE_TIME)
+                           ? (m_deathTimer - DEATH_FREEZE_TIME)
+                           : deltaTime;
+            m_deathVelY += DEATH_GRAVITY * moveDt;
+            m_positionY += m_deathVelY   * moveDt;
+        }
+
+        // Keep the death sprite locked and centred on the character position
+        sf::IntRect deathRect = m_currentForm->getDeathFrame();
+        m_playerSprite.setTextureRect(deathRect);
+        m_playerSprite.setOrigin({ deathRect.size.x / 2.f, deathRect.size.y / 2.f });
+        m_playerSprite.setScale({ 1.f, 1.f });
+        m_playerSprite.setPosition({
+            m_positionX + m_playerSize.x / 2.f,
+            m_positionY + m_playerSize.y / 2.f
+        });
+
+        // Done when falling down AND has fallen at least 450px below death start Y,
+        // OR safety timeout exceeded.
+        bool fallenOffScreen = (m_deathTimer > DEATH_FREEZE_TIME) &&
+                               (m_deathVelY > 0.f) &&
+                               (m_positionY > m_deathStartY + 450.f);
+        bool timedOut = (m_deathTimer >= DEATH_ANIM_LIMIT);
+
+        if (fallenOffScreen || timedOut)
+            m_deathState = DeathState::Done;
+
+        return; // skip all normal input / physics while animating
+    }
+
     if (!m_isAlive) return;
 
     if (m_isFlagpoleSliding) {
@@ -279,7 +315,14 @@ void PlayerManager::handleInput(const sf::Event& event) {
 
 void PlayerManager::render(sf::RenderWindow& window) const
 {
+    // Draw during death animation even though m_isAlive is false
+    if (m_deathState == DeathState::Animating) {
+        window.draw(m_playerSprite);
+        return;
+    }
+
     if (!m_isAlive) return;
+
     window.draw(m_playerSprite);
     if (m_fireballManager)
         m_fireballManager->render(window);
@@ -385,7 +428,42 @@ void PlayerManager::setSoundManager(ISoundManager* sound)
 
 void PlayerManager::die()
 {
+    if (!m_isAlive) return;   // guard against double-die
     m_isAlive = false;
+    // GameWorld will call startDeathAnimation(isLastLife) next frame
+}
+
+void PlayerManager::startDeathAnimation(bool isLastLife)
+{
+    m_deathState  = DeathState::Animating;
+    m_deathVelY   = DEATH_POPUP_VY;
+    m_deathTimer  = 0.f;
+    m_deathStartY = m_positionY; // capture world Y so we can detect off-screen fall
+    m_velocityX   = 0.f;
+    m_velocityY   = 0.f;
+
+    // Immediately set sprite to death frame
+    sf::IntRect deathRect = m_currentForm->getDeathFrame();
+    m_playerSprite.setTextureRect(deathRect);
+    m_playerSprite.setOrigin({ deathRect.size.x / 2.f, deathRect.size.y / 2.f });
+    m_playerSprite.setScale({ 1.f, 1.f });
+
+    if (m_soundManager) {
+        if (isLastLife)
+            m_soundManager->playGameOver();
+        else
+            m_soundManager->playDeath();
+    }
+}
+
+bool PlayerManager::isDeathAnimating() const
+{
+    return m_deathState == DeathState::Animating;
+}
+
+bool PlayerManager::isDeathDone() const
+{
+    return m_deathState == DeathState::Done;
 }
 
 FormType PlayerManager::getFormType() const
@@ -691,8 +769,12 @@ void PlayerManager::startFlagpoleSlide(float poleX)
 void PlayerManager::respawn()
 {
     resetToStart();
-    m_isAlive    = true;
-    m_isInvincible      = true;
+    m_isAlive            = true;
+    m_deathState         = DeathState::None;
+    m_deathVelY          = 0.f;
+    m_deathTimer         = 0.f;
+    m_deathStartY        = 0.f;
+    m_isInvincible       = true;
     m_invincibilityTimer = INVINCIBILITY_DURATION;
     m_starState.reset();
     if (m_fireballManager)
