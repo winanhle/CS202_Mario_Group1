@@ -9,8 +9,10 @@ public:
     virtual void playBump() = 0;
     virtual void playBrick() = 0;
     virtual void playCoin() = 0;
+    virtual void playDeath() = 0;
     virtual void playFireball() = 0;
     virtual void playFlagpole() = 0;
+    virtual void playGameOver() = 0;
     virtual void playItem() = 0;
     virtual void playJump() = 0;
     virtual void playJumpSmall() = 0;
@@ -26,7 +28,6 @@ public:
     virtual void playSelect() = 0;
     virtual void playStageClear() = 0;
     virtual void playWorldClear() = 0;
-    virtual void playGameOver() = 0;
 
     // Global controls
     virtual void setVolume(float volume) = 0;

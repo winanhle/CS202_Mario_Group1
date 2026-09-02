@@ -28,97 +28,73 @@ void EnemyManager::initialize() {
 }
 
 void EnemyManager::update(float deltaTime) {
+    float dt = std::min(deltaTime, 0.033f);
+
     for (auto& enemy : m_enemies) {
         if (enemy->isDead())
             continue;
 
-        enemy->update(deltaTime);
-        //gravity
+        enemy->update(dt);
+
+        // Physics: Wall & Ground Collision
         if (enemy->usesPhysics()) {
-            enemy->applyGravity(deltaTime);
+            float tileSize = m_mapManager ? static_cast<float>(m_mapManager->getTileSize()) : 16.f;
 
-            if (!m_mapManager)
-            {
-                enemy->move(deltaTime);
-                continue;
-            }
-            //horizontal collision
+            // 1. Horizontal movement & Wall Collision
             sf::FloatRect hitbox = enemy->getHitbox();
+            float curX = hitbox.position.x;
+            float curY = hitbox.position.y;
+            float width = hitbox.size.x;
+            float height = hitbox.size.y;
 
-            float checkX;
+            if (m_mapManager) {
+                float checkX = (enemy->getDirection() < 0) ? (curX - 1.f) : (curX + width + 1.f);
+                // Probe strictly above the feet: from top + 2px down to bottom - 4px
+                // to ensure we never mistake the floor tile beneath the enemy for a wall.
+                float checkTop = curY + 2.f;
+                float checkBottom = curY + height - 4.f;
+                if (checkBottom < checkTop) checkBottom = checkTop;
 
-            if (enemy->getDirection() < 0)
-            {
-                // Enemy đang đi LEFT
-                checkX = hitbox.position.x - 1.f;
-            }
-            else
-            {
-                // Enemy đang đi RIGHT
-                checkX =
-                    hitbox.position.x +
-                    hitbox.size.x +
-                    1.f;
-            }
+                bool hitWall = m_mapManager->isSolid(checkX, checkTop) ||
+                               m_mapManager->isSolid(checkX, checkBottom);
 
-            // Check 2 điểm ở phía trước enemy
-            float checkTop =
-                hitbox.position.y + 2.f;
-
-            float checkBottom =
-                hitbox.position.y +
-                hitbox.size.y - 2.f;
-
-            bool hitWall =
-                m_mapManager->isSolid(checkX, checkTop) ||
-                m_mapManager->isSolid(checkX, checkBottom);
-
-            if (hitWall)
-            {
-                enemy->reverseDirection();
+                if (hitWall) {
+                    enemy->reverseDirection();
+                }
             }
 
-            enemy->move(deltaTime);
-        }
-        //ground collision
-        sf::FloatRect newHitbox = enemy->getHitbox();
+            enemy->move(dt);
 
-        float feetY =
-            newHitbox.position.y +
-            newHitbox.size.y;
+            // 2. Vertical movement (Gravity) & Ground Collision
+            enemy->applyGravity(dt);
 
-        float checkGroundY =
-            feetY + 1.f;
+            hitbox = enemy->getHitbox();
+            curX = hitbox.position.x;
+            curY = hitbox.position.y;
+            width = hitbox.size.x;
+            height = hitbox.size.y;
 
-        // Check cả chân trái và chân phải
-        float leftFoot =
-            newHitbox.position.x + 2.f;
+            if (m_mapManager) {
+                float vy = enemy->getVelocity().y;
+                if (vy >= 0.f) {
+                    float leftFoot = curX + 2.f;
+                    float rightFoot = curX + width - 2.f;
 
-        float rightFoot =
-            newHitbox.position.x +
-            newHitbox.size.x - 2.f;
+                    int gy_start = static_cast<int>((curY + height - 6.f) / tileSize);
+                    if (gy_start < 0) gy_start = 0;
+                    int gy_end = static_cast<int>((curY + height + 2.f) / tileSize);
 
-        bool onGround =
-            m_mapManager->isSolid(leftFoot, checkGroundY) ||
-            m_mapManager->isSolid(rightFoot, checkGroundY);
-        // resolve ground collision
-        if (onGround && enemy->getVelocity().y >= 0.f)
-        {
-            int tileSize =
-                m_mapManager->getTileSize();
-
-            // Tile mà chân enemy đang chạm vào
-            float groundY =
-                static_cast<float>(
-                    static_cast<int>(checkGroundY / tileSize)
-                    * tileSize
-                );
-
-            // Đặt enemy chính xác lên trên tile
-            enemy->setPositionY(groundY - newHitbox.size.y);
-
-            // Stop falling
-            enemy->setVelocityY(0.f);
+                    for (int gy = gy_start; gy <= gy_end; ++gy) {
+                        float probeY = static_cast<float>(gy) * tileSize + 1.f;
+                        if (m_mapManager->isSolid(leftFoot, probeY) || m_mapManager->isSolid(rightFoot, probeY)) {
+                            float topOfTile = static_cast<float>(gy) * tileSize;
+                            enemy->setPositionY(topOfTile - height);
+                            enemy->setVelocityY(0.f);
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         if (m_player)
@@ -216,10 +192,13 @@ bool EnemyManager::takeDamageFromFireball(const sf::FloatRect& fireballHitbox, I
 
 void EnemyManager::spawnFromMapData(const std::vector<EntitySpawnData>& spawns) {
     m_enemies.clear();
+    m_pendingSpawns.clear();
 
     if (!m_enemyFactory) {
         m_enemyFactory = std::make_unique<EnemyFactory>();
     }
+
+    float tileSize = m_mapManager ? static_cast<float>(m_mapManager->getTileSize()) : 16.f;
 
     for (const auto& spawnData : spawns) {
         auto enemy = m_enemyFactory->createEnemy(
@@ -230,6 +209,32 @@ void EnemyManager::spawnFromMapData(const std::vector<EntitySpawnData>& spawns) 
         );
 
         if (enemy) {
+            // Align spawned enemy perfectly to the ground beneath or at its spawn point
+            if (m_mapManager) {
+                float height = enemy->getHitbox().size.y;
+                float width = enemy->getHitbox().size.x;
+                float spawnX = spawnData.x;
+                float spawnY = spawnData.y;
+
+                int gy_min = static_cast<int>(spawnY / tileSize);
+                if (gy_min < 0) gy_min = 0;
+                int gy_max = static_cast<int>((spawnY + height + tileSize * 2.f) / tileSize);
+
+                for (int gy = gy_min; gy <= gy_max; ++gy) {
+                    float probeY = static_cast<float>(gy) * tileSize + 1.f;
+                    float leftFoot = spawnX + 2.f;
+                    float rightFoot = spawnX + width - 2.f;
+                    if (m_mapManager->isSolid(leftFoot, probeY) || m_mapManager->isSolid(rightFoot, probeY)) {
+                        float topOfTile = static_cast<float>(gy) * tileSize;
+                        if (spawnY + height >= topOfTile - tileSize && spawnY <= topOfTile + 4.f) {
+                            enemy->setPositionY(topOfTile - height);
+                            enemy->setVelocityY(0.f);
+                            break;
+                        }
+                    }
+                }
+            }
+
             m_enemies.push_back(std::move(enemy));
         }
     }

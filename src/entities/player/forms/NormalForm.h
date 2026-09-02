@@ -18,6 +18,7 @@ public:
     sf::IntRect  getWalkFrame1() const override { return m_frames.walkFrame1; }
     sf::IntRect  getWalkFrame2() const override { return m_frames.walkFrame2; }
     sf::IntRect  getJumpFrame()  const override { return m_frames.jumpFrame;  }
+    sf::IntRect  getDeathFrame() const override { return m_frames.deathFrame; }
     sf::Vector2f getHitboxSize() const override { return m_frames.hitboxSize; }
 
     std::unique_ptr<IPlayerForm> takeDamage() const override;

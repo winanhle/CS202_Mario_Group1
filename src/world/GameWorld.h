@@ -213,9 +213,10 @@ private:
     bool m_isGameOver   = false;
     bool m_isGameWon    = false;
     bool m_isStageClear = false;
-    bool m_isFlagpoleSequenceActive = false;
-    bool m_isTimerTallyActive = false;
+    bool m_isFlagpoleSequenceActive  = false;
+    bool m_isTimerTallyActive        = false;
     float m_timeLeftOnFlagpole = 0.f;
+    bool m_isDeathAnimationActive    = false; // true while death arc plays
     int  m_timerPopupCounter = 0;
     bool m_isInitialized = false;
     int  m_lastScore1 = -1;

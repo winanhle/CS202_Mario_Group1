@@ -148,7 +148,8 @@ void GameWorld::loadCurrentLevel()
     if (m_playerManager2)
         m_playerManager2->respawn();
 
-    m_isTimerTallyActive = false;
+    m_isTimerTallyActive      = false;
+    m_isDeathAnimationActive  = false;
 
     if (m_cameraManager)
         m_cameraManager->initialize(m_mapManager->getMapPixelSize());
@@ -502,6 +503,14 @@ void GameWorld::update(float deltaTime)
         return;
     }
 
+    // ── Death animation freeze: only animate the player arc, then proceed ────
+    if (m_isDeathAnimationActive) {
+        if (m_playerManager)  m_playerManager->update(deltaTime);
+        if (m_playerManager2) m_playerManager2->update(deltaTime);
+        checkAndHandleDeath(); // advances to Phase 3 once arc is done
+        return;
+    }
+
     if (m_mapManager)
         m_mapManager->update(deltaTime);
 
@@ -811,47 +820,63 @@ void GameWorld::updatePipeTransition(float deltaTime)
 
 void GameWorld::checkAndHandleDeath()
 {
-    bool p1Dead = m_playerManager  && !m_playerManager->isAlive();
-    bool p2Dead = !m_playerManager2 || !m_playerManager2->isAlive(); // true nếu không có P2
+    // ── Phase 2: world frozen — wait for the death arc to finish ─────────────
+    if (m_isDeathAnimationActive) {
+        bool p1Animating = m_playerManager  && m_playerManager->isDeathAnimating();
+        bool p2Animating = m_playerManager2 && m_playerManager2->isDeathAnimating();
 
-    bool roundOver = false;
+        if (p1Animating || p2Animating)
+            return; // still playing — do nothing
 
-    if (m_playerManager2)
-    {
-        // 2P mode: round over khi CẢ HAI chết
-        roundOver = p1Dead && p2Dead;
-    }
-    else
-    {
-        // 1P mode: round over khi P1 chết
-        roundOver = p1Dead;
-    }
+        // ── Phase 3: animation done — deduct life, record stat, restore checkpoint then respawn / game over ───
+        m_isDeathAnimationActive = false;
 
-    if (!roundOver) return;
+        // Record death stat in save manager
+        if (m_saveManager)
+            m_saveManager->recordStat("total_deaths", 1);
 
-    // Record death stat
-    if (m_saveManager)
-        m_saveManager->recordStat("total_deaths", 1);
+        // Trừ 1 shared live
+        --m_sharedLives;
 
-    // Trừ 1 shared live
-    --m_sharedLives;
+        if (m_sharedLives <= 0) {
+            m_sharedLives = 0;
+            m_isGameOver  = true;
+            return;
+        }
 
-    if (m_sharedLives <= 0)
-    {
-        m_sharedLives = 0;
-        m_isGameOver  = true;
+        // Còn lives → restore point/coin snapshot then reload nguyên cả stage từ đầu
+        if (m_stageStartSnapshot) {
+            // We want to restore score/coins, but preserve the fact that we just lost a life.
+            int currentLives = m_sharedLives;
+            restoreFromMemento(*m_stageStartSnapshot);
+            setSharedLives(currentLives);
+        }
+
+        loadCurrentLevel(); // also calls respawn() on both players
         return;
     }
 
-    // Còn lives → restore point/coin snapshot then reload nguyên cả stage từ đầu
-    if (m_stageStartSnapshot) {
-        // We want to restore score/coins, but preserve the fact that we just lost a life.
-        int currentLives = m_sharedLives;
-        restoreFromMemento(*m_stageStartSnapshot);
-        setSharedLives(currentLives);
-    }
+    // ── Phase 1: detect fresh death ──────────────────────────────────────────
+    bool p1Dead = m_playerManager
+                && !m_playerManager->isAlive()
+                && !m_playerManager->isDeathAnimating()
+                && !m_playerManager->isDeathDone();
 
-    loadCurrentLevel();
+    bool p2Dead = m_playerManager2
+                && !m_playerManager2->isAlive()
+                && !m_playerManager2->isDeathAnimating()
+                && !m_playerManager2->isDeathDone();
+
+    bool roundOver = m_playerManager2 ? (p1Dead && p2Dead) : p1Dead;
+    if (!roundOver) return;
+
+    m_isDeathAnimationActive = true;
+    bool isLastLife = (m_sharedLives <= 1);
+
+    if (p1Dead && m_playerManager)
+        m_playerManager->startDeathAnimation(isLastLife);
+    if (p2Dead && m_playerManager2)
+        m_playerManager2->startDeathAnimation(isLastLife);
 }
 
 // ==================== RENDER ====================

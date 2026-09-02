@@ -82,6 +82,18 @@ protected:
     int   m_playerIndex = 1;     // 1 = P1, 2 = P2
     bool  m_isTwoPlayerMode = false;
 
+    // ─── Death animation state machine ────────────────────────────────────────
+    enum class DeathState { None, Animating, Done };
+    DeathState m_deathState  = DeathState::None;
+    float      m_deathVelY   = 0.f;
+    float      m_deathTimer  = 0.f;
+    float      m_deathStartY = 0.f; // world Y at death moment — used to detect off-screen
+
+    static constexpr float DEATH_FREEZE_TIME =  0.35f; // brief pause with death pose before bounce
+    static constexpr float DEATH_POPUP_VY    = -300.f; // initial upward bounce (px/s)
+    static constexpr float DEATH_GRAVITY     =  950.f; // gravity during arc (px/s²)
+    static constexpr float DEATH_ANIM_LIMIT  =   3.5f; // safety timeout (s)
+
     // --- PATTERNS ---
     std::unique_ptr<PlayerInputHandler> m_inputHandler;
     std::unique_ptr<IPlayerForm>        m_currentForm;
@@ -166,6 +178,18 @@ public:
      * @brief Instantly kill the player (DEATH_ZONE contact), no form downgrade.
      */
     void die() override;
+
+    /**
+     * @brief Launches the death arc animation and plays death.wav / gameover.wav.
+     * @param isLastLife pass true when m_sharedLives <= 1 so gameover.wav plays.
+     */
+    void startDeathAnimation(bool isLastLife) override;
+
+    /** True while the death pop arc is in flight. */
+    bool isDeathAnimating() const override;
+
+    /** True once the arc has finished (fallen offscreen or timed out). */
+    bool isDeathDone() const override;
 
     /**
      * @brief Returns which power-up form the player is currently in.
