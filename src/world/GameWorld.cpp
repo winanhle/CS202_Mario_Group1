@@ -1,5 +1,8 @@
 #include "GameWorld.h"
+#include <algorithm>
+#include <cstdint>
 #include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/Graphics/RectangleShape.hpp>
 #include "../interfaces/IMapManager.h"
 #include "../interfaces/IPlayerManager.h"
 #include "../interfaces/IEnemyManager.h"
@@ -353,6 +356,22 @@ void GameWorld::update(float deltaTime)
     if (!m_isInitialized || m_isGameOver || m_isGameWon || m_isStageClear)
         return;
 
+    // During a pipe cutscene, freeze gameplay systems but keep the scripted
+    // player movement and camera alive until the map hand-off is complete.
+    if (m_pipeTransitionPhase != PipeTransitionPhase::None)
+    {
+        if (m_playerManager)
+            m_playerManager->update(deltaTime);
+        if (m_playerManager2)
+            m_playerManager2->update(deltaTime);
+
+        updatePipeTransition(deltaTime);
+
+        if (m_cameraManager)
+            m_cameraManager->update(deltaTime);
+        return;
+    }
+
     if (m_mapManager)
         m_mapManager->update(deltaTime);
 
@@ -371,7 +390,7 @@ void GameWorld::update(float deltaTime)
     if (m_mapManager && m_mapManager->hasPendingWarp())
     {
         WarpRequest warp = m_mapManager->consumePendingWarp();
-        warpToMap(warp.targetMap, warp.targetX, warp.targetY);
+        beginPipeTransition(warp.targetMap, warp.targetX, warp.targetY);
         return;
     }
 
@@ -471,6 +490,78 @@ void GameWorld::update(float deltaTime)
         m_cameraManager->update(deltaTime);
 }
 
+void GameWorld::beginPipeTransition(const std::string& mapPath, float targetX, float targetY)
+{
+    if (m_pipeTransitionPhase != PipeTransitionPhase::None || mapPath.empty())
+        return;
+
+    m_pipeTargetMap = mapPath;
+    m_pipeTargetX = targetX;
+    m_pipeTargetY = targetY;
+    m_pipeTransitionTimer = 0.f;
+    m_pipeTransitionPhase = PipeTransitionPhase::Traveling;
+
+    // The overworld entrance is vertical; the hidden-room exit is the pipe
+    // embedded in its right wall. Both distances fully carry a small player
+    // past the pipe lip before the fade begins.
+    const bool enteringHiddenRoom = mapPath.find("_hidden") != std::string::npos;
+    const float offsetX = enteringHiddenRoom ? 0.f : 24.f;
+    const float offsetY = enteringHiddenRoom ? 24.f : 0.f;
+
+    if (m_playerManager && m_playerManager->isAlive())
+        m_playerManager->startPipeTravel(offsetX, offsetY);
+    if (m_playerManager2 && m_playerManager2->isAlive())
+        m_playerManager2->startPipeTravel(offsetX, offsetY);
+}
+
+bool GameWorld::havePlayersFinishedPipeTravel() const
+{
+    const bool player1Done = !m_playerManager || !m_playerManager->isAlive()
+        || !m_playerManager->isPipeTraveling();
+    const bool player2Done = !m_playerManager2 || !m_playerManager2->isAlive()
+        || !m_playerManager2->isPipeTraveling();
+    return player1Done && player2Done;
+}
+
+void GameWorld::updatePipeTransition(float deltaTime)
+{
+    switch (m_pipeTransitionPhase)
+    {
+    case PipeTransitionPhase::Traveling:
+        if (havePlayersFinishedPipeTravel())
+        {
+            m_pipeTransitionPhase = PipeTransitionPhase::FadeOut;
+            m_pipeTransitionTimer = 0.f;
+        }
+        break;
+
+    case PipeTransitionPhase::FadeOut:
+        m_pipeTransitionTimer += deltaTime;
+        if (m_pipeTransitionTimer >= PIPE_FADE_DURATION)
+        {
+            warpToMap(m_pipeTargetMap, m_pipeTargetX, m_pipeTargetY);
+            m_pipeTransitionPhase = PipeTransitionPhase::FadeIn;
+            m_pipeTransitionTimer = 0.f;
+        }
+        break;
+
+    case PipeTransitionPhase::FadeIn:
+        m_pipeTransitionTimer += deltaTime;
+        if (m_pipeTransitionTimer >= PIPE_FADE_DURATION)
+        {
+            m_pipeTransitionPhase = PipeTransitionPhase::None;
+            m_pipeTransitionTimer = 0.f;
+            m_pipeTargetMap.clear();
+            m_pipeTargetX = -1.f;
+            m_pipeTargetY = -1.f;
+        }
+        break;
+
+    case PipeTransitionPhase::None:
+        break;
+    }
+}
+
 // ==================== DEATH / RESPAWN LOGIC ====================
 
 void GameWorld::checkAndHandleDeath()
@@ -552,13 +643,32 @@ void GameWorld::render(sf::RenderWindow& window) const
         m_hudManager->renderPopups(window, hasCam ? &camView : nullptr);
         m_hudManager->render(window);
     }
+
+    unsigned int fadeAlpha = 0;
+    if (m_pipeTransitionPhase == PipeTransitionPhase::FadeOut)
+    {
+        const float progress = std::min(m_pipeTransitionTimer / PIPE_FADE_DURATION, 1.f);
+        fadeAlpha = static_cast<unsigned int>(255.f * progress);
+    }
+    else if (m_pipeTransitionPhase == PipeTransitionPhase::FadeIn)
+    {
+        const float progress = std::min(m_pipeTransitionTimer / PIPE_FADE_DURATION, 1.f);
+        fadeAlpha = static_cast<unsigned int>(255.f * (1.f - progress));
+    }
+
+    if (fadeAlpha > 0)
+    {
+        sf::RectangleShape fade(window.getDefaultView().getSize());
+        fade.setFillColor(sf::Color(0, 0, 0, static_cast<std::uint8_t>(fadeAlpha)));
+        window.draw(fade);
+    }
 }
 
 // ==================== HANDLE INPUT ====================
 
 void GameWorld::handleInput(const sf::Event& event)
 {
-    if (!m_isInitialized) return;
+    if (!m_isInitialized || m_pipeTransitionPhase != PipeTransitionPhase::None) return;
 
     if (m_playerManager)
         m_playerManager->handleInput(event);

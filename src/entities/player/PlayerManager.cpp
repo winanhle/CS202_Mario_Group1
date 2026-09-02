@@ -187,6 +187,29 @@ void PlayerManager::update(float deltaTime)
 {
     if (!m_isAlive) return;
 
+    if (m_isPipeTraveling) {
+        const float dx = m_pipeTargetX - m_positionX;
+        const float dy = m_pipeTargetY - m_positionY;
+        const float distance = std::sqrt(dx * dx + dy * dy);
+        const float step = PIPE_TRAVEL_SPEED * deltaTime;
+
+        if (distance <= step || distance <= 0.01f) {
+            m_positionX = m_pipeTargetX;
+            m_positionY = m_pipeTargetY;
+            m_isPipeTraveling = false;
+        } else {
+            m_positionX += dx / distance * step;
+            m_positionY += dy / distance * step;
+        }
+
+        updateAnimation(deltaTime);
+        m_playerSprite.setPosition({
+            m_positionX + m_playerSize.x / 2.f,
+            m_positionY + m_playerSize.y / 2.f
+        });
+        return;
+    }
+
     if (m_isFlagpoleSliding) {
         if (!m_isGrounded) {
             m_velocityY = 60.f; // Smooth, slow downward glide from contact height
@@ -269,7 +292,7 @@ void PlayerManager::update(float deltaTime)
 }
 
 void PlayerManager::handleInput(const sf::Event& event) {
-    if (!m_isAlive || !m_inputHandler || m_isFlagpoleSliding) return;
+    if (!m_isAlive || !m_inputHandler || m_isFlagpoleSliding || m_isPipeTraveling) return;
 
     Command* command = m_inputHandler->handleEvent(event);
     if (command) {
@@ -663,9 +686,26 @@ void PlayerManager::resetToStart()
     m_velocityY = 0.f;
     m_inputDirection = 0;
     m_isGrounded = false;
+    m_isPipeTraveling = false;
+    m_pipeTargetX = m_positionX;
+    m_pipeTargetY = m_positionY;
     m_isFlagpoleSliding = false;
     m_hasFinishedFlagpole = false;
     m_flagpoleFinishTimer = 0.f;
+}
+
+void PlayerManager::startPipeTravel(float offsetX, float offsetY)
+{
+    if (!m_isAlive || m_isPipeTraveling)
+        return;
+
+    m_velocityX = 0.f;
+    m_velocityY = 0.f;
+    m_inputDirection = 0;
+    m_isGrounded = false;
+    m_pipeTargetX = m_positionX + offsetX;
+    m_pipeTargetY = m_positionY + offsetY;
+    m_isPipeTraveling = true;
 }
 
 void PlayerManager::startFlagpoleSlide(float poleX)

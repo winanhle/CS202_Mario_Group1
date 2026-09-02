@@ -129,6 +129,8 @@ public:
     float getPositionX() const override;
     float getPositionY() const override;
     bool  isDownPressed() const override;
+    void  startPipeTravel(float offsetX, float offsetY) override;
+    bool  isPipeTraveling() const override { return m_isPipeTraveling; }
     void restoreState(int score, int lives, float posX, float posY) override;
     void setSpawnPoint(float x, float y) override;
 
@@ -199,6 +201,11 @@ public:
     void applyLiftOffset(float dx, float dy) override;
 
 private:
+    bool  m_isPipeTraveling = false;
+    float m_pipeTargetX = 0.f;
+    float m_pipeTargetY = 0.f;
+    static constexpr float PIPE_TRAVEL_SPEED = 48.f;
+
     bool  m_isFlagpoleSliding = false;
     bool  m_hasFinishedFlagpole = false;
     float m_flagpoleFinishTimer = 0.f;

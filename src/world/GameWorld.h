@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <SFML/Graphics/Rect.hpp>
 #include "../core/LevelManager.h"
 #include "../core/GameMemento.h"
@@ -179,6 +180,14 @@ public:
     IFireBarManager*  getFireBarManager();
 
 private:
+    enum class PipeTransitionPhase
+    {
+        None,
+        Traveling,
+        FadeOut,
+        FadeIn
+    };
+
     // --- Module manager instances ---
     std::shared_ptr<IMapManager>      m_mapManager;
     std::shared_ptr<IPlayerManager> m_playerManager;
@@ -206,6 +215,17 @@ private:
     bool m_isInitialized = false;
     int  m_lastScore1 = -1;
     int  m_lastScore2 = -1;
+
+    PipeTransitionPhase m_pipeTransitionPhase = PipeTransitionPhase::None;
+    std::string m_pipeTargetMap;
+    float m_pipeTargetX = -1.f;
+    float m_pipeTargetY = -1.f;
+    float m_pipeTransitionTimer = 0.f;
+    static constexpr float PIPE_FADE_DURATION = 0.28f;
+
+    void beginPipeTransition(const std::string& mapPath, float targetX, float targetY);
+    void updatePipeTransition(float deltaTime);
+    bool havePlayersFinishedPipeTravel() const;
 
     /**
      * @brief Kiểm tra điều kiện "round death" và xử lý respawn / game over.

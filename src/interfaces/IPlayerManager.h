@@ -119,6 +119,20 @@ public:
     virtual bool isDownPressed() const { return false; }
 
     /**
+     * @brief Start the short, collision-free movement used while entering a pipe.
+     * @param offsetX Horizontal travel distance in world pixels.
+     * @param offsetY Vertical travel distance in world pixels.
+     */
+    virtual void startPipeTravel(float offsetX, float offsetY)
+    {
+        (void)offsetX;
+        (void)offsetY;
+    }
+
+    /** @brief True until the scripted pipe movement reaches its target. */
+    virtual bool isPipeTraveling() const { return false; }
+
+    /**
      * @brief Restore a previously saved player state (score, lives, position)
      * @param score Saved score
      * @param lives Saved lives
