@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <SFML/Graphics/Rect.hpp>
+#include <SFML/Graphics/Texture.hpp>
 #include "../core/LevelManager.h"
 #include "../core/GameMemento.h"
 
@@ -223,9 +224,16 @@ private:
     float m_pipeTransitionTimer = 0.f;
     static constexpr float PIPE_FADE_DURATION = 0.28f;
 
+    sf::Texture m_sceneryTexture;
+    bool m_sceneryLoaded = false;
+    bool m_isHiddenArea = false;
+    float m_cloudScroll = 0.f;
+    static constexpr float CLOUD_SCROLL_SPEED = 4.f;
+
     void beginPipeTransition(const std::string& mapPath, float targetX, float targetY);
     void updatePipeTransition(float deltaTime);
     bool havePlayersFinishedPipeTravel() const;
+    void renderScenery(sf::RenderWindow& window) const;
 
     /**
      * @brief Kiểm tra điều kiện "round death" và xử lý respawn / game over.

@@ -1,8 +1,11 @@
 #include "GameWorld.h"
 #include <algorithm>
 #include <cstdint>
+#include <cmath>
+#include <SFML/Graphics/Image.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
+#include <SFML/Graphics/Sprite.hpp>
 #include "../interfaces/IMapManager.h"
 #include "../interfaces/IPlayerManager.h"
 #include "../interfaces/IEnemyManager.h"
@@ -62,6 +65,16 @@ void GameWorld::initialize()
 
     injectDependencies();
 
+    // Reuse the project's own NES artwork for extra scenery. The atlas sky
+    // colour is converted to transparency so it blends with existing maps.
+    sf::Image sceneryImage;
+    if (sceneryImage.loadFromFile("assets/tileset/world1_1.png"))
+    {
+        const sf::Color skyColor = sceneryImage.getPixel({0u, 0u});
+        sceneryImage.createMaskFromColor(skyColor);
+        m_sceneryLoaded = m_sceneryTexture.loadFromImage(sceneryImage);
+    }
+
     // Tải stage hiện tại: map + enemy + item + player spawn + camera.
     loadCurrentLevel();
 
@@ -81,6 +94,8 @@ void GameWorld::loadCurrentLevel()
 
     if (levelPath.empty())
         return;
+
+    m_isHiddenArea = levelPath.find("_hidden") != std::string::npos;
 
     m_mapManager->loadMap(levelPath);
 
@@ -131,6 +146,7 @@ void GameWorld::warpToMap(const std::string& mapPath, float targetX, float targe
     if (!m_mapManager)
         return;
 
+    m_isHiddenArea = mapPath.find("_hidden") != std::string::npos;
     m_mapManager->loadMap(mapPath);
 
     const MapObjectData& mapData = m_mapManager->getMapObjectData();
@@ -375,6 +391,8 @@ void GameWorld::update(float deltaTime)
     if (m_mapManager)
         m_mapManager->update(deltaTime);
 
+    m_cloudScroll = std::fmod(m_cloudScroll + CLOUD_SCROLL_SPEED * deltaTime, 720.f);
+
     // 1. Advance moving platforms (lifts) so frame positions & deltas are computed
     if (m_liftManager)
         m_liftManager->update(deltaTime);
@@ -611,6 +629,8 @@ void GameWorld::render(sf::RenderWindow& window) const
     if (m_mapManager)
         m_mapManager->render(window);
 
+    renderScenery(window);
+
     if (m_liftManager)
         m_liftManager->render(window);
 
@@ -662,6 +682,44 @@ void GameWorld::render(sf::RenderWindow& window) const
         fade.setFillColor(sf::Color(0, 0, 0, static_cast<std::uint8_t>(fadeAlpha)));
         window.draw(fade);
     }
+}
+
+void GameWorld::renderScenery(sf::RenderWindow& window) const
+{
+    if (!m_sceneryLoaded || m_isHiddenArea)
+        return;
+
+    const sf::View& view = window.getView();
+    const float viewLeft = view.getCenter().x - view.getSize().x / 2.f;
+    const float viewRight = view.getCenter().x + view.getSize().x / 2.f;
+
+    auto drawRepeated = [&](const sf::IntRect& sourceRect,
+                            float baseX, float spacing, float y,
+                            float scrollOffset)
+    {
+        sf::Sprite sprite(m_sceneryTexture);
+        sprite.setTextureRect(sourceRect);
+
+        const int firstIndex = static_cast<int>(std::floor(
+            (viewLeft - baseX + scrollOffset - sourceRect.size.x) / spacing));
+        for (int index = firstIndex; ; ++index)
+        {
+            const float x = baseX + static_cast<float>(index) * spacing - scrollOffset;
+            if (x > viewRight)
+                break;
+            if (x + static_cast<float>(sourceRect.size.x) < viewLeft)
+                continue;
+
+            sprite.setPosition({x, y});
+            window.draw(sprite);
+        }
+    };
+
+    // Crop authentic sprites from assets/tileset/world1_1.png. Only clouds
+    // drift; bushes remain fixed to the level geometry.
+    drawRepeated(sf::IntRect({134, 43}, {38, 29}), 90.f, 460.f, 42.f, m_cloudScroll);
+    drawRepeated(sf::IntRect({438, 43}, {68, 29}), 285.f, 620.f, 66.f, m_cloudScroll * 0.65f);
+    drawRepeated(sf::IntRect({186, 186}, {64, 22}), 125.f, 390.f, 186.f, 0.f);
 }
 
 // ==================== HANDLE INPUT ====================
