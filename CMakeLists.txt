@@ -5,15 +5,22 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
+option(MARIO_USE_SYSTEM_SFML "Use an installed SFML package instead of FetchContent" OFF)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-include(FetchContent)
-FetchContent_Declare(SFML
-    GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG        3.1.0 
-)
-FetchContent_MakeAvailable(SFML)
+if(MARIO_USE_SYSTEM_SFML)
+    find_package(SFML CONFIG REQUIRED COMPONENTS Graphics Audio)
+    set(MARIO_SFML_TARGETS SFML::Graphics SFML::Audio)
+else()
+    include(FetchContent)
+    FetchContent_Declare(SFML
+        GIT_REPOSITORY https://github.com/SFML/SFML.git
+        GIT_TAG        3.1.0
+    )
+    FetchContent_MakeAvailable(SFML)
+    set(MARIO_SFML_TARGETS sfml-graphics sfml-audio)
+endif()
 
 
 set(COMMON_SOURCES
@@ -79,7 +86,7 @@ add_executable(MarioGame
 )
 
 foreach(TARGET MarioGame)
-    target_link_libraries(${TARGET} PRIVATE sfml-graphics sfml-audio)
+    target_link_libraries(${TARGET} PRIVATE ${MARIO_SFML_TARGETS})
     add_custom_command(TARGET ${TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
                 ${CMAKE_SOURCE_DIR}/assets

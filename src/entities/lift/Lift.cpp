@@ -1,5 +1,10 @@
 #include "Lift.h"
 
+namespace
+{
+constexpr float TwoPi = 6.28318530717958647692f;
+}
+
 Lift::Lift(float x, float y,
            MotionType motion, int holes,
            sf::Texture& texture,
@@ -45,8 +50,8 @@ void Lift::update(float dt)
     m_prevPosition = m_position;
 
     m_phase += m_angularSpeed * dt;
-    if (m_phase > 2.f * static_cast<float>(M_PI))
-        m_phase -= 2.f * static_cast<float>(M_PI);
+    if (m_phase > TwoPi)
+        m_phase -= TwoPi;
 
     float offset = m_range * std::sin(m_phase);
 
