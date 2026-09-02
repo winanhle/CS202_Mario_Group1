@@ -44,7 +44,6 @@ public:
 class PipeExitBehavior final : public PipeBehavior {
 public:
     void onSideTouch(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
-    void onStandingOn(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const override;
 };
 
 class BrickEmptyBehavior final : public IBlockBehavior {

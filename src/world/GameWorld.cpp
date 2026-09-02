@@ -372,19 +372,22 @@ void GameWorld::update(float deltaTime)
     if (!m_isInitialized || m_isGameOver || m_isGameWon || m_isStageClear)
         return;
 
-    // During a pipe cutscene, freeze gameplay systems but keep the scripted
-    // player movement and camera alive until the map hand-off is complete.
+    // Freeze normal simulation throughout the cutscene. Only players that are
+    // still following a scripted pipe path are updated; this prevents gravity,
+    // collision, or held input from moving them again during the fade.
     if (m_pipeTransitionPhase != PipeTransitionPhase::None)
     {
-        if (m_playerManager)
+        if (m_pipeTransitionPhase == PipeTransitionPhase::Traveling &&
+            m_playerManager && m_playerManager->isPipeTraveling())
             m_playerManager->update(deltaTime);
-        if (m_playerManager2)
+        if (m_pipeTransitionPhase == PipeTransitionPhase::Traveling &&
+            m_playerManager2 && m_playerManager2->isPipeTraveling())
             m_playerManager2->update(deltaTime);
 
-        updatePipeTransition(deltaTime);
-
-        if (m_cameraManager)
+        if (m_pipeTransitionPhase == PipeTransitionPhase::Traveling && m_cameraManager)
             m_cameraManager->update(deltaTime);
+
+        updatePipeTransition(deltaTime);
         return;
     }
 
@@ -519,17 +522,102 @@ void GameWorld::beginPipeTransition(const std::string& mapPath, float targetX, f
     m_pipeTransitionTimer = 0.f;
     m_pipeTransitionPhase = PipeTransitionPhase::Traveling;
 
-    // The overworld entrance is vertical; the hidden-room exit is the pipe
-    // embedded in its right wall. Both distances fully carry a small player
-    // past the pipe lip before the fade begins.
     const bool enteringHiddenRoom = mapPath.find("_hidden") != std::string::npos;
-    const float offsetX = enteringHiddenRoom ? 0.f : 24.f;
-    const float offsetY = enteringHiddenRoom ? 24.f : 0.f;
-
     if (m_playerManager && m_playerManager->isAlive())
-        m_playerManager->startPipeTravel(offsetX, offsetY);
+        startPlayerPipeTravel(*m_playerManager, enteringHiddenRoom, 0);
     if (m_playerManager2 && m_playerManager2->isAlive())
-        m_playerManager2->startPipeTravel(offsetX, offsetY);
+        startPlayerPipeTravel(*m_playerManager2, enteringHiddenRoom, 1);
+}
+
+bool GameWorld::startPlayerPipeTravel(IPlayerManager& player, bool enteringHiddenRoom, int lane) const
+{
+    if (!m_mapManager)
+        return false;
+
+    const sf::FloatRect box = player.getHitbox();
+    const int tileSize = m_mapManager->getTileSize();
+    if (tileSize <= 0)
+        return false;
+
+    if (enteringHiddenRoom)
+    {
+        const int pipeRow = static_cast<int>(
+            std::floor((box.position.y + box.size.y + 1.f) / tileSize));
+        const int firstProbe = static_cast<int>(std::floor(box.position.x / tileSize));
+        const int lastProbe = static_cast<int>(
+            std::floor((box.position.x + box.size.x - 0.01f) / tileSize));
+
+        int hitColumn = -1;
+        for (int gx = firstProbe; gx <= lastProbe; ++gx)
+        {
+            if (m_mapManager->getTileTypeAt(gx, pipeRow) == TileType::PIPE_ENTRANCE)
+            {
+                hitColumn = gx;
+                break;
+            }
+        }
+        if (hitColumn < 0)
+            return false;
+
+        int pipeLeft = hitColumn;
+        int pipeRight = hitColumn;
+        while (m_mapManager->getTileTypeAt(pipeLeft - 1, pipeRow) == TileType::PIPE_ENTRANCE)
+            --pipeLeft;
+        while (m_mapManager->getTileTypeAt(pipeRight + 1, pipeRow) == TileType::PIPE_ENTRANCE)
+            ++pipeRight;
+
+        const float openingLeft = static_cast<float>(pipeLeft * tileSize);
+        const float openingWidth = static_cast<float>((pipeRight - pipeLeft + 1) * tileSize);
+        float alignX = openingLeft + (openingWidth - box.size.x) * 0.5f;
+
+        // In two-player mode, use one half of a two-tile opening per player.
+        if (m_playerManager2 && pipeRight > pipeLeft && box.size.x <= tileSize)
+        {
+            const int slot = std::clamp(lane, 0, 1);
+            alignX = openingLeft + static_cast<float>(slot * tileSize) +
+                (static_cast<float>(tileSize) - box.size.x) * 0.5f;
+        }
+
+        const float pipeTop = static_cast<float>(pipeRow * tileSize);
+        player.startPipeTravel(
+            alignX, box.position.y,
+            alignX, pipeTop + static_cast<float>(tileSize));
+        return true;
+    }
+
+    const int pipeColumn = static_cast<int>(
+        std::floor((box.position.x + box.size.x + 1.f) / tileSize));
+    const int firstProbe = static_cast<int>(std::floor(box.position.y / tileSize));
+    const int lastProbe = static_cast<int>(
+        std::floor((box.position.y + box.size.y - 0.01f) / tileSize));
+
+    int hitRow = -1;
+    for (int gy = firstProbe; gy <= lastProbe; ++gy)
+    {
+        if (m_mapManager->getTileTypeAt(pipeColumn, gy) == TileType::PIPE_EXIT)
+        {
+            hitRow = gy;
+            break;
+        }
+    }
+    if (hitRow < 0)
+        return false;
+
+    int pipeTop = hitRow;
+    int pipeBottom = hitRow;
+    while (m_mapManager->getTileTypeAt(pipeColumn, pipeTop - 1) == TileType::PIPE_EXIT)
+        --pipeTop;
+    while (m_mapManager->getTileTypeAt(pipeColumn, pipeBottom + 1) == TileType::PIPE_EXIT)
+        ++pipeBottom;
+
+    const float openingTop = static_cast<float>(pipeTop * tileSize);
+    const float openingHeight = static_cast<float>((pipeBottom - pipeTop + 1) * tileSize);
+    const float alignY = openingTop + (openingHeight - box.size.y) * 0.5f;
+    const float pipeLeft = static_cast<float>(pipeColumn * tileSize);
+    player.startPipeTravel(
+        box.position.x, alignY,
+        pipeLeft + static_cast<float>(tileSize), alignY);
+    return true;
 }
 
 bool GameWorld::havePlayersFinishedPipeTravel() const
@@ -547,6 +635,15 @@ void GameWorld::updatePipeTransition(float deltaTime)
     {
     case PipeTransitionPhase::Traveling:
         if (havePlayersFinishedPipeTravel())
+        {
+            m_pipeTransitionPhase = PipeTransitionPhase::Hold;
+            m_pipeTransitionTimer = 0.f;
+        }
+        break;
+
+    case PipeTransitionPhase::Hold:
+        m_pipeTransitionTimer += deltaTime;
+        if (m_pipeTransitionTimer >= PIPE_HOLD_DURATION)
         {
             m_pipeTransitionPhase = PipeTransitionPhase::FadeOut;
             m_pipeTransitionTimer = 0.f;
@@ -650,6 +747,17 @@ void GameWorld::render(sf::RenderWindow& window) const
     if (m_playerManager2)
         m_playerManager2->render(window);
 
+    // The pipe lip/body must occlude the player as the sprite moves into it.
+    // Re-drawing only pipe tiles creates the classic disappear-behind-the-pipe
+    // effect without disturbing the normal map/entity render order.
+    if (m_mapManager &&
+        (m_pipeTransitionPhase == PipeTransitionPhase::Traveling ||
+         m_pipeTransitionPhase == PipeTransitionPhase::Hold ||
+         m_pipeTransitionPhase == PipeTransitionPhase::FadeOut))
+    {
+        m_mapManager->renderPipeForeground(window);
+    }
+
     // HUD dùng default view (không bị ảnh hưởng camera)
     window.setView(window.getDefaultView());
 
@@ -667,13 +775,15 @@ void GameWorld::render(sf::RenderWindow& window) const
     unsigned int fadeAlpha = 0;
     if (m_pipeTransitionPhase == PipeTransitionPhase::FadeOut)
     {
-        const float progress = std::min(m_pipeTransitionTimer / PIPE_FADE_DURATION, 1.f);
-        fadeAlpha = static_cast<unsigned int>(255.f * progress);
+        const float progress = std::clamp(m_pipeTransitionTimer / PIPE_FADE_DURATION, 0.f, 1.f);
+        const float eased = progress * progress * (3.f - 2.f * progress);
+        fadeAlpha = static_cast<unsigned int>(255.f * eased);
     }
     else if (m_pipeTransitionPhase == PipeTransitionPhase::FadeIn)
     {
-        const float progress = std::min(m_pipeTransitionTimer / PIPE_FADE_DURATION, 1.f);
-        fadeAlpha = static_cast<unsigned int>(255.f * (1.f - progress));
+        const float progress = std::clamp(m_pipeTransitionTimer / PIPE_FADE_DURATION, 0.f, 1.f);
+        const float eased = progress * progress * (3.f - 2.f * progress);
+        fadeAlpha = static_cast<unsigned int>(255.f * (1.f - eased));
     }
 
     if (fadeAlpha > 0)

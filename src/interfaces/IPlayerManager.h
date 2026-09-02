@@ -119,14 +119,18 @@ public:
     virtual bool isDownPressed() const { return false; }
 
     /**
-     * @brief Start the short, collision-free movement used while entering a pipe.
-     * @param offsetX Horizontal travel distance in world pixels.
-     * @param offsetY Vertical travel distance in world pixels.
+     * @brief Start a two-step, collision-free pipe entry animation.
+     * @param alignX Exact world X used to line the player up with the opening.
+     * @param alignY Exact world Y used to line the player up with the opening.
+     * @param targetX Final world X inside the pipe.
+     * @param targetY Final world Y inside the pipe.
      */
-    virtual void startPipeTravel(float offsetX, float offsetY)
+    virtual void startPipeTravel(float alignX, float alignY, float targetX, float targetY)
     {
-        (void)offsetX;
-        (void)offsetY;
+        (void)alignX;
+        (void)alignY;
+        (void)targetX;
+        (void)targetY;
     }
 
     /** @brief True until the scripted pipe movement reaches its target. */

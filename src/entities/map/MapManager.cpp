@@ -862,6 +862,37 @@ void MapManager::render(sf::RenderWindow& window) const {
     }
 }
 
+void MapManager::renderPipeForeground(sf::RenderWindow& window) const {
+    sf::RectangleShape fallback(sf::Vector2f(
+        static_cast<float>(m_tileSize), static_cast<float>(m_tileSize)));
+    fallback.setFillColor(sf::Color::Green);
+
+    for (size_t y = 0; y < m_mapData.size(); ++y) {
+        for (size_t x = 0; x < m_mapData[y].size(); ++x) {
+            const TileType type = m_mapData[y][x];
+            if (type != TileType::PIPE &&
+                type != TileType::PIPE_ENTRANCE &&
+                type != TileType::PIPE_EXIT) {
+                continue;
+            }
+
+            const sf::Vector2f position(
+                static_cast<float>(x) * m_tileSize,
+                static_cast<float>(y) * m_tileSize);
+            const bool hasGid = m_textureLoaded &&
+                y < m_rawGids.size() && x < m_rawGids[y].size() &&
+                m_rawGids[y][x] > 0;
+
+            if (hasGid) {
+                drawTileGid(m_rawGids[y][x], position, window);
+            } else {
+                fallback.setPosition(position);
+                window.draw(fallback);
+            }
+        }
+    }
+}
+
 void MapManager::drawTileGid(int gid, sf::Vector2f position, sf::RenderWindow& window) const {
     if (gid <= 0) return;
 

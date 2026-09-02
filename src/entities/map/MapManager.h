@@ -203,6 +203,7 @@ public:
     const MapObjectData& getMapObjectData() const override;
     void update(float deltaTime) override;
     void render(sf::RenderWindow& window) const override;
+    void renderPipeForeground(sf::RenderWindow& window) const override;
 
     // Hàm phục vụ xử lý va chạm cho Player/Enemy
     bool isSolid(float x, float y) const override;

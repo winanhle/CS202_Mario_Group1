@@ -188,15 +188,22 @@ void PlayerManager::update(float deltaTime)
     if (!m_isAlive) return;
 
     if (m_isPipeTraveling) {
-        const float dx = m_pipeTargetX - m_positionX;
-        const float dy = m_pipeTargetY - m_positionY;
+        const float destinationX = m_isPipeAligning ? m_pipeAlignX : m_pipeTargetX;
+        const float destinationY = m_isPipeAligning ? m_pipeAlignY : m_pipeTargetY;
+        const float dx = destinationX - m_positionX;
+        const float dy = destinationY - m_positionY;
         const float distance = std::sqrt(dx * dx + dy * dy);
-        const float step = PIPE_TRAVEL_SPEED * deltaTime;
+        const float speed = m_isPipeAligning ? PIPE_ALIGN_SPEED : PIPE_TRAVEL_SPEED;
+        const float step = speed * deltaTime;
 
         if (distance <= step || distance <= 0.01f) {
-            m_positionX = m_pipeTargetX;
-            m_positionY = m_pipeTargetY;
-            m_isPipeTraveling = false;
+            m_positionX = destinationX;
+            m_positionY = destinationY;
+            if (m_isPipeAligning) {
+                m_isPipeAligning = false;
+            } else {
+                m_isPipeTraveling = false;
+            }
         } else {
             m_positionX += dx / distance * step;
             m_positionY += dy / distance * step;
@@ -687,6 +694,9 @@ void PlayerManager::resetToStart()
     m_inputDirection = 0;
     m_isGrounded = false;
     m_isPipeTraveling = false;
+    m_isPipeAligning = false;
+    m_pipeAlignX = m_positionX;
+    m_pipeAlignY = m_positionY;
     m_pipeTargetX = m_positionX;
     m_pipeTargetY = m_positionY;
     m_isFlagpoleSliding = false;
@@ -694,7 +704,7 @@ void PlayerManager::resetToStart()
     m_flagpoleFinishTimer = 0.f;
 }
 
-void PlayerManager::startPipeTravel(float offsetX, float offsetY)
+void PlayerManager::startPipeTravel(float alignX, float alignY, float targetX, float targetY)
 {
     if (!m_isAlive || m_isPipeTraveling)
         return;
@@ -703,8 +713,12 @@ void PlayerManager::startPipeTravel(float offsetX, float offsetY)
     m_velocityY = 0.f;
     m_inputDirection = 0;
     m_isGrounded = false;
-    m_pipeTargetX = m_positionX + offsetX;
-    m_pipeTargetY = m_positionY + offsetY;
+    m_pipeAlignX = alignX;
+    m_pipeAlignY = alignY;
+    m_pipeTargetX = targetX;
+    m_pipeTargetY = targetY;
+    m_isPipeAligning = std::abs(m_positionX - alignX) > 0.01f ||
+                        std::abs(m_positionY - alignY) > 0.01f;
     m_isPipeTraveling = true;
 }
 

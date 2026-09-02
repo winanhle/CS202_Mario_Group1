@@ -185,6 +185,7 @@ private:
     {
         None,
         Traveling,
+        Hold,
         FadeOut,
         FadeIn
     };
@@ -222,7 +223,8 @@ private:
     float m_pipeTargetX = -1.f;
     float m_pipeTargetY = -1.f;
     float m_pipeTransitionTimer = 0.f;
-    static constexpr float PIPE_FADE_DURATION = 0.28f;
+    static constexpr float PIPE_HOLD_DURATION = 0.08f;
+    static constexpr float PIPE_FADE_DURATION = 0.32f;
 
     sf::Texture m_sceneryTexture;
     bool m_sceneryLoaded = false;
@@ -233,6 +235,7 @@ private:
     void beginPipeTransition(const std::string& mapPath, float targetX, float targetY);
     void updatePipeTransition(float deltaTime);
     bool havePlayersFinishedPipeTravel() const;
+    bool startPlayerPipeTravel(IPlayerManager& player, bool enteringHiddenRoom, int lane) const;
     void renderScenery(sf::RenderWindow& window) const;
 
     /**

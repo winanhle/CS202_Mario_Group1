@@ -20,6 +20,9 @@ public:
     virtual void update(float deltaTime) = 0;
     virtual void render(sf::RenderWindow& window) const = 0;
 
+    /** Draw pipe tiles again above players during a pipe-entry cutscene. */
+    virtual void renderPipeForeground(sf::RenderWindow& window) const = 0;
+
     virtual bool isSolid(float x, float y) const = 0;
 
     /**

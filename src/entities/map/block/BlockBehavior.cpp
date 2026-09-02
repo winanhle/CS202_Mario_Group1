@@ -43,12 +43,6 @@ void PipeExitBehavior::onSideTouch(IMapContext& ctx, int gx, int gy, IPlayerMana
     ctx.requestWarp("assets/map/stage1.tmx", 2616.f, 192.f);
 }
 
-void PipeExitBehavior::onStandingOn(IMapContext& ctx, int gx, int gy, IPlayerManager* player) const
-{
-    (void)gx; (void)gy; (void)player;
-    ctx.requestWarp("assets/map/stage1.tmx", 2616.f, 192.f);
-}
-
 // BRICK_EMPTY (BRICK_NORMAL):
 // - Super/Fire Mario: diệt enemy trên gạch -> tạo mảnh vỡ -> biến thành EMPTY.
 // - Normal Mario: diệt enemy trên gạch -> nảy lên nửa ô (spawnBlockBump) và giữ nguyên BRICK_EMPTY.
